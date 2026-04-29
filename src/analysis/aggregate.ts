@@ -73,11 +73,11 @@ export function aggregate(analyses: GameAnalysis[]): AggregateStats {
 
     const totalPlies = game.moves.length
     for (const mv of game.moves) {
-      stats.totalMoves++
-      stats.byClass[mv.classification]++
       const moverIsWhite = mv.ply % 2 === 1
       const isUser = moverIsWhite === userIsWhite
       if (isUser) {
+        stats.totalMoves++
+        stats.byClass[mv.classification]++
         userMoves++
         userCpLossSum += mv.cpLoss
         const phase = classifyPhase(mv.ply, totalPlies)

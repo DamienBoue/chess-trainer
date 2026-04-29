@@ -49,7 +49,7 @@ export default function StatsView({ analyses }: Props) {
 
       <div className="grid md:grid-cols-2 gap-4">
         <div className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-4">
-          <h3 className="font-semibold mb-3">Distribution des coups (toi + adversaires)</h3>
+          <h3 className="font-semibold mb-3">Distribution de tes coups</h3>
           <div className="space-y-2">
             {classOrder.map(c => {
               const n = stats.byClass[c]
@@ -90,7 +90,7 @@ export default function StatsView({ analyses }: Props) {
             </tbody>
           </table>
           <div className="mt-3 text-xs text-neutral-500">
-            Total : {totalUserMistakes} coups imprécis (toutes phases, joueurs confondus).
+            Total : {totalUserMistakes} de tes coups imprécis (toutes phases).
           </div>
         </div>
 
