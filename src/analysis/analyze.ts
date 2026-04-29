@@ -15,6 +15,7 @@ interface AnalyzeOptions {
   movetimeMs?: number
   bookPlies?: number
   onProgress?: (p: AnalyzeProgress) => void
+  signal?: AbortSignal
 }
 
 // Convert a UCI move to SAN given the FEN it is played from.
@@ -54,7 +55,7 @@ export async function analyzeGame(
   username: string,
   options: AnalyzeOptions = {},
 ): Promise<GameAnalysis> {
-  const { depth = 12, movetimeMs = 600, bookPlies = 8, onProgress } = options
+  const { depth = 12, movetimeMs = 600, bookPlies = 8, onProgress, signal } = options
   const moves = extractMoves(game.pgn)
   const headers = parsePgnHeaders(game.pgn)
   const userColor = getUserSide(game, username)
@@ -70,6 +71,7 @@ export async function analyzeGame(
   let prevAfterEval: { scoreCpWhite: number; bestUci?: string; pvUci: string[]; isMate: boolean } | null = null
 
   for (let i = 0; i < moves.length; i++) {
+    if (signal?.aborted) throw new DOMException('Analysis aborted', 'AbortError')
     const move = moves[i]
     onProgress?.({ done: i, total: moves.length, currentSan: move.san })
 

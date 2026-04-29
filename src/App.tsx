@@ -8,11 +8,20 @@ import StatsView from './components/StatsView'
 import ExercisesView from './components/ExercisesView'
 import PuzzleRushView from './components/PuzzleRushView'
 import { extractExercises } from './analysis/exercises'
+import { analyzeGame } from './analysis/analyze'
 import {
   loadAnalyses, saveAnalyses,
   loadProgress, saveProgress,
   type ExerciseProgress, updateProgressAfterAttempt, isDue,
 } from './storage/persist'
+
+export interface BatchState {
+  total: number
+  done: number
+  currentGameUrl: string | null
+  currentMove: { done: number; total: number; currentSan?: string } | null
+  failed: number
+}
 
 type View = 'home' | 'games' | 'analysis' | 'stats' | 'exercises' | 'rush'
 
@@ -25,6 +34,8 @@ export default function App() {
   )
   const [progress, setProgress] = useState<Record<string, ExerciseProgress>>(() => loadProgress())
   const [activeGameUrl, setActiveGameUrl] = useState<string | null>(null)
+  const [batch, setBatch] = useState<BatchState | null>(null)
+  const batchAbortRef = useRef<AbortController | null>(null)
 
   const engineRef = useRef<StockfishEngine | null>(null)
   if (!engineRef.current) engineRef.current = new StockfishEngine()
@@ -72,6 +83,45 @@ export default function App() {
     setProgress(prev => ({ ...prev, [id]: updateProgressAfterAttempt(prev[id], outcome) }))
   }
 
+  async function handleStartBatch() {
+    if (batch || !engineRef.current) return
+    const toAnalyze = games.filter(g => !analyses[g.url])
+    if (toAnalyze.length === 0) return
+    const controller = new AbortController()
+    batchAbortRef.current = controller
+    setBatch({ total: toAnalyze.length, done: 0, currentGameUrl: null, currentMove: null, failed: 0 })
+
+    let done = 0
+    let failed = 0
+    for (const game of toAnalyze) {
+      if (controller.signal.aborted) break
+      setBatch({ total: toAnalyze.length, done, currentGameUrl: game.url, currentMove: null, failed })
+      try {
+        const result = await analyzeGame(engineRef.current, game, username, {
+          depth: 12,
+          movetimeMs: 600,
+          signal: controller.signal,
+          onProgress: (p) => {
+            if (controller.signal.aborted) return
+            setBatch(s => s && { ...s, currentMove: p })
+          },
+        })
+        setAnalyses(prev => ({ ...prev, [result.url]: result }))
+      } catch (err) {
+        if (controller.signal.aborted) break
+        console.error('[batch] failed on', game.url, err)
+        failed++
+      }
+      done++
+    }
+    batchAbortRef.current = null
+    setBatch(null)
+  }
+
+  function handleCancelBatch() {
+    batchAbortRef.current?.abort()
+  }
+
   return (
     <div className="min-h-full flex flex-col">
       <header className="border-b border-[var(--color-border)] bg-[var(--color-panel)] px-6 py-3 flex items-center gap-4">
@@ -110,6 +160,9 @@ export default function App() {
             games={games}
             analyses={analyses}
             onSelectGame={handleAnalyzeStart}
+            batch={batch}
+            onStartBatch={handleStartBatch}
+            onCancelBatch={handleCancelBatch}
           />
         )}
         {view === 'analysis' && activeGameUrl && (
