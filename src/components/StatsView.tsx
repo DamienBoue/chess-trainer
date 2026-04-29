@@ -2,6 +2,9 @@ import { Fragment, useMemo, useState } from 'react'
 import type { GameAnalysis } from '../types'
 import { aggregate, deriveInsights, type AggregateStats } from '../analysis/aggregate'
 import { CLASSIFICATION_COLORS, CLASSIFICATION_LABELS } from '../analysis/classify'
+import ProgressCharts from './ProgressCharts'
+import BlunderHeatmap from './BlunderHeatmap'
+import StudyRecommendations from './StudyRecommendations'
 
 interface Props {
   analyses: GameAnalysis[]
@@ -55,6 +58,10 @@ export default function StatsView({ analyses }: Props) {
       {stats.gamesAnalyzed === 0 && (
         <p className="text-neutral-400 text-sm">Aucune partie analysée avec cette couleur.</p>
       )}
+
+      <ProgressCharts analyses={filtered} />
+      <StudyRecommendations analyses={filtered} />
+      <BlunderHeatmap analyses={filtered} />
 
       {insights.length > 0 && (
         <div className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-4">

@@ -8,6 +8,8 @@ import StatsView from './components/StatsView'
 import ExercisesView from './components/ExercisesView'
 import PuzzleRushView from './components/PuzzleRushView'
 import SharedExerciseView from './components/SharedExerciseView'
+import DailyView from './components/DailyView'
+import { loadDaily, todayString } from './storage/daily'
 import { extractExercises } from './analysis/exercises'
 import { readSharedFromHash, clearShareHash } from './api/share'
 import { analyzeGame } from './analysis/analyze'
@@ -27,7 +29,7 @@ export interface BatchState {
   failed: number
 }
 
-type View = 'home' | 'games' | 'analysis' | 'stats' | 'exercises' | 'rush'
+type View = 'home' | 'games' | 'analysis' | 'stats' | 'exercises' | 'rush' | 'daily'
 
 export default function App() {
   const [view, setView] = useState<View>('home')
@@ -73,6 +75,10 @@ export default function App() {
     () => exercises.filter(e => isDue(progress[e.id])).length,
     [exercises, progress],
   )
+  const dailyState = loadDaily()
+  const today = todayString()
+  const dailySolvedToday = dailyState?.date === today && dailyState.solved
+  const dailyStreak = dailyState?.streak ?? 0
 
   function handleSubmitUsername(u: string, fetched: ChessComGame[]) {
     setUsername(u)
@@ -171,6 +177,9 @@ export default function App() {
           {username && (
             <>
               <NavBtn active={view === 'games'} onClick={() => setView('games')}>Parties</NavBtn>
+              <NavBtn active={view === 'daily'} onClick={() => setView('daily')} disabled={exerciseCount === 0}>
+                {dailySolvedToday ? '✓ ' : ''}Quotidien{dailyStreak > 0 ? ` 🔥${dailyStreak}` : ''}
+              </NavBtn>
               <NavBtn active={view === 'exercises'} onClick={() => setView('exercises')} disabled={exerciseCount === 0}>
                 Exercices {dueCount > 0 ? `(${dueCount} dus${exerciseCount !== dueCount ? `/${exerciseCount}` : ''})` : exerciseCount > 0 ? `(${exerciseCount})` : ''}
               </NavBtn>
@@ -229,6 +238,9 @@ export default function App() {
             onAttempt={handleExerciseAttempt}
             onExit={() => setView('exercises')}
           />
+        )}
+        {view === 'daily' && (
+          <DailyView exercises={exercises} />
         )}
       </main>
     </div>
