@@ -32,7 +32,9 @@ export class StockfishEngine {
   })()
 
   constructor() {
-    this.worker = new Worker('/stockfish.js')
+    // Use Vite's BASE_URL so the worker resolves correctly both in dev (/) and
+    // when deployed under a sub-path (e.g. GitHub Pages /chess-trainer/).
+    this.worker = new Worker(`${import.meta.env.BASE_URL}stockfish.js`)
     this.worker.onerror = (e) => {
       console.error('[stockfish] worker error', e.message || e.type, e)
     }

@@ -2,6 +2,10 @@
 
 Web app to analyze your [chess.com](https://chess.com) games locally with Stockfish, identify mistakes, common patterns, and openings to study.
 
+🌐 **Live demo: https://damienboue.github.io/chess-trainer/**
+
+Just open the link and type your chess.com username — no install, no account, nothing leaves your browser.
+
 ## Features
 
 - Fetches your recent games from the chess.com public API (no auth needed)
