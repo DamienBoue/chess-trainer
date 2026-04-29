@@ -4,6 +4,7 @@ import type { ChessComGame, GameAnalysis, MoveAnalysis } from '../types'
 import { StockfishEngine } from '../engine/stockfish'
 import { analyzeGame } from '../analysis/analyze'
 import { CLASSIFICATION_COLORS, CLASSIFICATION_LABELS } from '../analysis/classify'
+import { generateGameSummary } from '../analysis/summary'
 import EvalBar from './EvalBar'
 import EvalGraph from './EvalGraph'
 
@@ -159,6 +160,11 @@ export default function AnalysisView({
         </div>
 
         <div className="space-y-4">
+          <div className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-4">
+            <h3 className="font-semibold mb-2">Résumé</h3>
+            <p className="text-sm text-neutral-300 leading-relaxed">{generateGameSummary(analysis)}</p>
+          </div>
+
           <div className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-4">
             <h3 className="font-semibold mb-2">Vue d'ensemble</h3>
             <div className="text-sm text-neutral-300 space-y-1">
