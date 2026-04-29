@@ -217,7 +217,7 @@ interface PracticeProps {
   offList: boolean
 }
 
-type Status = 'pending' | 'wrong' | 'correct' | 'revealed'
+type Status = 'pending' | 'wrong' | 'progress' | 'completed' | 'revealed'
 
 interface AttemptHighlight {
   type: 'correct' | 'wrong'
@@ -228,8 +228,18 @@ interface AttemptHighlight {
 function ExercisePractice({
   exercise, progress, onNext, onPrev, onAttempt, index, total, offList, canNavigate,
 }: PracticeProps) {
+  // Parse the engine's recommended line into a list of plies. The first ply is
+  // the user's move; following plies alternate engine / user. If we only have
+  // bestMoveSan (no continuation), the line is just one ply long.
+  const lineSans = useMemo(() => {
+    const raw = (exercise.bestLineSan?.trim() || exercise.bestMoveSan).split(/\s+/).filter(Boolean)
+    return raw
+  }, [exercise.bestLineSan, exercise.bestMoveSan])
+  const hasContinuation = lineSans.length > 1
+
   const [position, setPosition] = useState(exercise.fen)
   const [status, setStatus] = useState<Status>('pending')
+  const [linePly, setLinePly] = useState(0)
   const [attemptsThisRound, setAttempts] = useState(0)
   const [highlight, setHighlight] = useState<AttemptHighlight | null>(null)
   const [showBadge, setShowBadge] = useState(false)
@@ -237,35 +247,65 @@ function ExercisePractice({
   const wrongTimerRef = useRef<number | null>(null)
 
   const chess = useMemo(() => new Chess(exercise.fen), [exercise.fen])
+  const lineComplete = linePly >= lineSans.length
+  const isUserTurn = linePly % 2 === 0
 
-  // Reset state on exercise change (key prop on parent already remounts, but be safe)
   useEffect(() => {
     return () => {
       if (wrongTimerRef.current) window.clearTimeout(wrongTimerRef.current)
     }
   }, [])
 
+  // After a correct user move, auto-play the engine's continuation.
+  useEffect(() => {
+    if (status === 'revealed' || lineComplete || isUserTurn) return
+    const san = lineSans[linePly]
+    if (!san) { setLinePly(lineSans.length); return }
+    const timer = window.setTimeout(() => {
+      let mv
+      try { mv = chess.move(san) } catch { /* noop */ }
+      if (!mv) { setLinePly(lineSans.length); return }
+      setPosition(chess.fen())
+      setHighlight({ type: 'correct', from: mv.from, to: mv.to })
+      setShowBadge(false)
+      setLinePly(p => {
+        const next = p + 1
+        if (next >= lineSans.length) setStatus('completed')
+        return next
+      })
+    }, 700)
+    return () => window.clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [linePly, isUserTurn, lineComplete, status])
+
   function tryMove(from: string, to: string, promotion: string = 'q'): boolean {
-    if (status === 'correct' || status === 'revealed') return false
+    if (status === 'revealed' || status === 'completed') return false
+    if (!isUserTurn || lineComplete) return false
 
     let attempt
     try { attempt = chess.move({ from, to, promotion }) } catch { return false }
     if (!attempt) return false
 
-    if (attempt.san === exercise.bestMoveSan) {
-      setStatus('correct')
+    const expected = lineSans[linePly]
+    if (attempt.san === expected) {
       setPosition(chess.fen())
       setHighlight({ type: 'correct', from, to })
       setShowBadge(true)
-      if (!reportedThisRound) {
+      // The badge fades quickly so the engine's reply is not hidden behind it.
+      window.setTimeout(() => setShowBadge(false), 700)
+
+      if (linePly === 0 && !reportedThisRound) {
         onAttempt(attemptsThisRound === 0 ? 'first-try' : 'after-retry')
         setReported(true)
       }
+      const next = linePly + 1
+      setLinePly(next)
+      if (next >= lineSans.length) setStatus('completed')
+      else setStatus('progress')
       return true
     }
 
-    // Wrong: undo on the chess instance, keep red highlight + badge briefly,
-    // then auto-clear so the user can retry without an explicit reset.
+    // Wrong move
     chess.undo()
     setAttempts(a => a + 1)
     setStatus('wrong')
@@ -275,17 +315,22 @@ function ExercisePractice({
     wrongTimerRef.current = window.setTimeout(() => {
       setShowBadge(false)
       setHighlight(null)
+      // After wrong feedback, return to whatever progress state we had
+      setStatus(linePly > 0 ? 'progress' : 'pending')
     }, 1000)
     return false
   }
 
   function reveal() {
-    const c = new Chess(exercise.fen)
-    let bm
-    try { bm = c.move(exercise.bestMoveSan) } catch { /* noop */ }
-    setPosition(c.fen())
+    // Play out the rest of the line on the board so the user sees the full plan.
+    for (let i = linePly; i < lineSans.length; i++) {
+      const san = lineSans[i]
+      try { chess.move(san) } catch { break }
+    }
+    setPosition(chess.fen())
     setStatus('revealed')
-    if (bm) setHighlight({ type: 'correct', from: bm.from, to: bm.to })
+    setLinePly(lineSans.length)
+    setHighlight(null)
     setShowBadge(false)
     if (!reportedThisRound) {
       onAttempt('revealed')
@@ -298,6 +343,7 @@ function ExercisePractice({
     chess.load(exercise.fen)
     setPosition(exercise.fen)
     setStatus('pending')
+    setLinePly(0)
     setAttempts(0)
     setHighlight(null)
     setShowBadge(false)
@@ -316,11 +362,17 @@ function ExercisePractice({
     squareStyles[highlight.to] = { backgroundColor: tint[1] }
   }
 
+  // User-visible move counter (only counts user plies in the line)
+  const userPliesTotal = Math.ceil(lineSans.length / 2)
+  const userPliesDone = Math.ceil(linePly / 2)
+
   // Inline feedback message (right panel)
   const feedbackMessage =
-    status === 'correct' ? `✓ Excellent — ${exercise.bestMoveSan} était bien le bon coup.`
+    status === 'completed' ? `✓ Ligne complète ! Tu as joué tous les bons coups.`
+    : status === 'progress' && hasContinuation ? `✓ Bon coup ! Continue la séquence.`
+    : status === 'progress' ? `✓ Excellent — ${exercise.bestMoveSan} était bien le bon coup.`
     : status === 'wrong' ? `✗ Pas le meilleur coup. Réessaie.${attemptsThisRound > 1 ? ` (${attemptsThisRound} essais)` : ''}`
-    : status === 'revealed' ? `La solution était ${exercise.bestMoveSan}.`
+    : status === 'revealed' ? `Solution affichée — ${exercise.bestMoveSan}${hasContinuation ? ' suivi de ' + lineSans.slice(1).join(' ') : ''}.`
     : null
 
   return (
@@ -345,7 +397,7 @@ function ExercisePractice({
               options={{
                 position,
                 boardOrientation: exercise.userColor,
-                allowDragging: status !== 'correct' && status !== 'revealed',
+                allowDragging: status !== 'completed' && status !== 'revealed' && isUserTurn,
                 animationDurationInMs: 200,
                 squareStyles,
                 darkSquareStyle: { backgroundColor: '#769656' },
@@ -356,11 +408,20 @@ function ExercisePractice({
                 },
               }}
             />
-            {(status === 'correct' || (status === 'wrong' && showBadge)) && (
-              <FeedbackBadge correct={status === 'correct'} />
+            {showBadge && (status === 'progress' || status === 'wrong') && (
+              <FeedbackBadge correct={status === 'progress'} />
+            )}
+            {status === 'completed' && (
+              <FeedbackBadge correct={true} />
             )}
             <div className="text-xs text-neutral-500 text-center mt-2">
-              Trait aux {exercise.sideToMove === 'w' ? 'Blancs' : 'Noirs'} (toi).
+              {status === 'completed' || status === 'revealed'
+                ? <>Ligne {hasContinuation ? `(${lineSans.length} coups)` : ''} affichée.</>
+                : !isUserTurn
+                  ? <>L'adversaire répond…</>
+                  : hasContinuation && linePly > 0
+                    ? <>Trouve le coup suivant ({userPliesDone + 1}/{userPliesTotal})</>
+                    : <>Trait aux {exercise.sideToMove === 'w' ? 'Blancs' : 'Noirs'} (toi).</>}
             </div>
           </div>
         </div>
@@ -401,16 +462,16 @@ function ExercisePractice({
               className="rounded-md p-3 text-sm font-medium"
               style={{
                 backgroundColor:
-                  status === 'correct' ? 'rgba(95,160,82,0.15)'
+                  (status === 'progress' || status === 'completed') ? 'rgba(95,160,82,0.15)'
                   : status === 'wrong' ? 'rgba(208,74,74,0.15)'
                   : 'rgba(120,120,120,0.15)',
                 border: `1px solid ${
-                  status === 'correct' ? 'rgba(95,160,82,0.5)'
+                  (status === 'progress' || status === 'completed') ? 'rgba(95,160,82,0.5)'
                   : status === 'wrong' ? 'rgba(208,74,74,0.5)'
                   : 'rgba(120,120,120,0.5)'
                 }`,
                 color:
-                  status === 'correct' ? 'rgb(95,160,82)'
+                  (status === 'progress' || status === 'completed') ? 'rgb(95,160,82)'
                   : status === 'wrong' ? 'rgb(208,74,74)'
                   : '#ccc',
               }}
@@ -430,14 +491,14 @@ function ExercisePractice({
                 Recommencer
               </button>
             )}
-            {(status === 'correct' || status === 'revealed') && (
+            {(status === 'completed' || status === 'revealed') && (
               <button onClick={onNext} className="px-3 py-1.5 text-sm bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] text-white rounded">
                 Exercice suivant →
               </button>
             )}
           </div>
 
-          {(status === 'correct' || status === 'revealed') && (
+          {(status === 'completed' || status === 'revealed') && (
             <div className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-3 space-y-2 text-sm">
               <div>
                 <span className="text-neutral-500">Coup recommandé : </span>
