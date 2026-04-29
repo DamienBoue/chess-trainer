@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Chess } from 'chess.js'
 import { Chessboard } from 'react-chessboard'
 import type { GameAnalysis } from '../types'
@@ -12,6 +12,7 @@ import {
 } from '../analysis/exercises'
 import { type ExerciseProgress, isDue } from '../storage/persist'
 import { exportExercisesToPgn, downloadPgn } from '../analysis/lichess'
+import EvalBar from './EvalBar'
 
 interface Props {
   analyses: GameAnalysis[]
@@ -199,53 +200,72 @@ interface PracticeProps {
 
 type Status = 'pending' | 'wrong' | 'correct' | 'revealed'
 
+interface AttemptHighlight {
+  type: 'correct' | 'wrong'
+  from: string
+  to: string
+}
+
 function ExercisePractice({ exercise, progress, onNext, onPrev, onAttempt, index, total }: PracticeProps) {
   const [position, setPosition] = useState(exercise.fen)
   const [status, setStatus] = useState<Status>('pending')
-  const [feedback, setFeedback] = useState<string | null>(null)
   const [attemptsThisRound, setAttempts] = useState(0)
-  const [highlightFrom, setHighlightFrom] = useState<string | null>(null)
-  const [highlightTo, setHighlightTo] = useState<string | null>(null)
+  const [highlight, setHighlight] = useState<AttemptHighlight | null>(null)
+  const [showBadge, setShowBadge] = useState(false)
   const [reportedThisRound, setReported] = useState(false)
+  const wrongTimerRef = useRef<number | null>(null)
 
   const chess = useMemo(() => new Chess(exercise.fen), [exercise.fen])
+
+  // Reset state on exercise change (key prop on parent already remounts, but be safe)
+  useEffect(() => {
+    return () => {
+      if (wrongTimerRef.current) window.clearTimeout(wrongTimerRef.current)
+    }
+  }, [])
 
   function tryMove(from: string, to: string, promotion: string = 'q'): boolean {
     if (status === 'correct' || status === 'revealed') return false
 
     let attempt
-    try {
-      attempt = chess.move({ from, to, promotion })
-    } catch {
-      return false
-    }
+    try { attempt = chess.move({ from, to, promotion }) } catch { return false }
     if (!attempt) return false
 
     if (attempt.san === exercise.bestMoveSan) {
       setStatus('correct')
       setPosition(chess.fen())
-      setHighlightFrom(from)
-      setHighlightTo(to)
-      setFeedback(`Excellent ! ${exercise.bestMoveSan} était bien le bon coup.`)
+      setHighlight({ type: 'correct', from, to })
+      setShowBadge(true)
       if (!reportedThisRound) {
         onAttempt(attemptsThisRound === 0 ? 'first-try' : 'after-retry')
         setReported(true)
       }
       return true
     }
+
+    // Wrong: undo on the chess instance, keep red highlight + badge briefly,
+    // then auto-clear so the user can retry without an explicit reset.
     chess.undo()
     setAttempts(a => a + 1)
     setStatus('wrong')
-    setFeedback(`${attempt.san} n'est pas le meilleur coup. Réessaie.`)
+    setHighlight({ type: 'wrong', from, to })
+    setShowBadge(true)
+    if (wrongTimerRef.current) window.clearTimeout(wrongTimerRef.current)
+    wrongTimerRef.current = window.setTimeout(() => {
+      setShowBadge(false)
+      setHighlight(null)
+    }, 1000)
     return false
   }
 
   function reveal() {
     const c = new Chess(exercise.fen)
-    try { c.move(exercise.bestMoveSan) } catch { /* noop */ }
+    let bm
+    try { bm = c.move(exercise.bestMoveSan) } catch { /* noop */ }
     setPosition(c.fen())
     setStatus('revealed')
-    setFeedback(`La solution était ${exercise.bestMoveSan}.`)
+    if (bm) setHighlight({ type: 'correct', from: bm.from, to: bm.to })
+    setShowBadge(false)
     if (!reportedThisRound) {
       onAttempt('revealed')
       setReported(true)
@@ -253,13 +273,13 @@ function ExercisePractice({ exercise, progress, onNext, onPrev, onAttempt, index
   }
 
   function reset() {
+    if (wrongTimerRef.current) window.clearTimeout(wrongTimerRef.current)
     chess.load(exercise.fen)
     setPosition(exercise.fen)
     setStatus('pending')
-    setFeedback(null)
     setAttempts(0)
-    setHighlightFrom(null)
-    setHighlightTo(null)
+    setHighlight(null)
+    setShowBadge(false)
     setReported(false)
   }
 
@@ -267,126 +287,173 @@ function ExercisePractice({ exercise, progress, onNext, onPrev, onAttempt, index
   const evalAfterPlayedUser = exercise.userColor === 'white' ? exercise.evalAfterPlayedWhite : -exercise.evalAfterPlayedWhite
 
   const squareStyles: Record<string, React.CSSProperties> = {}
-  if (highlightFrom) squareStyles[highlightFrom] = { backgroundColor: 'rgba(118, 150, 86, 0.55)' }
-  if (highlightTo) squareStyles[highlightTo] = { backgroundColor: 'rgba(118, 150, 86, 0.7)' }
+  if (highlight) {
+    const tint = highlight.type === 'correct'
+      ? ['rgba(95, 160, 82, 0.55)', 'rgba(95, 160, 82, 0.75)']
+      : ['rgba(208, 74, 74, 0.55)', 'rgba(208, 74, 74, 0.75)']
+    squareStyles[highlight.from] = { backgroundColor: tint[0] }
+    squareStyles[highlight.to] = { backgroundColor: tint[1] }
+  }
+
+  // Inline feedback message (right panel)
+  const feedbackMessage =
+    status === 'correct' ? `✓ Excellent — ${exercise.bestMoveSan} était bien le bon coup.`
+    : status === 'wrong' ? `✗ Pas le meilleur coup. Réessaie.${attemptsThisRound > 1 ? ` (${attemptsThisRound} essais)` : ''}`
+    : status === 'revealed' ? `La solution était ${exercise.bestMoveSan}.`
+    : null
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
+      {/* Nav row */}
       <div className="flex items-center justify-between text-sm">
         <button onClick={onPrev} disabled={total <= 1} className="px-3 py-1 hover:bg-neutral-800 rounded disabled:opacity-30">← Précédent</button>
         <span className="text-neutral-400">Exercice {index + 1} / {total}</span>
         <button onClick={onNext} disabled={total <= 1} className="px-3 py-1 hover:bg-neutral-800 rounded disabled:opacity-30">Suivant →</button>
       </div>
 
-      <div className="flex items-center gap-2 flex-wrap">
-        <span
-          className="px-2 py-1 rounded text-xs font-medium"
-          style={{ backgroundColor: CATEGORY_COLORS[exercise.category] + '33', color: CATEGORY_COLORS[exercise.category] }}
-        >
-          {CATEGORY_LABELS[exercise.category]}
-        </span>
-        <span className="text-sm text-neutral-400">
-          vs <span className="text-neutral-200">{exercise.context.opponent}</span> · {exercise.context.moveLabel}
-          {exercise.context.opening && <span className="text-xs"> · {exercise.context.opening}</span>}
-        </span>
-        {progress && (
-          <span className="ml-auto text-xs text-neutral-500">
-            {progress.successes}✓ / {progress.failures}✗
-            {progress.nextDueAt > Date.now() && (
-              <span className="ml-2">prochain : {formatDueDelta(progress.nextDueAt - Date.now())}</span>
+      <div className="grid lg:grid-cols-[auto_1fr] gap-6">
+        {/* Board column */}
+        <div className="flex gap-2 items-start">
+          <EvalBar evalCp={exercise.evalBeforeWhite} />
+          <div className="relative w-[min(70vw,560px)]">
+            <Chessboard
+              options={{
+                position,
+                boardOrientation: exercise.userColor,
+                allowDragging: status !== 'correct' && status !== 'revealed',
+                animationDurationInMs: 200,
+                squareStyles,
+                darkSquareStyle: { backgroundColor: '#769656' },
+                lightSquareStyle: { backgroundColor: '#eeeed2' },
+                onPieceDrop: ({ sourceSquare, targetSquare }) => {
+                  if (!targetSquare) return false
+                  return tryMove(sourceSquare, targetSquare)
+                },
+              }}
+            />
+            {(status === 'correct' || (status === 'wrong' && showBadge)) && (
+              <FeedbackBadge correct={status === 'correct'} />
             )}
-          </span>
-        )}
-      </div>
-
-      <p className="text-sm text-neutral-300">{CATEGORY_DESCRIPTIONS[exercise.category]}</p>
-
-      <div className="flex gap-3">
-        <div className="w-[min(70vw,520px)]">
-          <Chessboard
-            options={{
-              position,
-              boardOrientation: exercise.userColor,
-              allowDragging: status !== 'correct' && status !== 'revealed',
-              animationDurationInMs: 200,
-              squareStyles,
-              darkSquareStyle: { backgroundColor: '#769656' },
-              lightSquareStyle: { backgroundColor: '#eeeed2' },
-              onPieceDrop: ({ sourceSquare, targetSquare }) => {
-                if (!targetSquare) return false
-                return tryMove(sourceSquare, targetSquare)
-              },
-            }}
-          />
-          <div className="text-xs text-neutral-500 text-center mt-2">
-            Trait aux {exercise.sideToMove === 'w' ? 'Blancs' : 'Noirs'} (toi).
+            <div className="text-xs text-neutral-500 text-center mt-2">
+              Trait aux {exercise.sideToMove === 'w' ? 'Blancs' : 'Noirs'} (toi).
+            </div>
           </div>
         </div>
-      </div>
 
-      {feedback && (
-        <div
-          className="rounded-md p-3 text-sm"
-          style={{
-            backgroundColor:
-              status === 'correct' ? 'rgba(95,160,82,0.15)'
-              : status === 'wrong' ? 'rgba(208,74,74,0.15)'
-              : 'rgba(120,120,120,0.15)',
-            border: `1px solid ${
-              status === 'correct' ? 'rgba(95,160,82,0.5)'
-              : status === 'wrong' ? 'rgba(208,74,74,0.5)'
-              : 'rgba(120,120,120,0.5)'
-            }`,
-          }}
-        >
-          {feedback}
-        </div>
-      )}
-
-      <div className="flex gap-2 flex-wrap">
-        {(status === 'wrong' || status === 'pending') && (
-          <button onClick={reveal} className="px-3 py-1.5 text-sm bg-neutral-800 hover:bg-neutral-700 rounded">
-            Voir la solution
-          </button>
-        )}
-        {status !== 'pending' && (
-          <button onClick={reset} className="px-3 py-1.5 text-sm bg-neutral-800 hover:bg-neutral-700 rounded">
-            Recommencer
-          </button>
-        )}
-        {(status === 'correct' || status === 'revealed') && (
-          <button onClick={onNext} className="px-3 py-1.5 text-sm bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] text-white rounded">
-            Exercice suivant →
-          </button>
-        )}
-        {attemptsThisRound > 0 && status === 'wrong' && (
-          <span className="text-xs text-neutral-500 self-center">{attemptsThisRound} essai{attemptsThisRound > 1 ? 's' : ''}</span>
-        )}
-      </div>
-
-      {(status === 'correct' || status === 'revealed') && (
-        <div className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-3 space-y-2 text-sm">
-          <div>
-            <span className="text-neutral-500">Coup recommandé : </span>
-            <span className="font-mono text-neutral-100">{exercise.bestMoveSan}</span>
-            {exercise.bestLineSan && (
-              <span className="text-neutral-500 text-xs ml-2">(suite : {exercise.bestLineSan})</span>
-            )}
-          </div>
-          <div>
-            <span className="text-neutral-500">Coup joué dans la partie : </span>
-            <span className="font-mono text-neutral-300">{exercise.playedMoveSan}</span>
-            {exercise.category === 'missed' && (
-              <span className="text-xs text-neutral-500 ml-2">
-                ({exercise.playedClassification === 'blunder' ? 'gaffe' : 'erreur'} de {exercise.cpSwing} cp)
+        {/* Right panel column */}
+        <div className="space-y-3">
+          <div className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-4">
+            <div className="flex items-center gap-2 flex-wrap mb-2">
+              <span
+                className="px-2 py-1 rounded text-xs font-medium"
+                style={{ backgroundColor: CATEGORY_COLORS[exercise.category] + '33', color: CATEGORY_COLORS[exercise.category] }}
+              >
+                {CATEGORY_LABELS[exercise.category]}
               </span>
+              {progress && (
+                <span className="ml-auto text-xs text-neutral-500">
+                  {progress.successes}✓ / {progress.failures}✗
+                </span>
+              )}
+            </div>
+            <div className="text-sm text-neutral-300">
+              vs <span className="text-neutral-100">{exercise.context.opponent}</span>
+              <span className="text-neutral-500"> · {exercise.context.moveLabel}</span>
+              {exercise.context.opening && (
+                <div className="text-xs text-neutral-500 mt-0.5">{exercise.context.opening}</div>
+              )}
+            </div>
+            <p className="text-sm text-neutral-400 mt-2">{CATEGORY_DESCRIPTIONS[exercise.category]}</p>
+            {progress && progress.nextDueAt > Date.now() && (
+              <p className="text-xs text-neutral-500 mt-2">
+                Prochaine révision : {formatDueDelta(progress.nextDueAt - Date.now())}
+              </p>
             )}
           </div>
-          <div className="text-xs text-neutral-500">
-            Avant : {formatEval(evalBeforeUser)} pour toi · après ton coup réel : {formatEval(evalAfterPlayedUser)}
+
+          {feedbackMessage && (
+            <div
+              className="rounded-md p-3 text-sm font-medium"
+              style={{
+                backgroundColor:
+                  status === 'correct' ? 'rgba(95,160,82,0.15)'
+                  : status === 'wrong' ? 'rgba(208,74,74,0.15)'
+                  : 'rgba(120,120,120,0.15)',
+                border: `1px solid ${
+                  status === 'correct' ? 'rgba(95,160,82,0.5)'
+                  : status === 'wrong' ? 'rgba(208,74,74,0.5)'
+                  : 'rgba(120,120,120,0.5)'
+                }`,
+                color:
+                  status === 'correct' ? 'rgb(95,160,82)'
+                  : status === 'wrong' ? 'rgb(208,74,74)'
+                  : '#ccc',
+              }}
+            >
+              {feedbackMessage}
+            </div>
+          )}
+
+          <div className="flex gap-2 flex-wrap">
+            {(status === 'wrong' || status === 'pending') && (
+              <button onClick={reveal} className="px-3 py-1.5 text-sm bg-neutral-800 hover:bg-neutral-700 rounded">
+                Voir la solution
+              </button>
+            )}
+            {status !== 'pending' && (
+              <button onClick={reset} className="px-3 py-1.5 text-sm bg-neutral-800 hover:bg-neutral-700 rounded">
+                Recommencer
+              </button>
+            )}
+            {(status === 'correct' || status === 'revealed') && (
+              <button onClick={onNext} className="px-3 py-1.5 text-sm bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] text-white rounded">
+                Exercice suivant →
+              </button>
+            )}
           </div>
+
+          {(status === 'correct' || status === 'revealed') && (
+            <div className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-3 space-y-2 text-sm">
+              <div>
+                <span className="text-neutral-500">Coup recommandé : </span>
+                <span className="font-mono text-neutral-100">{exercise.bestMoveSan}</span>
+                {exercise.bestLineSan && (
+                  <span className="text-neutral-500 text-xs ml-2">(suite : {exercise.bestLineSan})</span>
+                )}
+              </div>
+              <div>
+                <span className="text-neutral-500">Coup joué dans la partie : </span>
+                <span className="font-mono text-neutral-300">{exercise.playedMoveSan}</span>
+                {exercise.category === 'missed' && (
+                  <span className="text-xs text-neutral-500 ml-2">
+                    ({exercise.playedClassification === 'blunder' ? 'gaffe' : 'erreur'} de {exercise.cpSwing} cp)
+                  </span>
+                )}
+              </div>
+              <div className="text-xs text-neutral-500">
+                Avant : {formatEval(evalBeforeUser)} pour toi · après ton coup réel : {formatEval(evalAfterPlayedUser)}
+              </div>
+            </div>
+          )}
         </div>
-      )}
+      </div>
+    </div>
+  )
+}
+
+function FeedbackBadge({ correct }: { correct: boolean }) {
+  return (
+    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+      <div
+        className="rounded-full flex items-center justify-center text-white text-5xl font-bold shadow-2xl animate-[pop_180ms_ease-out]"
+        style={{
+          width: '112px',
+          height: '112px',
+          backgroundColor: correct ? 'rgba(95, 160, 82, 0.92)' : 'rgba(208, 74, 74, 0.92)',
+        }}
+      >
+        {correct ? '✓' : '✗'}
+      </div>
     </div>
   )
 }
