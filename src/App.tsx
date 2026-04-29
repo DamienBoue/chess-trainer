@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ChessComGame, GameAnalysis } from './types'
 import { StockfishEngine } from './engine/stockfish'
 import Home from './components/Home'
@@ -6,15 +6,24 @@ import GamesList from './components/GamesList'
 import AnalysisView from './components/AnalysisView'
 import StatsView from './components/StatsView'
 import ExercisesView from './components/ExercisesView'
+import PuzzleRushView from './components/PuzzleRushView'
 import { extractExercises } from './analysis/exercises'
+import {
+  loadAnalyses, saveAnalyses,
+  loadProgress, saveProgress,
+  type ExerciseProgress, updateProgressAfterAttempt, isDue,
+} from './storage/persist'
 
-type View = 'home' | 'games' | 'analysis' | 'stats' | 'exercises'
+type View = 'home' | 'games' | 'analysis' | 'stats' | 'exercises' | 'rush'
 
 export default function App() {
   const [view, setView] = useState<View>('home')
   const [username, setUsername] = useState<string>(() => localStorage.getItem('chess.username') ?? '')
   const [games, setGames] = useState<ChessComGame[]>([])
-  const [analyses, setAnalyses] = useState<Record<string, GameAnalysis>>({})
+  const [analyses, setAnalyses] = useState<Record<string, GameAnalysis>>(() =>
+    username ? loadAnalyses(username) : {},
+  )
+  const [progress, setProgress] = useState<Record<string, ExerciseProgress>>(() => loadProgress())
   const [activeGameUrl, setActiveGameUrl] = useState<string | null>(null)
 
   const engineRef = useRef<StockfishEngine | null>(null)
@@ -24,14 +33,29 @@ export default function App() {
   // still points to it, leaving us with a zombie worker. The browser cleans up the
   // worker when the tab closes anyway.
 
+  // Persist analyses whenever they change (debounced via effect batching)
+  useEffect(() => {
+    if (username) saveAnalyses(username, analyses)
+  }, [analyses, username])
+
+  useEffect(() => {
+    saveProgress(progress)
+  }, [progress])
+
   const activeAnalysis = activeGameUrl ? analyses[activeGameUrl] : null
   const allAnalyses = useMemo(() => Object.values(analyses), [analyses])
-  const exerciseCount = useMemo(() => extractExercises(allAnalyses).length, [allAnalyses])
+  const exercises = useMemo(() => extractExercises(allAnalyses), [allAnalyses])
+  const exerciseCount = exercises.length
+  const dueCount = useMemo(
+    () => exercises.filter(e => isDue(progress[e.id])).length,
+    [exercises, progress],
+  )
 
   function handleSubmitUsername(u: string, fetched: ChessComGame[]) {
     setUsername(u)
     localStorage.setItem('chess.username', u)
     setGames(fetched)
+    setAnalyses(loadAnalyses(u))   // load this user's saved analyses
     setView('games')
   }
 
@@ -44,6 +68,10 @@ export default function App() {
     setAnalyses(prev => ({ ...prev, [analysis.url]: analysis }))
   }
 
+  function handleExerciseAttempt(id: string, outcome: Parameters<typeof updateProgressAfterAttempt>[1]) {
+    setProgress(prev => ({ ...prev, [id]: updateProgressAfterAttempt(prev[id], outcome) }))
+  }
+
   return (
     <div className="min-h-full flex flex-col">
       <header className="border-b border-[var(--color-border)] bg-[var(--color-panel)] px-6 py-3 flex items-center gap-4">
@@ -53,12 +81,15 @@ export default function App() {
         {username && (
           <span className="text-sm text-neutral-400">@{username}</span>
         )}
-        <nav className="ml-auto flex gap-1 text-sm">
+        <nav className="ml-auto flex gap-1 text-sm flex-wrap">
           {username && (
             <>
               <NavBtn active={view === 'games'} onClick={() => setView('games')}>Parties</NavBtn>
               <NavBtn active={view === 'exercises'} onClick={() => setView('exercises')} disabled={exerciseCount === 0}>
-                Exercices {exerciseCount > 0 && `(${exerciseCount})`}
+                Exercices {dueCount > 0 ? `(${dueCount} dus${exerciseCount !== dueCount ? `/${exerciseCount}` : ''})` : exerciseCount > 0 ? `(${exerciseCount})` : ''}
+              </NavBtn>
+              <NavBtn active={view === 'rush'} onClick={() => setView('rush')} disabled={exerciseCount < 5}>
+                Puzzle Rush
               </NavBtn>
               <NavBtn active={view === 'stats'} onClick={() => setView('stats')} disabled={allAnalyses.length === 0}>
                 Stats {allAnalyses.length > 0 && `(${allAnalyses.length})`}
@@ -95,7 +126,18 @@ export default function App() {
           <StatsView analyses={allAnalyses} />
         )}
         {view === 'exercises' && (
-          <ExercisesView analyses={allAnalyses} />
+          <ExercisesView
+            analyses={allAnalyses}
+            progress={progress}
+            onAttempt={handleExerciseAttempt}
+          />
+        )}
+        {view === 'rush' && (
+          <PuzzleRushView
+            exercises={exercises}
+            onAttempt={handleExerciseAttempt}
+            onExit={() => setView('exercises')}
+          />
         )}
       </main>
     </div>

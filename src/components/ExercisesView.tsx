@@ -10,28 +10,44 @@ import {
   CATEGORY_COLORS,
   extractExercises,
 } from '../analysis/exercises'
+import { type ExerciseProgress, isDue } from '../storage/persist'
+import { exportExercisesToPgn, downloadPgn } from '../analysis/lichess'
 
 interface Props {
   analyses: GameAnalysis[]
+  progress: Record<string, ExerciseProgress>
+  onAttempt: (id: string, outcome: 'first-try' | 'after-retry' | 'failed' | 'revealed') => void
 }
 
-type Filter = 'all' | ExerciseCategory
+type StatusFilter = 'all' | 'due' | 'solved' | 'unseen'
+type CategoryFilter = 'all' | ExerciseCategory
 
-export default function ExercisesView({ analyses }: Props) {
+export default function ExercisesView({ analyses, progress, onAttempt }: Props) {
   const exercises = useMemo(() => extractExercises(analyses), [analyses])
-  const [filter, setFilter] = useState<Filter>('all')
-  const filtered = useMemo(
-    () => filter === 'all' ? exercises : exercises.filter(e => e.category === filter),
-    [filter, exercises],
-  )
+  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all')
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('due')
   const [activeId, setActiveId] = useState<string | null>(null)
+
+  const filtered = useMemo(() => {
+    let list = exercises
+    if (categoryFilter !== 'all') list = list.filter(e => e.category === categoryFilter)
+    if (statusFilter === 'due') list = list.filter(e => isDue(progress[e.id]))
+    else if (statusFilter === 'solved') list = list.filter(e => (progress[e.id]?.successes ?? 0) > 0)
+    else if (statusFilter === 'unseen') list = list.filter(e => !progress[e.id])
+    return list
+  }, [exercises, categoryFilter, statusFilter, progress])
+
   const active = filtered.find(e => e.id === activeId) ?? filtered[0] ?? null
+
   const counts = useMemo(() => ({
     all: exercises.length,
+    due: exercises.filter(e => isDue(progress[e.id])).length,
+    solved: exercises.filter(e => (progress[e.id]?.successes ?? 0) > 0).length,
+    unseen: exercises.filter(e => !progress[e.id]).length,
     missed: exercises.filter(e => e.category === 'missed').length,
     punishment: exercises.filter(e => e.category === 'punishment').length,
     defense: exercises.filter(e => e.category === 'defense').length,
-  }), [exercises])
+  }), [exercises, progress])
 
   if (analyses.length === 0) {
     return (
@@ -43,7 +59,7 @@ export default function ExercisesView({ analyses }: Props) {
   if (exercises.length === 0) {
     return (
       <div className="p-8 max-w-3xl mx-auto text-neutral-400">
-        Aucun coup-clé détecté pour l'instant dans tes parties analysées (pas d'erreur grave, pas de punition, pas de position défensive franche). Analyse plus de parties pour en générer.
+        Aucun coup-clé détecté pour l'instant. Analyse plus de parties pour en générer.
       </div>
     )
   }
@@ -60,49 +76,84 @@ export default function ExercisesView({ analyses }: Props) {
     setActiveId(filtered[pi].id)
   }
 
+  function handleExport() {
+    const pgn = exportExercisesToPgn(filtered, progress)
+    downloadPgn(pgn, `chess-trainer-exercises-${Date.now()}.pgn`)
+  }
+
   return (
     <div className="p-4 lg:p-6 max-w-7xl mx-auto">
       <div className="flex flex-wrap items-baseline gap-3 mb-4">
-        <h2 className="text-2xl font-semibold">Exercices ({exercises.length})</h2>
+        <h2 className="text-2xl font-semibold">Exercices</h2>
         <p className="text-sm text-neutral-400">Trouve le bon coup directement sur l'échiquier.</p>
+        <button
+          onClick={handleExport}
+          disabled={filtered.length === 0}
+          className="ml-auto px-3 py-1.5 text-sm bg-neutral-800 hover:bg-neutral-700 rounded disabled:opacity-40"
+          title="Télécharger un PGN importable comme étude Lichess"
+        >
+          ↓ Export Lichess (.pgn)
+        </button>
       </div>
 
-      <div className="flex gap-2 mb-4 flex-wrap">
-        <FilterPill active={filter === 'all'} onClick={() => setFilter('all')} count={counts.all}>Tous</FilterPill>
-        <FilterPill active={filter === 'missed'} onClick={() => setFilter('missed')} count={counts.missed} color={CATEGORY_COLORS.missed}>{CATEGORY_LABELS.missed}</FilterPill>
-        <FilterPill active={filter === 'punishment'} onClick={() => setFilter('punishment')} count={counts.punishment} color={CATEGORY_COLORS.punishment}>{CATEGORY_LABELS.punishment}</FilterPill>
-        <FilterPill active={filter === 'defense'} onClick={() => setFilter('defense')} count={counts.defense} color={CATEGORY_COLORS.defense}>{CATEGORY_LABELS.defense}</FilterPill>
+      {/* Status filter */}
+      <div className="flex gap-2 mb-2 flex-wrap text-xs">
+        <FilterPill active={statusFilter === 'due'} onClick={() => setStatusFilter('due')} count={counts.due}>À réviser</FilterPill>
+        <FilterPill active={statusFilter === 'unseen'} onClick={() => setStatusFilter('unseen')} count={counts.unseen}>Jamais vus</FilterPill>
+        <FilterPill active={statusFilter === 'solved'} onClick={() => setStatusFilter('solved')} count={counts.solved}>Déjà réussis</FilterPill>
+        <FilterPill active={statusFilter === 'all'} onClick={() => setStatusFilter('all')} count={counts.all}>Tous</FilterPill>
+      </div>
+      {/* Category filter */}
+      <div className="flex gap-2 mb-4 flex-wrap text-sm">
+        <FilterPill active={categoryFilter === 'all'} onClick={() => setCategoryFilter('all')} count={counts.all}>Toutes catégories</FilterPill>
+        <FilterPill active={categoryFilter === 'missed'} onClick={() => setCategoryFilter('missed')} count={counts.missed} color={CATEGORY_COLORS.missed}>{CATEGORY_LABELS.missed}</FilterPill>
+        <FilterPill active={categoryFilter === 'punishment'} onClick={() => setCategoryFilter('punishment')} count={counts.punishment} color={CATEGORY_COLORS.punishment}>{CATEGORY_LABELS.punishment}</FilterPill>
+        <FilterPill active={categoryFilter === 'defense'} onClick={() => setCategoryFilter('defense')} count={counts.defense} color={CATEGORY_COLORS.defense}>{CATEGORY_LABELS.defense}</FilterPill>
       </div>
 
       <div className="grid lg:grid-cols-[1fr_320px] gap-6">
         {active ? (
-          <ExercisePractice key={active.id} exercise={active} onNext={next} onPrev={prev} index={idx} total={filtered.length} />
+          <ExercisePractice
+            key={active.id}
+            exercise={active}
+            progress={progress[active.id]}
+            onNext={next}
+            onPrev={prev}
+            onAttempt={(outcome) => onAttempt(active.id, outcome)}
+            index={idx}
+            total={filtered.length}
+          />
         ) : (
-          <div className="text-neutral-500">Aucun exercice dans cette catégorie.</div>
+          <div className="text-neutral-500">Aucun exercice dans cette sélection.</div>
         )}
 
         <aside className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-3 max-h-[80vh] overflow-auto">
-          <h3 className="font-semibold text-sm mb-2 text-neutral-300">Liste</h3>
+          <h3 className="font-semibold text-sm mb-2 text-neutral-300">Liste ({filtered.length})</h3>
           <ul className="space-y-1">
-            {filtered.map(e => (
-              <li key={e.id}>
-                <button
-                  onClick={() => setActiveId(e.id)}
-                  className={`w-full text-left px-2 py-1.5 rounded text-sm transition-colors ${
-                    active?.id === e.id ? 'bg-[var(--color-accent)] text-white' : 'hover:bg-neutral-800 text-neutral-300'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <span
-                      className="w-2 h-2 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: CATEGORY_COLORS[e.category] }}
-                    />
-                    <span className="font-mono text-xs">{e.context.moveLabel}</span>
-                    <span className="truncate flex-1 text-xs">vs {e.context.opponent}</span>
-                  </div>
-                </button>
-              </li>
-            ))}
+            {filtered.map(e => {
+              const p = progress[e.id]
+              const solved = (p?.successes ?? 0) > 0
+              return (
+                <li key={e.id}>
+                  <button
+                    onClick={() => setActiveId(e.id)}
+                    className={`w-full text-left px-2 py-1.5 rounded text-sm transition-colors ${
+                      active?.id === e.id ? 'bg-[var(--color-accent)] text-white' : 'hover:bg-neutral-800 text-neutral-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="w-2 h-2 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: CATEGORY_COLORS[e.category] }}
+                      />
+                      <span className="font-mono text-xs">{e.context.moveLabel}</span>
+                      <span className="truncate flex-1 text-xs">vs {e.context.opponent}</span>
+                      {solved && <span className="text-xs">✓</span>}
+                    </div>
+                  </button>
+                </li>
+              )
+            })}
           </ul>
         </aside>
       </div>
@@ -122,7 +173,7 @@ function FilterPill({
   return (
     <button
       onClick={onClick}
-      className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
+      className={`px-3 py-1.5 rounded-full border transition-colors ${
         active
           ? 'bg-[var(--color-accent)] border-[var(--color-accent)] text-white'
           : 'border-[var(--color-border)] text-neutral-300 hover:bg-neutral-800'
@@ -138,22 +189,24 @@ function FilterPill({
 
 interface PracticeProps {
   exercise: Exercise
+  progress: ExerciseProgress | undefined
   onNext: () => void
   onPrev: () => void
+  onAttempt: (outcome: 'first-try' | 'after-retry' | 'failed' | 'revealed') => void
   index: number
   total: number
 }
 
 type Status = 'pending' | 'wrong' | 'correct' | 'revealed'
 
-function ExercisePractice({ exercise, onNext, onPrev, index, total }: PracticeProps) {
-  // Reset state when exercise changes (key prop in parent triggers remount)
+function ExercisePractice({ exercise, progress, onNext, onPrev, onAttempt, index, total }: PracticeProps) {
   const [position, setPosition] = useState(exercise.fen)
   const [status, setStatus] = useState<Status>('pending')
   const [feedback, setFeedback] = useState<string | null>(null)
   const [attemptsThisRound, setAttempts] = useState(0)
   const [highlightFrom, setHighlightFrom] = useState<string | null>(null)
   const [highlightTo, setHighlightTo] = useState<string | null>(null)
+  const [reportedThisRound, setReported] = useState(false)
 
   const chess = useMemo(() => new Chess(exercise.fen), [exercise.fen])
 
@@ -174,9 +227,12 @@ function ExercisePractice({ exercise, onNext, onPrev, index, total }: PracticePr
       setHighlightFrom(from)
       setHighlightTo(to)
       setFeedback(`Excellent ! ${exercise.bestMoveSan} était bien le bon coup.`)
+      if (!reportedThisRound) {
+        onAttempt(attemptsThisRound === 0 ? 'first-try' : 'after-retry')
+        setReported(true)
+      }
       return true
     }
-    // Wrong: undo and let user retry
     chess.undo()
     setAttempts(a => a + 1)
     setStatus('wrong')
@@ -185,16 +241,15 @@ function ExercisePractice({ exercise, onNext, onPrev, index, total }: PracticePr
   }
 
   function reveal() {
-    // Apply the best move on the board so user sees the answer
     const c = new Chess(exercise.fen)
-    try {
-      c.move(exercise.bestMoveSan)
-    } catch {
-      /* shouldn't happen */
-    }
+    try { c.move(exercise.bestMoveSan) } catch { /* noop */ }
     setPosition(c.fen())
     setStatus('revealed')
     setFeedback(`La solution était ${exercise.bestMoveSan}.`)
+    if (!reportedThisRound) {
+      onAttempt('revealed')
+      setReported(true)
+    }
   }
 
   function reset() {
@@ -205,6 +260,7 @@ function ExercisePractice({ exercise, onNext, onPrev, index, total }: PracticePr
     setAttempts(0)
     setHighlightFrom(null)
     setHighlightTo(null)
+    setReported(false)
   }
 
   const evalBeforeUser = exercise.userColor === 'white' ? exercise.evalBeforeWhite : -exercise.evalBeforeWhite
@@ -230,9 +286,17 @@ function ExercisePractice({ exercise, onNext, onPrev, index, total }: PracticePr
           {CATEGORY_LABELS[exercise.category]}
         </span>
         <span className="text-sm text-neutral-400">
-          vs <span className="text-neutral-200">{exercise.context.opponent}</span> · {exercise.context.moveLabel}{' '}
-          {exercise.context.opening && <span className="text-xs">· {exercise.context.opening}</span>}
+          vs <span className="text-neutral-200">{exercise.context.opponent}</span> · {exercise.context.moveLabel}
+          {exercise.context.opening && <span className="text-xs"> · {exercise.context.opening}</span>}
         </span>
+        {progress && (
+          <span className="ml-auto text-xs text-neutral-500">
+            {progress.successes}✓ / {progress.failures}✗
+            {progress.nextDueAt > Date.now() && (
+              <span className="ml-2">prochain : {formatDueDelta(progress.nextDueAt - Date.now())}</span>
+            )}
+          </span>
+        )}
       </div>
 
       <p className="text-sm text-neutral-300">{CATEGORY_DESCRIPTIONS[exercise.category]}</p>
@@ -334,4 +398,11 @@ function formatEval(cpFromUser: number): string {
   }
   const pawns = cpFromUser / 100
   return (pawns >= 0 ? '+' : '') + pawns.toFixed(1)
+}
+
+function formatDueDelta(ms: number): string {
+  const days = ms / 86400_000
+  if (days < 1) return `dans ${Math.max(1, Math.round(ms / 3600_000))}h`
+  if (days < 30) return `dans ${Math.round(days)}j`
+  return `dans ${Math.round(days / 30)} mois`
 }
