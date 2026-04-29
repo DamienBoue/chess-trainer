@@ -5,8 +5,10 @@ import Home from './components/Home'
 import GamesList from './components/GamesList'
 import AnalysisView from './components/AnalysisView'
 import StatsView from './components/StatsView'
+import ExercisesView from './components/ExercisesView'
+import { extractExercises } from './analysis/exercises'
 
-type View = 'home' | 'games' | 'analysis' | 'stats'
+type View = 'home' | 'games' | 'analysis' | 'stats' | 'exercises'
 
 export default function App() {
   const [view, setView] = useState<View>('home')
@@ -24,6 +26,7 @@ export default function App() {
 
   const activeAnalysis = activeGameUrl ? analyses[activeGameUrl] : null
   const allAnalyses = useMemo(() => Object.values(analyses), [analyses])
+  const exerciseCount = useMemo(() => extractExercises(allAnalyses).length, [allAnalyses])
 
   function handleSubmitUsername(u: string, fetched: ChessComGame[]) {
     setUsername(u)
@@ -54,6 +57,9 @@ export default function App() {
           {username && (
             <>
               <NavBtn active={view === 'games'} onClick={() => setView('games')}>Parties</NavBtn>
+              <NavBtn active={view === 'exercises'} onClick={() => setView('exercises')} disabled={exerciseCount === 0}>
+                Exercices {exerciseCount > 0 && `(${exerciseCount})`}
+              </NavBtn>
               <NavBtn active={view === 'stats'} onClick={() => setView('stats')} disabled={allAnalyses.length === 0}>
                 Stats {allAnalyses.length > 0 && `(${allAnalyses.length})`}
               </NavBtn>
@@ -87,6 +93,9 @@ export default function App() {
         )}
         {view === 'stats' && (
           <StatsView analyses={allAnalyses} />
+        )}
+        {view === 'exercises' && (
+          <ExercisesView analyses={allAnalyses} />
         )}
       </main>
     </div>
