@@ -7,6 +7,10 @@ export interface RepertoireNode {
   wins: number
   losses: number
   draws: number
+  cpLossSum: number                          // total cp lost across instances
+  fenBeforeSamples: string[]                 // a few example FENs at this point
+  // What did the engine recommend instead in past instances? Histogram by SAN.
+  engineSuggestions: Map<string, number>
   children: Map<string, RepertoireNode>
 }
 
@@ -46,38 +50,50 @@ export function buildRepertoire(
     root.total++
 
     const userIsWhite = game.userColor === 'white'
-    const userMoves: string[] = []
-    const oppMoves: string[] = []
+    // Walk both sides simultaneously so we can attach cpLoss/best-suggestion
+    // metadata to each user node from the corresponding MoveAnalysis.
+    const userPlies: { san: string; oppPrev: string; cpLoss: number; bestSan?: string; fenBefore: string }[] = []
+    let oppPrev = '<start>'
     for (const mv of game.moves) {
       const moverIsWhite = mv.ply % 2 === 1
-      if ((moverIsWhite === userIsWhite)) userMoves.push(mv.san)
-      else oppMoves.push(mv.san)
-      if (userMoves.length >= maxPliesEachSide) break
+      if (moverIsWhite === userIsWhite) {
+        userPlies.push({
+          san: mv.san, oppPrev,
+          cpLoss: mv.cpLoss,
+          bestSan: mv.bestMoveSan,
+          fenBefore: mv.fenBefore,
+        })
+      } else {
+        oppPrev = mv.san
+      }
+      if (userPlies.length >= maxPliesEachSide) break
     }
 
-    // Build a key path that interleaves user moves with the immediately-
-    // preceding opponent move (so different opponent replies branch separately).
     let cur = root.children
-    let lastNode: RepertoireNode | null = null
-    for (let i = 0; i < userMoves.length; i++) {
-      const opp = userIsWhite ? (oppMoves[i - 1] ?? '<start>') : (oppMoves[i] ?? '<start>')
-      const composite = `${opp}|${userMoves[i]}`
+    for (const up of userPlies) {
+      const composite = `${up.oppPrev}|${up.san}`
       if (!cur.has(composite)) {
         cur.set(composite, {
-          san: userMoves[i],
+          san: up.san,
           count: 0, wins: 0, losses: 0, draws: 0,
+          cpLossSum: 0,
+          fenBeforeSamples: [],
+          engineSuggestions: new Map(),
           children: new Map(),
         })
       }
       const node = cur.get(composite)!
       node.count++
+      node.cpLossSum += up.cpLoss
+      if (node.fenBeforeSamples.length < 3) node.fenBeforeSamples.push(up.fenBefore)
+      if (up.bestSan && up.bestSan !== up.san) {
+        node.engineSuggestions.set(up.bestSan, (node.engineSuggestions.get(up.bestSan) ?? 0) + 1)
+      }
       if (game.result === 'win') node.wins++
       else if (game.result === 'loss') node.losses++
       else node.draws++
-      lastNode = node
       cur = node.children
     }
-    void lastNode
   }
 
   // Drop roots with too-few games — keeps the report focused.
@@ -195,6 +211,93 @@ export function alternativesAt(root: RepertoireRoot, userMoves: string[]): Reper
 // Convenience to format a result-rollup as a small string ("3W/1L/0D").
 export function rollupString(node: { wins: number; losses: number; draws: number }): string {
   return `${node.wins}V/${node.losses}D/${node.draws}N`
+}
+
+// Issues we want the user to look at in their habitual lines.
+export interface RepertoireCritique {
+  parent: string
+  color: Color
+  san: string
+  oppPrev: string
+  count: number
+  total: number                         // games rolled up at this node (≤ count)
+  avgCpLoss: number
+  winRate: number                       // (wins + 0.5*draws) / total
+  fenBefore: string                     // example FEN to render
+  engineSuggestion?: { san: string; count: number }
+  reason: 'high-cploss' | 'low-winrate' | 'both'
+  ply: number                           // depth (in user-side plies) at which this happens
+}
+
+// Critique a built repertoire: surface user-habits that look problematic.
+//   - "high-cploss": you play this move ≥ minCount times and average cpLoss ≥
+//     cpLossThreshold (so the engine usually disagrees with you).
+//   - "low-winrate": ≥ minWinrateGames games and win rate ≤ winrateThreshold.
+export function critiqueRepertoire(
+  roots: RepertoireRoot[],
+  opts: {
+    minCount?: number
+    cpLossThreshold?: number
+    minWinrateGames?: number
+    winrateThreshold?: number
+    maxPliesEachSide?: number
+  } = {},
+): RepertoireCritique[] {
+  const {
+    minCount = 3,
+    cpLossThreshold = 30,
+    minWinrateGames = 4,
+    winrateThreshold = 0.30,
+    maxPliesEachSide = 8,
+  } = opts
+
+  const out: RepertoireCritique[] = []
+
+  function visit(parent: string, color: Color, children: Map<string, RepertoireNode>, depth: number) {
+    if (depth >= maxPliesEachSide) return
+    for (const [composite, node] of children) {
+      const opp = composite.split('|')[0]
+      const total = node.wins + node.losses + node.draws
+      const avgCp = node.count > 0 ? node.cpLossSum / node.count : 0
+      const wr = total > 0 ? (node.wins + 0.5 * node.draws) / total : 0
+      let topSugg: { san: string; count: number } | undefined
+      if (node.engineSuggestions.size > 0) {
+        const [san, count] = Array.from(node.engineSuggestions.entries()).reduce(
+          (a, b) => (a[1] >= b[1] ? a : b)
+        )
+        topSugg = { san, count }
+      }
+
+      const isHigh = node.count >= minCount && avgCp >= cpLossThreshold
+      const isLow = total >= minWinrateGames && wr <= winrateThreshold
+      if (isHigh || isLow) {
+        out.push({
+          parent, color,
+          san: node.san, oppPrev: opp,
+          count: node.count,
+          total,
+          avgCpLoss: avgCp,
+          winRate: wr,
+          fenBefore: node.fenBeforeSamples[0] ?? '',
+          engineSuggestion: topSugg,
+          reason: isHigh && isLow ? 'both' : isHigh ? 'high-cploss' : 'low-winrate',
+          ply: depth + 1,
+        })
+      }
+      visit(parent, color, node.children, depth + 1)
+    }
+  }
+
+  for (const r of roots) {
+    visit(r.parent, r.color, r.children, 0)
+  }
+  return out.sort((a, b) => critiqueScore(b) - critiqueScore(a))
+}
+
+// Higher = more urgent. Captures both "you waste lots of cp on this habit"
+// and "you just lose a lot in this line".
+function critiqueScore(c: RepertoireCritique): number {
+  return c.avgCpLoss * c.count + (1 - c.winRate) * 50 * c.total
 }
 
 void ALL_RESULTS
