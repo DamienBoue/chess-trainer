@@ -28,6 +28,7 @@ export default function AnalysisView({
   const [progress, setProgress] = useState<{ done: number; total: number; currentSan?: string } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [currentPly, setCurrentPly] = useState(0) // 0 = start position
+  const [flipped, setFlipped] = useState(false)
 
   useEffect(() => {
     if (existingAnalysis) {
@@ -79,6 +80,7 @@ export default function AnalysisView({
       else if (e.key === 'ArrowRight') setCurrentPly((p) => Math.min(analysis.moves.length, p + 1))
       else if (e.key === 'Home') setCurrentPly(0)
       else if (e.key === 'End') setCurrentPly(analysis.moves.length)
+      else if (e.key === 'f' || e.key === 'F') setFlipped(f => !f)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -132,7 +134,9 @@ export default function AnalysisView({
             <Chessboard
               options={{
                 position: currentFen,
-                boardOrientation: analysis.userColor,
+                boardOrientation: flipped
+                  ? (analysis.userColor === 'white' ? 'black' : 'white')
+                  : analysis.userColor,
                 allowDragging: false,
                 animationDurationInMs: 150,
                 arrows,
@@ -148,8 +152,9 @@ export default function AnalysisView({
               </span>
               <button onClick={() => setCurrentPly(p => Math.min(analysis.moves.length, p + 1))} className="px-2 py-1 hover:bg-neutral-800 rounded">▶</button>
               <button onClick={() => setCurrentPly(analysis.moves.length)} className="px-2 py-1 hover:bg-neutral-800 rounded">⏭</button>
+              <button onClick={() => setFlipped(f => !f)} className="px-2 py-1 hover:bg-neutral-800 rounded ml-2" title="Retourner l'échiquier (F)">⇅</button>
             </div>
-            <div className="text-xs text-neutral-500 text-center mt-1">← → pour naviguer</div>
+            <div className="text-xs text-neutral-500 text-center mt-1">← → naviguer · F retourner</div>
           </div>
         </div>
 

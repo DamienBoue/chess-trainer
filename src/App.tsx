@@ -7,7 +7,9 @@ import AnalysisView from './components/AnalysisView'
 import StatsView from './components/StatsView'
 import ExercisesView from './components/ExercisesView'
 import PuzzleRushView from './components/PuzzleRushView'
+import SharedExerciseView from './components/SharedExerciseView'
 import { extractExercises } from './analysis/exercises'
+import { readSharedFromHash, clearShareHash } from './api/share'
 import { analyzeGame } from './analysis/analyze'
 import {
   loadAnalyses, saveAnalyses,
@@ -41,6 +43,7 @@ export default function App() {
   const [activeGameUrl, setActiveGameUrl] = useState<string | null>(null)
   const [batch, setBatch] = useState<BatchState | null>(null)
   const batchAbortRef = useRef<AbortController | null>(null)
+  const [sharedExercise, setSharedExercise] = useState(() => readSharedFromHash())
 
   const engineRef = useRef<StockfishEngine | null>(null)
   if (!engineRef.current) engineRef.current = new StockfishEngine()
@@ -142,6 +145,17 @@ export default function App() {
 
   function handleCancelBatch() {
     batchAbortRef.current?.abort()
+  }
+
+  // Shared exercise mode: short-circuit the rest of the app and show a focused
+  // standalone view. The user can close it to return to their own data.
+  if (sharedExercise) {
+    return (
+      <SharedExerciseView
+        exercise={sharedExercise}
+        onClose={() => { clearShareHash(); setSharedExercise(null) }}
+      />
+    )
   }
 
   return (

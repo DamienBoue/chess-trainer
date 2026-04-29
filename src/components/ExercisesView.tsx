@@ -13,6 +13,8 @@ import {
 import { type ExerciseProgress, isDue } from '../storage/persist'
 import { exportExercisesToPgn, downloadPgn } from '../analysis/lichess'
 import EvalBar from './EvalBar'
+import { playMove, playCapture, playSuccess, playWrong } from '../audio/sounds'
+import { exerciseToShareUrl } from '../api/share'
 
 interface Props {
   analyses: GameAnalysis[]
@@ -256,6 +258,24 @@ function ExercisePractice({
     }
   }, [])
 
+  // Keyboard shortcuts: ← / → navigate filtered list, R recommencer, S voir la solution
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      // Skip when typing in an input/textarea
+      const t = e.target as HTMLElement | null
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return
+      if (e.key === 'ArrowLeft') { onPrev() }
+      else if (e.key === 'ArrowRight') { onNext() }
+      else if (e.key === 'r' || e.key === 'R') { reset() }
+      else if (e.key === 's' || e.key === 'S') {
+        if (status !== 'completed' && status !== 'revealed') reveal()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onNext, onPrev, status])
+
   // Auto-advance through the line:
   //   - status 'progress' + engine's turn  → play engine's scripted reply
   //   - status 'revealed'                  → walk through every remaining ply
@@ -274,6 +294,7 @@ function ExercisePractice({
       setPosition(chess.fen())
       setHighlight({ type: 'correct', from: mv.from, to: mv.to })
       setShowBadge(false)
+      ;(mv.flags || '').includes('c') ? playCapture() : playMove()
       const next = linePly + 1
       setLinePly(next)
       if (next >= lineSans.length && status === 'progress') setStatus('completed')
@@ -295,6 +316,8 @@ function ExercisePractice({
       setPosition(chess.fen())
       setHighlight({ type: 'correct', from, to })
       setShowBadge(true)
+      if (linePly === 0) playSuccess()
+      else (attempt.flags || '').includes('c') ? playCapture() : playMove()
       // The badge fades quickly so the engine's reply is not hidden behind it.
       window.setTimeout(() => setShowBadge(false), 700)
 
@@ -315,6 +338,7 @@ function ExercisePractice({
     setStatus('wrong')
     setHighlight({ type: 'wrong', from, to })
     setShowBadge(true)
+    playWrong()
     if (wrongTimerRef.current) window.clearTimeout(wrongTimerRef.current)
     wrongTimerRef.current = window.setTimeout(() => {
       setShowBadge(false)
@@ -380,10 +404,11 @@ function ExercisePractice({
       {/* Nav row */}
       <div className="flex items-center justify-between text-sm">
         <button onClick={onPrev} disabled={!canNavigate || total <= 1} className="px-3 py-1 hover:bg-neutral-800 rounded disabled:opacity-30">← Précédent</button>
-        <span className="text-neutral-400">
+        <span className="text-neutral-400 flex items-center gap-3">
           {offList
             ? <>✓ Hors filtre · {total} restant{total > 1 ? 's' : ''} dans la sélection</>
             : <>Exercice {index + 1} / {total}</>}
+          <ShareButton exercise={exercise} />
         </span>
         <button onClick={onNext} disabled={!canNavigate} className="px-3 py-1 hover:bg-neutral-800 rounded disabled:opacity-30">Suivant →</button>
       </div>
@@ -524,6 +549,26 @@ function ExercisePractice({
         </div>
       </div>
     </div>
+  )
+}
+
+function ShareButton({ exercise }: { exercise: Exercise }) {
+  const [copied, setCopied] = useState(false)
+  function copy() {
+    const url = exerciseToShareUrl(exercise)
+    navigator.clipboard?.writeText(url).then(() => {
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 1500)
+    }).catch(() => {})
+  }
+  return (
+    <button
+      onClick={copy}
+      className="text-xs text-neutral-500 hover:text-neutral-200 px-2 py-0.5 border border-[var(--color-border)] rounded"
+      title="Copier un lien partageable de cet exercice"
+    >
+      {copied ? '✓ Lien copié' : '🔗 Partager'}
+    </button>
   )
 }
 

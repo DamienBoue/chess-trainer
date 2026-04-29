@@ -3,6 +3,7 @@ import { Chess } from 'chess.js'
 import { Chessboard } from 'react-chessboard'
 import type { Exercise } from '../analysis/exercises'
 import { CATEGORY_COLORS, CATEGORY_LABELS } from '../analysis/exercises'
+import { playSuccess, playWrong, playMove, playCapture } from '../audio/sounds'
 
 type Mode = 'idle' | 'running' | 'finished'
 
@@ -280,8 +281,10 @@ function RushBoard({
         playedTo: to,
         showingBest: false,
       })
+      playSuccess()
       setTimeout(() => onResult(true), CORRECT_HOLD_MS)
     } else {
+      playWrong()
       // Compute best move squares for the upcoming reveal
       const preview = new Chess(exercise.fen)
       let bestFrom: string | undefined
@@ -305,9 +308,11 @@ function RushBoard({
       setTimeout(() => {
         chess.undo()
         const preview2 = new Chess(exercise.fen)
-        try { preview2.move(exercise.bestMoveSan) } catch { /* noop */ }
+        let bm
+        try { bm = preview2.move(exercise.bestMoveSan) } catch { /* noop */ }
         setPosition(preview2.fen())
         setFeedback(f => f && { ...f, showingBest: true })
+        if (bm) (bm.flags || '').includes('c') ? playCapture() : playMove()
       }, WRONG_HOLD_MS)
 
       setTimeout(() => onResult(false), WRONG_HOLD_MS + WRONG_BEST_HOLD_MS)
