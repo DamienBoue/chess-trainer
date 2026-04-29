@@ -1,8 +1,9 @@
 import type { Color, GameAnalysis, MoveAnalysis } from '../types'
+import { detectMotifs as detectMotifsImpl, MOTIF_LABELS as MOTIF_LABELS_FULL, type MotifTag as MotifTagFull } from './motifs'
 
 export type ExerciseCategory = 'missed' | 'punishment' | 'defense'
 
-export type MotifTag = 'mate-found' | 'mate-missed' | 'capture'
+export type MotifTag = MotifTagFull
 
 export interface Exercise {
   id: string
@@ -171,25 +172,9 @@ export function extractExercises(
   return all
 }
 
-// Heuristic motif tags from the available data. Cheap to compute, useful UI.
-function detectMotifs(move: MoveAnalysis): MotifTag[] {
-  const tags: MotifTag[] = []
-  const best = move.bestMoveSan ?? ''
-  const line = move.bestLineSan ?? ''
-  // Checkmate either on the immediate best move or anywhere in the line.
-  if (best.endsWith('#') || /[#]/.test(line)) {
-    if (move.classification === 'mistake' || move.classification === 'blunder') tags.push('mate-missed')
-    else tags.push('mate-found')
-  }
-  if (best.includes('x')) tags.push('capture')
-  return tags
-}
-
-export const MOTIF_LABELS: Record<MotifTag, string> = {
-  'mate-found': 'Mat trouvé',
-  'mate-missed': 'Mat raté',
-  'capture': 'Capture',
-}
+// Now sourced from analysis/motifs.ts (richer detection).
+const detectMotifs = detectMotifsImpl
+export const MOTIF_LABELS = MOTIF_LABELS_FULL
 
 export const CATEGORY_LABELS: Record<ExerciseCategory, string> = {
   missed: 'Coup raté',

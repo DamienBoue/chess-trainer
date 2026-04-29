@@ -16,6 +16,7 @@ import { exportExercisesToPgn, downloadPgn } from '../analysis/lichess'
 import EvalBar from './EvalBar'
 import { playMove, playCapture, playSuccess, playWrong } from '../audio/sounds'
 import { exerciseToShareUrl } from '../api/share'
+import { evaluateMultiPV, topGapCp } from '../engine/multipv'
 
 interface Props {
   analyses: GameAnalysis[]
@@ -247,7 +248,32 @@ function ExercisePractice({
   const [highlight, setHighlight] = useState<AttemptHighlight | null>(null)
   const [showBadge, setShowBadge] = useState(false)
   const [reportedThisRound, setReported] = useState(false)
+  const [onlyMoveGap, setOnlyMoveGap] = useState<number | null>(() => {
+    try {
+      const cached = localStorage.getItem(`chess.multipv.${exercise.id}`)
+      return cached ? Number(cached) : null
+    } catch { return null }
+  })
   const wrongTimerRef = useRef<number | null>(null)
+
+  // Lazy MultiPV check: spawn a one-off Stockfish worker to learn the gap
+  // between the best and the 2nd-best move at this position. If best beats
+  // 2nd by >=150 cp it is a "coup unique" — the most instructive type of
+  // puzzle. Result is cached locally so it only runs once per exercise.
+  useEffect(() => {
+    if (onlyMoveGap !== null) return
+    let cancelled = false
+    evaluateMultiPV(exercise.fen, 2, 10, 350)
+      .then(lines => {
+        if (cancelled) return
+        const gap = topGapCp(lines)
+        setOnlyMoveGap(gap)
+        try { localStorage.setItem(`chess.multipv.${exercise.id}`, String(gap)) } catch { /* noop */ }
+      })
+      .catch(() => { /* noop */ })
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exercise.id])
 
   const chess = useMemo(() => new Chess(exercise.fen), [exercise.fen])
   const lineComplete = linePly >= lineSans.length
@@ -468,12 +494,26 @@ function ExercisePractice({
                   className={`px-2 py-1 rounded text-xs font-medium ${
                     m === 'mate-missed' ? 'bg-red-500/20 text-red-300'
                     : m === 'mate-found' ? 'bg-green-500/20 text-green-300'
+                    : m === 'fork-royal' ? 'bg-yellow-500/20 text-yellow-300'
+                    : m === 'fork' ? 'bg-yellow-500/20 text-yellow-300'
+                    : m === 'pin' ? 'bg-purple-500/20 text-purple-300'
+                    : m === 'sacrifice' ? 'bg-orange-500/20 text-orange-300'
+                    : m === 'hanging-capture' ? 'bg-blue-500/20 text-blue-300'
                     : 'bg-neutral-700/50 text-neutral-300'
                   }`}
+                  title={MOTIF_LABELS[m]}
                 >
-                  {m === 'mate-missed' ? '☠ ' : m === 'mate-found' ? '⚔ ' : ''}{MOTIF_LABELS[m]}
+                  {motifIcon(m)} {MOTIF_LABELS[m]}
                 </span>
               ))}
+              {onlyMoveGap !== null && onlyMoveGap >= 150 && (
+                <span
+                  className="px-2 py-1 rounded text-xs font-medium bg-pink-500/20 text-pink-300"
+                  title={`Le meilleur coup gagne ${onlyMoveGap} cp sur le 2e — coup forcé.`}
+                >
+                  ✦ Coup unique
+                </span>
+              )}
               {progress && (
                 <span className="ml-auto text-xs text-neutral-500">
                   {progress.successes}✓ / {progress.failures}✗
@@ -563,6 +603,20 @@ function ExercisePractice({
       </div>
     </div>
   )
+}
+
+function motifIcon(m: string): string {
+  switch (m) {
+    case 'mate-missed': return '☠'
+    case 'mate-found': return '⚔'
+    case 'fork': return '⚡'
+    case 'fork-royal': return '👑'
+    case 'pin': return '📌'
+    case 'sacrifice': return '🔥'
+    case 'hanging-capture': return '⚠'
+    case 'capture': return '✕'
+    default: return ''
+  }
 }
 
 function ShareButton({ exercise }: { exercise: Exercise }) {

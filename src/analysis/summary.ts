@@ -1,8 +1,9 @@
 import type { GameAnalysis, MoveAnalysis } from '../types'
+import { findDeviation, type RepertoireRoot } from './repertoire'
 
 // Build a one-paragraph plain-text summary of a single analysed game.
 // Designed to be readable at a glance without specialised chess vocabulary.
-export function generateGameSummary(a: GameAnalysis): string {
+export function generateGameSummary(a: GameAnalysis, repertoireRoots?: RepertoireRoot[]): string {
   const sentences: string[] = []
 
   // Opening
@@ -49,6 +50,18 @@ export function generateGameSummary(a: GameAnalysis): string {
     const moveNum = Math.ceil(worst.ply / 2)
     const dots = worst.ply % 2 === 1 ? '.' : '...'
     sentences.push(`${userMistakes.length} erreur${userMistakes.length > 1 ? 's' : ''}, la pire au coup ${moveNum}${dots} ${worst.san} (${worst.cpLoss} cp).`)
+  }
+
+  // Repertoire deviation
+  if (repertoireRoots && repertoireRoots.length > 0) {
+    const dev = findDeviation(a, repertoireRoots)
+    if (dev) {
+      const moveNum = Math.ceil(dev.ply / 2)
+      const dots = dev.ply % 2 === 1 ? '.' : '...'
+      sentences.push(
+        `Déviation du répertoire au coup ${moveNum}${dots} : tu joues d'habitude ${dev.expected} (${dev.expectedFrequency}/${dev.alternativesCount}), là tu as joué ${dev.played}.`
+      )
+    }
   }
 
   // Phase repartition

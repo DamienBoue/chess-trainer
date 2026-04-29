@@ -5,6 +5,7 @@ import { StockfishEngine } from '../engine/stockfish'
 import { analyzeGame } from '../analysis/analyze'
 import { CLASSIFICATION_COLORS, CLASSIFICATION_LABELS } from '../analysis/classify'
 import { generateGameSummary } from '../analysis/summary'
+import { buildRepertoire } from '../analysis/repertoire'
 import EvalBar from './EvalBar'
 import EvalGraph from './EvalGraph'
 
@@ -13,6 +14,7 @@ interface Props {
   username: string
   game: ChessComGame
   existingAnalysis: GameAnalysis | null
+  allAnalyses: GameAnalysis[]
   onAnalysisComplete: (analysis: GameAnalysis) => void
   onBack: () => void
 }
@@ -22,9 +24,11 @@ export default function AnalysisView({
   username,
   game,
   existingAnalysis,
+  allAnalyses,
   onAnalysisComplete,
   onBack,
 }: Props) {
+  const repertoireRoots = useMemo(() => buildRepertoire(allAnalyses), [allAnalyses])
   const [analysis, setAnalysis] = useState<GameAnalysis | null>(existingAnalysis)
   const [progress, setProgress] = useState<{ done: number; total: number; currentSan?: string } | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -162,7 +166,7 @@ export default function AnalysisView({
         <div className="space-y-4">
           <div className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-4">
             <h3 className="font-semibold mb-2">Résumé</h3>
-            <p className="text-sm text-neutral-300 leading-relaxed">{generateGameSummary(analysis)}</p>
+            <p className="text-sm text-neutral-300 leading-relaxed">{generateGameSummary(analysis, repertoireRoots)}</p>
           </div>
 
           <div className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-4">
