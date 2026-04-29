@@ -38,7 +38,18 @@ export default function ExercisesView({ analyses, progress, onAttempt }: Props) 
     return list
   }, [exercises, categoryFilter, statusFilter, progress])
 
-  const active = filtered.find(e => e.id === activeId) ?? filtered[0] ?? null
+  // Auto-pin the first filtered exercise to activeId on mount (and whenever
+  // activeId is null) so the active exercise stays sticky even after it falls
+  // out of the filter (e.g. user solved it under "À réviser" — without this
+  // it would drop and be replaced by the next one, looking like auto-advance).
+  useEffect(() => {
+    if (!activeId && filtered[0]) setActiveId(filtered[0].id)
+  }, [activeId, filtered])
+
+  const active = useMemo(
+    () => (activeId ? exercises.find(e => e.id === activeId) : null) ?? filtered[0] ?? null,
+    [activeId, exercises, filtered],
+  )
 
   const counts = useMemo(() => ({
     all: exercises.length,
@@ -66,14 +77,18 @@ export default function ExercisesView({ analyses, progress, onAttempt }: Props) 
   }
 
   const idx = active ? filtered.findIndex(e => e.id === active.id) : -1
+  // The active exercise may have dropped out of the current filter (e.g. it
+  // was just solved under "À réviser"). We treat that as "off-list" but still
+  // let the user navigate the filtered list.
+  const isOffList = active != null && idx === -1
   const next = () => {
     if (filtered.length === 0) return
-    const ni = (idx + 1) % filtered.length
+    const ni = idx >= 0 ? (idx + 1) % filtered.length : 0
     setActiveId(filtered[ni].id)
   }
   const prev = () => {
     if (filtered.length === 0) return
-    const pi = (idx - 1 + filtered.length) % filtered.length
+    const pi = idx >= 0 ? (idx - 1 + filtered.length) % filtered.length : filtered.length - 1
     setActiveId(filtered[pi].id)
   }
 
@@ -120,9 +135,11 @@ export default function ExercisesView({ analyses, progress, onAttempt }: Props) 
             progress={progress[active.id]}
             onNext={next}
             onPrev={prev}
+            canNavigate={filtered.length > 0}
             onAttempt={(outcome) => onAttempt(active.id, outcome)}
             index={idx}
             total={filtered.length}
+            offList={isOffList}
           />
         ) : (
           <div className="text-neutral-500">Aucun exercice dans cette sélection.</div>
@@ -193,9 +210,11 @@ interface PracticeProps {
   progress: ExerciseProgress | undefined
   onNext: () => void
   onPrev: () => void
+  canNavigate: boolean
   onAttempt: (outcome: 'first-try' | 'after-retry' | 'failed' | 'revealed') => void
   index: number
   total: number
+  offList: boolean
 }
 
 type Status = 'pending' | 'wrong' | 'correct' | 'revealed'
@@ -206,7 +225,9 @@ interface AttemptHighlight {
   to: string
 }
 
-function ExercisePractice({ exercise, progress, onNext, onPrev, onAttempt, index, total }: PracticeProps) {
+function ExercisePractice({
+  exercise, progress, onNext, onPrev, onAttempt, index, total, offList, canNavigate,
+}: PracticeProps) {
   const [position, setPosition] = useState(exercise.fen)
   const [status, setStatus] = useState<Status>('pending')
   const [attemptsThisRound, setAttempts] = useState(0)
@@ -306,9 +327,13 @@ function ExercisePractice({ exercise, progress, onNext, onPrev, onAttempt, index
     <div className="space-y-4">
       {/* Nav row */}
       <div className="flex items-center justify-between text-sm">
-        <button onClick={onPrev} disabled={total <= 1} className="px-3 py-1 hover:bg-neutral-800 rounded disabled:opacity-30">← Précédent</button>
-        <span className="text-neutral-400">Exercice {index + 1} / {total}</span>
-        <button onClick={onNext} disabled={total <= 1} className="px-3 py-1 hover:bg-neutral-800 rounded disabled:opacity-30">Suivant →</button>
+        <button onClick={onPrev} disabled={!canNavigate || total <= 1} className="px-3 py-1 hover:bg-neutral-800 rounded disabled:opacity-30">← Précédent</button>
+        <span className="text-neutral-400">
+          {offList
+            ? <>✓ Hors filtre · {total} restant{total > 1 ? 's' : ''} dans la sélection</>
+            : <>Exercice {index + 1} / {total}</>}
+        </span>
+        <button onClick={onNext} disabled={!canNavigate} className="px-3 py-1 hover:bg-neutral-800 rounded disabled:opacity-30">Suivant →</button>
       </div>
 
       <div className="grid lg:grid-cols-[auto_1fr] gap-6">
