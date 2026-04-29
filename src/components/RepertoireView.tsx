@@ -392,13 +392,18 @@ function RootDetail({ root }: { root: RepertoireRoot }) {
       </div>
 
       <div>
-        <h4 className="text-sm font-medium text-neutral-300 mb-2">Ligne principale (la plus jouée à chaque coup)</h4>
+        <h4 className="text-sm font-medium text-neutral-300 mb-1">Ligne principale (la plus jouée à chaque coup)</h4>
+        <p className="text-xs text-neutral-500 mb-2">
+          Tes coups habituels — pas forcément les meilleurs. Le code couleur signale la qualité moyenne (CPL) selon Stockfish.
+        </p>
         <ol className="space-y-1">
           {main.moves.length === 0 && <li className="text-sm text-neutral-500">Pas assez de données.</li>}
           {main.moves.map((m, i) => {
             const path = main.moves.slice(0, i + 1).map(x => x.san)
             const alts = alternativesAt(root, path).filter(a => a.san !== m.san)
             const isOpen = openAt === i
+            const cpColor = qualityColor(m.avgCpLoss)
+            const stockfishDisagrees = !!m.engineSuggestion && m.engineSuggestion.san !== m.san
             return (
               <li key={i} className="text-sm">
                 <button
@@ -406,9 +411,17 @@ function RootDetail({ root }: { root: RepertoireRoot }) {
                   onClick={() => setOpenAt(isOpen ? null : i)}
                 >
                   <span className="text-neutral-500 w-7 text-right">{i + 1}.</span>
-                  <span className="font-mono">{m.san}</span>
-                  <span className="text-xs text-neutral-500 ml-1">×{m.count}</span>
+                  <span className={`font-mono ${cpColor}`}>{m.san}</span>
+                  <span className="text-xs text-neutral-500">×{m.count}</span>
                   <span className="text-xs text-neutral-500">{rollupString({ wins: m.w, losses: m.l, draws: m.d })}</span>
+                  <span className={`text-xs ${cpColor}`} title="CPL moyen sur tes parties — plus bas = plus précis">
+                    ⌀ {m.avgCpLoss.toFixed(0)} cp
+                  </span>
+                  {stockfishDisagrees && (
+                    <span className="text-xs text-orange-300" title={`Stockfish a préféré ${m.engineSuggestion!.san} ${m.engineSuggestion!.count}× dans tes parties`}>
+                      ⚠ SF préfère {m.engineSuggestion!.san}
+                    </span>
+                  )}
                   {alts.length > 0 && (
                     <span className="text-xs text-blue-400 ml-auto">
                       {isOpen ? '▾' : '▸'} {alts.length} alternative{alts.length > 1 ? 's' : ''}
@@ -417,13 +430,17 @@ function RootDetail({ root }: { root: RepertoireRoot }) {
                 </button>
                 {isOpen && alts.length > 0 && (
                   <ul className="ml-12 mt-1 space-y-1">
-                    {alts.slice(0, 6).map(a => (
-                      <li key={a.san} className="flex items-baseline gap-2 text-xs text-neutral-400">
-                        <span className="font-mono">{a.san}</span>
-                        <span className="text-neutral-500">×{a.count}</span>
-                        <span className="text-neutral-500">{rollupString(a)}</span>
-                      </li>
-                    ))}
+                    {alts.slice(0, 6).map(a => {
+                      const aCp = a.count > 0 ? a.cpLossSum / a.count : 0
+                      return (
+                        <li key={a.san} className="flex items-baseline gap-2 text-xs text-neutral-400">
+                          <span className={`font-mono ${qualityColor(aCp)}`}>{a.san}</span>
+                          <span className="text-neutral-500">×{a.count}</span>
+                          <span className="text-neutral-500">{rollupString(a)}</span>
+                          <span className={`${qualityColor(aCp)}`}>⌀ {aCp.toFixed(0)} cp</span>
+                        </li>
+                      )
+                    })}
                   </ul>
                 )}
               </li>
@@ -436,3 +453,11 @@ function RootDetail({ root }: { root: RepertoireRoot }) {
 }
 
 function keyOf(r: RepertoireRoot): string { return `${r.parent}::${r.color}` }
+
+// Color a CPL value: green (precise), neutral (ok), orange (loose), red (poor).
+function qualityColor(cp: number): string {
+  if (cp <= 15) return 'text-green-400'
+  if (cp <= 35) return 'text-neutral-200'
+  if (cp <= 70) return 'text-orange-300'
+  return 'text-red-400'
+}

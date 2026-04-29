@@ -175,7 +175,14 @@ export interface RepertoireLine {
   parent: string
   color: Color
   // Order: user-ply 1, user-ply 2, ...
-  moves: { san: string; oppPrev: string; count: number; w: number; l: number; d: number }[]
+  moves: {
+    san: string
+    oppPrev: string
+    count: number
+    w: number; l: number; d: number
+    avgCpLoss: number
+    engineSuggestion?: { san: string; count: number }
+  }[]
   total: number
 }
 
@@ -187,9 +194,17 @@ export function topLines(root: RepertoireRoot, maxDepth = 6): RepertoireLine {
     if (arr.length === 0) break
     const [key, node] = arr.reduce((a, b) => (a[1].count >= b[1].count ? a : b))
     const oppPrev = key.split('|')[0]
+    let topSugg: { san: string; count: number } | undefined
+    if (node.engineSuggestions.size > 0) {
+      const [san, count] = Array.from(node.engineSuggestions.entries())
+        .reduce((a, b) => (a[1] >= b[1] ? a : b))
+      topSugg = { san, count }
+    }
     moves.push({
       san: node.san, oppPrev, count: node.count,
       w: node.wins, l: node.losses, d: node.draws,
+      avgCpLoss: node.count > 0 ? node.cpLossSum / node.count : 0,
+      engineSuggestion: topSugg,
     })
     cur = node.children
   }
