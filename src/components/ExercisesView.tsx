@@ -8,6 +8,7 @@ import {
   CATEGORY_LABELS,
   CATEGORY_DESCRIPTIONS,
   CATEGORY_COLORS,
+  MOTIF_LABELS,
   extractExercises,
 } from '../analysis/exercises'
 import { type ExerciseProgress, isDue } from '../storage/persist'
@@ -461,6 +462,18 @@ function ExercisePractice({
               >
                 {CATEGORY_LABELS[exercise.category]}
               </span>
+              {(exercise.motifs ?? []).map(m => (
+                <span
+                  key={m}
+                  className={`px-2 py-1 rounded text-xs font-medium ${
+                    m === 'mate-missed' ? 'bg-red-500/20 text-red-300'
+                    : m === 'mate-found' ? 'bg-green-500/20 text-green-300'
+                    : 'bg-neutral-700/50 text-neutral-300'
+                  }`}
+                >
+                  {m === 'mate-missed' ? '☠ ' : m === 'mate-found' ? '⚔ ' : ''}{MOTIF_LABELS[m]}
+                </span>
+              ))}
               {progress && (
                 <span className="ml-auto text-xs text-neutral-500">
                   {progress.successes}✓ / {progress.failures}✗

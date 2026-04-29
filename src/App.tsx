@@ -9,6 +9,7 @@ import ExercisesView from './components/ExercisesView'
 import PuzzleRushView from './components/PuzzleRushView'
 import SharedExerciseView from './components/SharedExerciseView'
 import DailyView from './components/DailyView'
+import CompareView from './components/CompareView'
 import { loadDaily, todayString } from './storage/daily'
 import { extractExercises } from './analysis/exercises'
 import { readSharedFromHash, clearShareHash } from './api/share'
@@ -29,7 +30,7 @@ export interface BatchState {
   failed: number
 }
 
-type View = 'home' | 'games' | 'analysis' | 'stats' | 'exercises' | 'rush' | 'daily'
+type View = 'home' | 'games' | 'analysis' | 'stats' | 'exercises' | 'rush' | 'daily' | 'compare'
 
 export default function App() {
   const [view, setView] = useState<View>('home')
@@ -189,6 +190,7 @@ export default function App() {
               <NavBtn active={view === 'stats'} onClick={() => setView('stats')} disabled={allAnalyses.length === 0}>
                 Stats {allAnalyses.length > 0 && `(${allAnalyses.length})`}
               </NavBtn>
+              <NavBtn active={view === 'compare'} onClick={() => setView('compare')}>Comparer</NavBtn>
               <NavBtn onClick={() => { setView('home') }}>Changer de compte</NavBtn>
             </>
           )}
@@ -241,6 +243,9 @@ export default function App() {
         )}
         {view === 'daily' && (
           <DailyView exercises={exercises} />
+        )}
+        {view === 'compare' && (
+          <CompareView username={username} games={games} />
         )}
       </main>
     </div>

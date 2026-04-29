@@ -2,6 +2,8 @@ import type { Color, GameAnalysis, MoveAnalysis } from '../types'
 
 export type ExerciseCategory = 'missed' | 'punishment' | 'defense'
 
+export type MotifTag = 'mate-found' | 'mate-missed' | 'capture'
+
 export interface Exercise {
   id: string
   category: ExerciseCategory
@@ -15,6 +17,7 @@ export interface Exercise {
   cpSwing: number              // magnitude (cps) of the impact
   evalBeforeWhite: number
   evalAfterPlayedWhite: number
+  motifs: MotifTag[]           // simple heuristics: mate / capture
   context: {
     gameUrl: string
     opponent: string
@@ -96,6 +99,7 @@ export function extractExercises(
           cpSwing: move.cpLoss,
           evalBeforeWhite: move.evalBefore,
           evalAfterPlayedWhite: move.evalAfter,
+          motifs: detectMotifs(move),
           context: ctx,
         })
         continue
@@ -122,6 +126,7 @@ export function extractExercises(
           cpSwing: prev.cpLoss,
           evalBeforeWhite: move.evalBefore,
           evalAfterPlayedWhite: move.evalAfter,
+          motifs: detectMotifs(move),
           context: ctx,
         })
         continue
@@ -146,6 +151,7 @@ export function extractExercises(
           cpSwing: Math.abs(userEvalBefore),
           evalBeforeWhite: move.evalBefore,
           evalAfterPlayedWhite: move.evalAfter,
+          motifs: detectMotifs(move),
           context: ctx,
         })
         continue
@@ -163,6 +169,26 @@ export function extractExercises(
     return b.cpSwing - a.cpSwing
   })
   return all
+}
+
+// Heuristic motif tags from the available data. Cheap to compute, useful UI.
+function detectMotifs(move: MoveAnalysis): MotifTag[] {
+  const tags: MotifTag[] = []
+  const best = move.bestMoveSan ?? ''
+  const line = move.bestLineSan ?? ''
+  // Checkmate either on the immediate best move or anywhere in the line.
+  if (best.endsWith('#') || /[#]/.test(line)) {
+    if (move.classification === 'mistake' || move.classification === 'blunder') tags.push('mate-missed')
+    else tags.push('mate-found')
+  }
+  if (best.includes('x')) tags.push('capture')
+  return tags
+}
+
+export const MOTIF_LABELS: Record<MotifTag, string> = {
+  'mate-found': 'Mat trouvé',
+  'mate-missed': 'Mat raté',
+  'capture': 'Capture',
 }
 
 export const CATEGORY_LABELS: Record<ExerciseCategory, string> = {

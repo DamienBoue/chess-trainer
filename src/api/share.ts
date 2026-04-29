@@ -40,6 +40,7 @@ export function readSharedFromHash(): Exercise | null {
     cpSwing: 0,
     evalBeforeWhite: 0,
     evalAfterPlayedWhite: 0,
+    motifs: [],
     context: {
       gameUrl: window.location.href,
       opponent: params.get('opp') ?? '?',
