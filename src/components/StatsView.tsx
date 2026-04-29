@@ -7,9 +7,23 @@ interface Props {
   analyses: GameAnalysis[]
 }
 
+type ColorFilter = 'all' | 'white' | 'black'
+
 export default function StatsView({ analyses }: Props) {
-  const stats = useMemo(() => aggregate(analyses), [analyses])
+  const [colorFilter, setColorFilter] = useState<ColorFilter>('all')
+
+  const filtered = useMemo(
+    () => colorFilter === 'all' ? analyses : analyses.filter(a => a.userColor === colorFilter),
+    [analyses, colorFilter],
+  )
+  const stats = useMemo(() => aggregate(filtered), [filtered])
   const insights = useMemo(() => deriveInsights(stats), [stats])
+
+  const counts = useMemo(() => ({
+    all: analyses.length,
+    white: analyses.filter(a => a.userColor === 'white').length,
+    black: analyses.filter(a => a.userColor === 'black').length,
+  }), [analyses])
 
   if (analyses.length === 0) {
     return (
@@ -23,9 +37,24 @@ export default function StatsView({ analyses }: Props) {
     stats.byClass.blunder + stats.byClass.mistake + stats.byClass.inaccuracy
   const classOrder: (keyof typeof stats.byClass)[] = ['best', 'great', 'good', 'inaccuracy', 'mistake', 'blunder', 'book']
 
+  const titleSuffix = colorFilter === 'all'
+    ? 'parties'
+    : colorFilter === 'white' ? 'parties avec les Blancs' : 'parties avec les Noirs'
+
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
-      <h2 className="text-2xl font-semibold">Bilan global ({stats.gamesAnalyzed} parties)</h2>
+      <div className="flex items-baseline justify-between flex-wrap gap-3">
+        <h2 className="text-2xl font-semibold">Bilan ({stats.gamesAnalyzed} {titleSuffix})</h2>
+        <div className="inline-flex rounded-md border border-[var(--color-border)] bg-[var(--color-panel)] p-0.5 text-sm">
+          <ColorTab active={colorFilter === 'all'} onClick={() => setColorFilter('all')} count={counts.all}>Tout</ColorTab>
+          <ColorTab active={colorFilter === 'white'} onClick={() => setColorFilter('white')} count={counts.white} dot="bg-neutral-100">Blancs</ColorTab>
+          <ColorTab active={colorFilter === 'black'} onClick={() => setColorFilter('black')} count={counts.black} dot="bg-neutral-700">Noirs</ColorTab>
+        </div>
+      </div>
+
+      {stats.gamesAnalyzed === 0 && (
+        <p className="text-neutral-400 text-sm">Aucune partie analysée avec cette couleur.</p>
+      )}
 
       {insights.length > 0 && (
         <div className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-4">
@@ -119,9 +148,11 @@ export default function StatsView({ analyses }: Props) {
         </div>
 
         <div className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-4">
-          <h3 className="font-semibold mb-3">Résultats par couleur</h3>
+          <h3 className="font-semibold mb-3">
+            {colorFilter === 'all' ? 'Résultats par couleur' : 'Résultats'}
+          </h3>
           <div className="space-y-2">
-            {(['white', 'black'] as const).map(color => {
+            {(colorFilter === 'all' ? (['white', 'black'] as const) : [colorFilter]).map(color => {
               const r = stats.resultsByColor[color]
               const total = r.w + r.l + r.d
               return (
@@ -153,6 +184,29 @@ export default function StatsView({ analyses }: Props) {
         )}
       </div>
     </div>
+  )
+}
+
+function ColorTab({
+  children, active, onClick, count, dot,
+}: {
+  children: React.ReactNode
+  active: boolean
+  onClick: () => void
+  count: number
+  dot?: string
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-3 py-1 rounded transition-colors flex items-center gap-2 ${
+        active ? 'bg-[var(--color-accent)] text-white' : 'text-neutral-300 hover:bg-neutral-800'
+      }`}
+    >
+      {dot && <span className={`w-2 h-2 rounded-full ${dot} border border-neutral-600`} />}
+      <span>{children}</span>
+      <span className="text-xs opacity-70">({count})</span>
+    </button>
   )
 }
 
