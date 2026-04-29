@@ -236,11 +236,25 @@ interface RushBoardProps {
   onQuit: () => void
 }
 
+interface Feedback {
+  type: 'correct' | 'wrong'
+  playedSan: string
+  playedFrom: string
+  playedTo: string
+  bestFrom?: string
+  bestTo?: string
+  showingBest: boolean   // for wrong answers, true once we've replayed the best move
+}
+
+const CORRECT_HOLD_MS = 1300
+const WRONG_HOLD_MS = 800       // initial red flash duration before showing best
+const WRONG_BEST_HOLD_MS = 1600 // how long the best move is displayed after the flash
+
 function RushBoard({
   exercise, onResult, score, strikes, maxStrikes, streak, secondsLeft, hasTimer, onQuit,
 }: RushBoardProps) {
   const [position, setPosition] = useState(exercise.fen)
-  const [feedback, setFeedback] = useState<{ type: 'correct' | 'wrong'; san: string } | null>(null)
+  const [feedback, setFeedback] = useState<Feedback | null>(null)
   const chess = useMemo(() => new Chess(exercise.fen), [exercise.fen])
 
   // Reset on exercise change
@@ -254,11 +268,66 @@ function RushBoard({
     let attempt
     try { attempt = chess.move({ from, to, promotion }) } catch { return false }
     if (!attempt) return false
+
     const correct = attempt.san === exercise.bestMoveSan
     setPosition(chess.fen())
-    setFeedback({ type: correct ? 'correct' : 'wrong', san: attempt.san })
-    setTimeout(() => onResult(correct), 700)
+
+    if (correct) {
+      setFeedback({
+        type: 'correct',
+        playedSan: attempt.san,
+        playedFrom: from,
+        playedTo: to,
+        showingBest: false,
+      })
+      setTimeout(() => onResult(true), CORRECT_HOLD_MS)
+    } else {
+      // Compute best move squares for the upcoming reveal
+      const preview = new Chess(exercise.fen)
+      let bestFrom: string | undefined
+      let bestTo: string | undefined
+      try {
+        const bm = preview.move(exercise.bestMoveSan)
+        if (bm) { bestFrom = bm.from; bestTo = bm.to }
+      } catch { /* noop */ }
+
+      setFeedback({
+        type: 'wrong',
+        playedSan: attempt.san,
+        playedFrom: from,
+        playedTo: to,
+        bestFrom,
+        bestTo,
+        showingBest: false,
+      })
+
+      // After WRONG_HOLD_MS, undo user's move and play the best move so the user sees it.
+      setTimeout(() => {
+        chess.undo()
+        const preview2 = new Chess(exercise.fen)
+        try { preview2.move(exercise.bestMoveSan) } catch { /* noop */ }
+        setPosition(preview2.fen())
+        setFeedback(f => f && { ...f, showingBest: true })
+      }, WRONG_HOLD_MS)
+
+      setTimeout(() => onResult(false), WRONG_HOLD_MS + WRONG_BEST_HOLD_MS)
+    }
     return true
+  }
+
+  // Square highlights driven by feedback state
+  const squareStyles: Record<string, React.CSSProperties> = {}
+  if (feedback) {
+    if (feedback.type === 'correct') {
+      squareStyles[feedback.playedFrom] = { backgroundColor: 'rgba(95, 160, 82, 0.55)' }
+      squareStyles[feedback.playedTo] = { backgroundColor: 'rgba(95, 160, 82, 0.75)' }
+    } else if (feedback.showingBest && feedback.bestFrom && feedback.bestTo) {
+      squareStyles[feedback.bestFrom] = { backgroundColor: 'rgba(95, 160, 82, 0.55)' }
+      squareStyles[feedback.bestTo] = { backgroundColor: 'rgba(95, 160, 82, 0.75)' }
+    } else {
+      squareStyles[feedback.playedFrom] = { backgroundColor: 'rgba(208, 74, 74, 0.55)' }
+      squareStyles[feedback.playedTo] = { backgroundColor: 'rgba(208, 74, 74, 0.75)' }
+    }
   }
 
   return (
@@ -303,13 +372,14 @@ function RushBoard({
       </div>
 
       <div className="flex justify-center">
-        <div className="w-[min(85vw,560px)]">
+        <div className="relative w-[min(85vw,560px)]">
           <Chessboard
             options={{
               position,
               boardOrientation: exercise.userColor,
               allowDragging: !feedback,
               animationDurationInMs: 200,
+              squareStyles,
               darkSquareStyle: { backgroundColor: '#769656' },
               lightSquareStyle: { backgroundColor: '#eeeed2' },
               onPieceDrop: ({ sourceSquare, targetSquare }) => {
@@ -318,18 +388,48 @@ function RushBoard({
               },
             }}
           />
+          {feedback && <FeedbackBadge feedback={feedback} />}
         </div>
       </div>
 
       {feedback && (
-        <div className="text-center mt-4">
-          <span
-            className={`text-lg font-semibold ${feedback.type === 'correct' ? 'text-green-400' : 'text-red-400'}`}
-          >
-            {feedback.type === 'correct' ? '✓ Correct' : `✗ Raté — ${exercise.bestMoveSan} était mieux`}
-          </span>
+        <div className="text-center mt-4 space-y-1">
+          {feedback.type === 'correct' ? (
+            <p className="text-lg font-semibold text-green-400">
+              ✓ {feedback.playedSan} — bien joué !
+            </p>
+          ) : feedback.showingBest ? (
+            <p className="text-lg font-semibold text-green-400">
+              Le bon coup était <span className="font-mono">{exercise.bestMoveSan}</span>
+            </p>
+          ) : (
+            <p className="text-lg font-semibold text-red-400">
+              ✗ {feedback.playedSan} n'est pas le meilleur coup
+            </p>
+          )}
         </div>
       )}
+    </div>
+  )
+}
+
+function FeedbackBadge({ feedback }: { feedback: Feedback }) {
+  // Big centered icon overlay over the board, fades in with a subtle scale.
+  const isCorrect = feedback.type === 'correct'
+  // For wrong answers we hide the X once we start showing the best move
+  if (!isCorrect && feedback.showingBest) return null
+  return (
+    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+      <div
+        className="rounded-full flex items-center justify-center text-white text-5xl font-bold shadow-2xl animate-[pop_180ms_ease-out]"
+        style={{
+          width: '128px',
+          height: '128px',
+          backgroundColor: isCorrect ? 'rgba(95, 160, 82, 0.92)' : 'rgba(208, 74, 74, 0.92)',
+        }}
+      >
+        {isCorrect ? '✓' : '✗'}
+      </div>
     </div>
   )
 }
