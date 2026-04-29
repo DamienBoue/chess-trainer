@@ -256,9 +256,15 @@ function ExercisePractice({
     }
   }, [])
 
-  // After a correct user move, auto-play the engine's continuation.
+  // Auto-advance through the line:
+  //   - status 'progress' + engine's turn  → play engine's scripted reply
+  //   - status 'revealed'                  → walk through every remaining ply
+  // In both cases the move is animated on the board, then we wait for the
+  // next user move (status 'progress') or the next ply (status 'revealed').
   useEffect(() => {
-    if (status === 'revealed' || lineComplete || isUserTurn) return
+    if (lineComplete) return
+    const isReveal = status === 'revealed'
+    if (!isReveal && (isUserTurn || status === 'wrong')) return
     const san = lineSans[linePly]
     if (!san) { setLinePly(lineSans.length); return }
     const timer = window.setTimeout(() => {
@@ -268,11 +274,9 @@ function ExercisePractice({
       setPosition(chess.fen())
       setHighlight({ type: 'correct', from: mv.from, to: mv.to })
       setShowBadge(false)
-      setLinePly(p => {
-        const next = p + 1
-        if (next >= lineSans.length) setStatus('completed')
-        return next
-      })
+      const next = linePly + 1
+      setLinePly(next)
+      if (next >= lineSans.length && status === 'progress') setStatus('completed')
     }, 700)
     return () => window.clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -322,16 +326,12 @@ function ExercisePractice({
   }
 
   function reveal() {
-    // Play out the rest of the line on the board so the user sees the full plan.
-    for (let i = linePly; i < lineSans.length; i++) {
-      const san = lineSans[i]
-      try { chess.move(san) } catch { break }
-    }
-    setPosition(chess.fen())
+    // Trigger the auto-play loop for the remaining plies. The useEffect above
+    // handles the actual sequencing so each move is animated one after another.
+    if (wrongTimerRef.current) window.clearTimeout(wrongTimerRef.current)
     setStatus('revealed')
-    setLinePly(lineSans.length)
-    setHighlight(null)
     setShowBadge(false)
+    setHighlight(null)
     if (!reportedThisRound) {
       onAttempt('revealed')
       setReported(true)
