@@ -6,6 +6,8 @@ Web app to analyze your [chess.com](https://chess.com) games locally with Stockf
 
 Just open the link and type your chess.com username — no install, no account, nothing leaves your browser.
 
+💬 **Feature requests, idées, discussions** : [Discussions du repo](https://github.com/DamienBoue/chess-trainer/discussions)
+
 ## Features
 
 - Fetches your recent games from the chess.com public API (no auth needed)
