@@ -1,4 +1,5 @@
 import type { GameAnalysis, MoveClassification } from '../types'
+import { getParentOpening } from './openings'
 
 export interface OpeningStat {
   name: string
@@ -7,6 +8,11 @@ export interface OpeningStat {
   wins: number
   losses: number
   draws: number
+}
+
+export interface OpeningGroup extends OpeningStat {
+  // Variations grouped under this parent opening, sorted by played desc.
+  variations: OpeningStat[]
 }
 
 export interface PhaseMistakes {
@@ -24,7 +30,8 @@ export interface AggregateStats {
   blundersByPhase: PhaseMistakes
   mistakesByPhase: PhaseMistakes
   inaccuraciesByPhase: PhaseMistakes
-  openings: OpeningStat[]
+  openings: OpeningStat[]              // flat (legacy)
+  openingGroups: OpeningGroup[]         // grouped by parent
   resultsByColor: { white: { w: number; l: number; d: number }; black: { w: number; l: number; d: number } }
 }
 
@@ -45,6 +52,7 @@ export function aggregate(analyses: GameAnalysis[]): AggregateStats {
     mistakesByPhase: { opening: 0, middlegame: 0, endgame: 0 },
     inaccuraciesByPhase: { opening: 0, middlegame: 0, endgame: 0 },
     openings: [],
+    openingGroups: [],
     resultsByColor: { white: { w: 0, l: 0, d: 0 }, black: { w: 0, l: 0, d: 0 } },
   }
 
@@ -53,6 +61,8 @@ export function aggregate(analyses: GameAnalysis[]): AggregateStats {
   let oppMoves = 0
   let oppCpLossSum = 0
   const openings = new Map<string, OpeningStat>()
+  // parent name -> { totals, variations: Map<variationName, stat> }
+  const groups = new Map<string, { stat: OpeningStat; variations: Map<string, OpeningStat> }>()
 
   for (const game of analyses) {
     const userIsWhite = game.userColor === 'white'
@@ -80,24 +90,59 @@ export function aggregate(analyses: GameAnalysis[]): AggregateStats {
       }
     }
 
-    const openingKey = (game.opening || game.ecoCode || 'Unknown').trim()
-    if (!openings.has(openingKey)) {
-      openings.set(openingKey, {
-        name: openingKey,
+    const variationName = (game.opening || game.ecoCode || 'Inconnue').trim()
+    const parentName = getParentOpening(game.ecoCode, game.opening)
+
+    // Flat (legacy) bucket
+    if (!openings.has(variationName)) {
+      openings.set(variationName, {
+        name: variationName,
         ecoCode: game.ecoCode,
         played: 0, wins: 0, losses: 0, draws: 0,
       })
     }
-    const o = openings.get(openingKey)!
+    const o = openings.get(variationName)!
     o.played++
     if (game.result === 'win') o.wins++
     else if (game.result === 'loss') o.losses++
     else o.draws++
+
+    // Grouped bucket
+    if (!groups.has(parentName)) {
+      groups.set(parentName, {
+        stat: { name: parentName, played: 0, wins: 0, losses: 0, draws: 0 },
+        variations: new Map(),
+      })
+    }
+    const g = groups.get(parentName)!
+    g.stat.played++
+    if (game.result === 'win') g.stat.wins++
+    else if (game.result === 'loss') g.stat.losses++
+    else g.stat.draws++
+
+    if (!g.variations.has(variationName)) {
+      g.variations.set(variationName, {
+        name: variationName,
+        ecoCode: game.ecoCode,
+        played: 0, wins: 0, losses: 0, draws: 0,
+      })
+    }
+    const v = g.variations.get(variationName)!
+    v.played++
+    if (game.result === 'win') v.wins++
+    else if (game.result === 'loss') v.losses++
+    else v.draws++
   }
 
   stats.avgCpLossUser = userMoves ? userCpLossSum / userMoves : 0
   stats.avgCpLossOpponent = oppMoves ? oppCpLossSum / oppMoves : 0
   stats.openings = Array.from(openings.values()).sort((a, b) => b.played - a.played)
+  stats.openingGroups = Array.from(groups.values())
+    .map(g => ({
+      ...g.stat,
+      variations: Array.from(g.variations.values()).sort((a, b) => b.played - a.played),
+    }))
+    .sort((a, b) => b.played - a.played)
   return stats
 }
 
@@ -131,8 +176,9 @@ export function deriveInsights(stats: AggregateStats): InsightLine[] {
     lines.push({ kind: 'weakness', text: `Phase la plus faible : ${phaseLabels[worstPhase]} (${worstCount} erreurs/gaffes au total).` })
   }
 
-  // Best opening
-  const bestOpening = stats.openings.find(o => o.played >= 2)
+  // Best opening (use parent groups so the heuristic talks about families,
+  // not specific subvariations)
+  const bestOpening = stats.openingGroups.find(o => o.played >= 2)
   if (bestOpening) {
     const winRate = bestOpening.wins / bestOpening.played
     if (winRate >= 0.6) {

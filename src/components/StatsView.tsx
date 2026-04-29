@@ -1,6 +1,6 @@
-import { useMemo } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import type { GameAnalysis } from '../types'
-import { aggregate, deriveInsights } from '../analysis/aggregate'
+import { aggregate, deriveInsights, type AggregateStats } from '../analysis/aggregate'
 import { CLASSIFICATION_COLORS, CLASSIFICATION_LABELS } from '../analysis/classify'
 
 interface Props {
@@ -146,39 +146,92 @@ export default function StatsView({ analyses }: Props) {
 
       <div className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-4">
         <h3 className="font-semibold mb-3">Ouvertures jouées</h3>
-        {stats.openings.length === 0 ? (
+        {stats.openingGroups.length === 0 ? (
           <p className="text-sm text-neutral-500">Pas encore de données.</p>
         ) : (
-          <table className="w-full text-sm">
-            <thead className="text-neutral-500 text-xs border-b border-[var(--color-border)]">
-              <tr>
-                <th className="text-left font-normal py-2">Ouverture</th>
-                <th className="text-center font-normal">ECO</th>
-                <th className="text-center font-normal">Parties</th>
-                <th className="text-center font-normal">% Victoire</th>
+          <OpeningTable groups={stats.openingGroups} />
+        )}
+      </div>
+    </div>
+  )
+}
+
+function OpeningTable({ groups }: { groups: AggregateStats['openingGroups'] }) {
+  const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  function toggle(name: string) {
+    setExpanded(prev => {
+      const next = new Set(prev)
+      if (next.has(name)) next.delete(name)
+      else next.add(name)
+      return next
+    })
+  }
+
+  return (
+    <table className="w-full text-sm">
+      <thead className="text-neutral-500 text-xs border-b border-[var(--color-border)]">
+        <tr>
+          <th className="text-left font-normal py-2">Ouverture</th>
+          <th className="text-center font-normal">Parties</th>
+          <th className="text-center font-normal">% Victoire</th>
+        </tr>
+      </thead>
+      <tbody>
+        {groups.map(g => {
+          const isExp = expanded.has(g.name)
+          const hasMultipleVariations = g.variations.length > 1
+          const winRate = g.played ? (g.wins / g.played) * 100 : 0
+          return (
+            <Fragment key={g.name}>
+              <tr
+                className={`border-b border-[var(--color-border)] ${hasMultipleVariations ? 'cursor-pointer hover:bg-neutral-800/50' : ''}`}
+                onClick={() => hasMultipleVariations && toggle(g.name)}
+              >
+                <td className="py-2">
+                  <span className="inline-block w-4 text-neutral-500">
+                    {hasMultipleVariations ? (isExp ? '▾' : '▸') : ''}
+                  </span>
+                  <span className="font-medium">{g.name}</span>
+                  {hasMultipleVariations && (
+                    <span className="text-xs text-neutral-500 ml-2">
+                      ({g.variations.length} variations)
+                    </span>
+                  )}
+                </td>
+                <td className="text-center">{g.played}</td>
+                <td className="text-center">
+                  <WinRate winRate={winRate} wins={g.wins} played={g.played} />
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {stats.openings.slice(0, 15).map(o => {
-                const winRate = o.played ? (o.wins / o.played) * 100 : 0
+              {isExp && g.variations.map(v => {
+                const vRate = v.played ? (v.wins / v.played) * 100 : 0
                 return (
-                  <tr key={o.name} className="border-b border-[var(--color-border)] last:border-0">
-                    <td className="py-1.5">{o.name}</td>
-                    <td className="text-center text-neutral-500 font-mono text-xs">{o.ecoCode || '—'}</td>
-                    <td className="text-center">{o.played}</td>
+                  <tr key={`${g.name}::${v.name}`} className="border-b border-[var(--color-border)] last:border-0 bg-neutral-900/40">
+                    <td className="py-1.5 pl-8 text-neutral-300 text-xs">
+                      {v.name}
+                      {v.ecoCode && <span className="font-mono text-[10px] text-neutral-500 ml-2">{v.ecoCode}</span>}
+                    </td>
+                    <td className="text-center text-xs">{v.played}</td>
                     <td className="text-center">
-                      <span className={winRate >= 50 ? 'text-green-400' : winRate >= 33 ? 'text-neutral-300' : 'text-red-400'}>
-                        {winRate.toFixed(0)}%
-                      </span>
-                      <span className="text-xs text-neutral-500 ml-1">({o.wins}/{o.played})</span>
+                      <WinRate winRate={vRate} wins={v.wins} played={v.played} small />
                     </td>
                   </tr>
                 )
               })}
-            </tbody>
-          </table>
-        )}
-      </div>
-    </div>
+            </Fragment>
+          )
+        })}
+      </tbody>
+    </table>
+  )
+}
+
+function WinRate({ winRate, wins, played, small }: { winRate: number; wins: number; played: number; small?: boolean }) {
+  const color = winRate >= 50 ? 'text-green-400' : winRate >= 33 ? 'text-neutral-300' : 'text-red-400'
+  return (
+    <>
+      <span className={`${color} ${small ? 'text-xs' : ''}`}>{winRate.toFixed(0)}%</span>
+      <span className={`text-neutral-500 ml-1 ${small ? 'text-[10px]' : 'text-xs'}`}>({wins}/{played})</span>
+    </>
   )
 }
