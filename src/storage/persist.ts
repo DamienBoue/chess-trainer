@@ -1,4 +1,4 @@
-import type { GameAnalysis } from '../types'
+import type { ChessComGame, GameAnalysis } from '../types'
 import { recomputeMoveMetrics } from '../analysis/analyze'
 
 const VERSION = 'v1'
@@ -6,7 +6,31 @@ const VERSION = 'v1'
 function analysesKey(username: string): string {
   return `chess.analyses.${username.toLowerCase()}.${VERSION}`
 }
+function gamesKey(username: string): string {
+  return `chess.games.${username.toLowerCase()}.${VERSION}`
+}
 const PROGRESS_KEY = `chess.progress.${VERSION}`
+
+export function loadGames(username: string): ChessComGame[] {
+  if (!username) return []
+  try {
+    const raw = localStorage.getItem(gamesKey(username))
+    if (!raw) return []
+    return JSON.parse(raw) as ChessComGame[]
+  } catch (e) {
+    console.warn('[storage] failed to load games:', e)
+    return []
+  }
+}
+
+export function saveGames(username: string, games: ChessComGame[]): void {
+  if (!username) return
+  try {
+    localStorage.setItem(gamesKey(username), JSON.stringify(games))
+  } catch (e) {
+    console.warn('[storage] failed to save games (quota?):', e)
+  }
+}
 
 export function loadAnalyses(username: string): Record<string, GameAnalysis> {
   if (!username) return {}

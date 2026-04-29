@@ -11,9 +11,11 @@ import { extractExercises } from './analysis/exercises'
 import { analyzeGame } from './analysis/analyze'
 import {
   loadAnalyses, saveAnalyses,
+  loadGames, saveGames,
   loadProgress, saveProgress,
   type ExerciseProgress, updateProgressAfterAttempt, isDue,
 } from './storage/persist'
+import { getRecentGames } from './api/chesscom'
 
 export interface BatchState {
   total: number
@@ -28,7 +30,10 @@ type View = 'home' | 'games' | 'analysis' | 'stats' | 'exercises' | 'rush'
 export default function App() {
   const [view, setView] = useState<View>('home')
   const [username, setUsername] = useState<string>(() => localStorage.getItem('chess.username') ?? '')
-  const [games, setGames] = useState<ChessComGame[]>([])
+  const [games, setGames] = useState<ChessComGame[]>(() =>
+    username ? loadGames(username) : [],
+  )
+  const [reloading, setReloading] = useState(false)
   const [analyses, setAnalyses] = useState<Record<string, GameAnalysis>>(() =>
     username ? loadAnalyses(username) : {},
   )
@@ -50,6 +55,10 @@ export default function App() {
   }, [analyses, username])
 
   useEffect(() => {
+    if (username) saveGames(username, games)
+  }, [games, username])
+
+  useEffect(() => {
     saveProgress(progress)
   }, [progress])
 
@@ -68,6 +77,19 @@ export default function App() {
     setGames(fetched)
     setAnalyses(loadAnalyses(u))   // load this user's saved analyses
     setView('games')
+  }
+
+  async function handleReloadGames(count = 30) {
+    if (!username || reloading) return
+    setReloading(true)
+    try {
+      const fresh = await getRecentGames(username, count)
+      if (fresh.length > 0) setGames(fresh)
+    } catch (e) {
+      console.error('[reload] failed:', e)
+    } finally {
+      setReloading(false)
+    }
   }
 
   function handleAnalyzeStart(game: ChessComGame) {
@@ -163,6 +185,8 @@ export default function App() {
             batch={batch}
             onStartBatch={handleStartBatch}
             onCancelBatch={handleCancelBatch}
+            reloading={reloading}
+            onReload={handleReloadGames}
           />
         )}
         {view === 'analysis' && activeGameUrl && (

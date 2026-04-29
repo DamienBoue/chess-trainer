@@ -10,14 +10,28 @@ interface Props {
   batch: BatchState | null
   onStartBatch: () => void
   onCancelBatch: () => void
+  reloading: boolean
+  onReload: (count?: number) => void
 }
 
 export default function GamesList({
   username, games, analyses,
   onSelectGame, batch, onStartBatch, onCancelBatch,
+  reloading, onReload,
 }: Props) {
   if (games.length === 0) {
-    return <div className="p-8 text-neutral-400">Aucune partie chargée.</div>
+    return (
+      <div className="p-8 max-w-3xl mx-auto text-neutral-400 space-y-4">
+        <p>Aucune partie en cache pour @{username}.</p>
+        <button
+          onClick={() => onReload(30)}
+          disabled={reloading}
+          className="px-4 py-2 bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] text-white rounded-md disabled:opacity-50"
+        >
+          {reloading ? 'Chargement…' : 'Charger les parties depuis chess.com'}
+        </button>
+      </div>
+    )
   }
   const analyzedCount = Object.keys(analyses).length
   const remaining = games.filter(g => !analyses[g.url]).length
@@ -27,7 +41,17 @@ export default function GamesList({
     <div className="max-w-4xl mx-auto p-6">
       <div className="mb-4 flex items-baseline justify-between flex-wrap gap-3">
         <h2 className="text-xl font-semibold">{games.length} parties récentes</h2>
-        <span className="text-xs text-neutral-500">{analyzedCount} analysée(s)</span>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-neutral-500">{analyzedCount} analysée(s)</span>
+          <button
+            onClick={() => onReload(30)}
+            disabled={reloading || isBatchRunning}
+            className="text-xs px-2 py-1 bg-neutral-800 hover:bg-neutral-700 rounded disabled:opacity-40"
+            title="Récupérer les parties les plus récentes depuis chess.com"
+          >
+            {reloading ? '…' : '↻ Recharger'}
+          </button>
+        </div>
       </div>
 
       {!isBatchRunning && remaining > 0 && (
