@@ -95,19 +95,26 @@ export default function StatsView({ analyses }: Props) {
         </div>
 
         <div className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-4">
-          <h3 className="font-semibold mb-3">Précision (centipawn loss moyen)</h3>
+          <h3 className="font-semibold mb-1">Précision moyenne</h3>
+          <p className="text-xs text-neutral-500 mb-3">
+            Combien de "petits-pions" tu perds en moyenne par coup vs le meilleur coup de Stockfish (1 cp = 0.01 pion).
+          </p>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <div className="text-3xl font-bold text-green-400">{stats.avgCpLossUser.toFixed(0)}</div>
+              <div className="text-3xl font-bold text-green-400">{stats.avgCpLossUser.toFixed(0)}<span className="text-sm font-normal text-neutral-500 ml-1">cp</span></div>
               <div className="text-xs text-neutral-500">Toi</div>
             </div>
             <div>
-              <div className="text-3xl font-bold text-neutral-300">{stats.avgCpLossOpponent.toFixed(0)}</div>
+              <div className="text-3xl font-bold text-neutral-300">{stats.avgCpLossOpponent.toFixed(0)}<span className="text-sm font-normal text-neutral-500 ml-1">cp</span></div>
               <div className="text-xs text-neutral-500">Adversaires</div>
             </div>
           </div>
-          <p className="text-xs text-neutral-500 mt-3">
-            Plus c'est bas, mieux c'est. Sub-30 = niveau maître, 30-60 = solide, 60+ = à améliorer.
+          <p className="text-xs text-neutral-500 mt-3 leading-relaxed">
+            Plus c'est bas, mieux c'est.<br />
+            <span className="text-green-400">~20-30</span> niveau maître ·{' '}
+            <span className="text-neutral-300">30-60</span> joueur solide ·{' '}
+            <span className="text-orange-400">60-100</span> joueur club ·{' '}
+            <span className="text-red-400">100+</span> à améliorer
           </p>
         </div>
 

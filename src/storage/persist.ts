@@ -1,4 +1,5 @@
 import type { GameAnalysis } from '../types'
+import { recomputeMoveMetrics } from '../analysis/analyze'
 
 const VERSION = 'v1'
 
@@ -13,6 +14,19 @@ export function loadAnalyses(username: string): Record<string, GameAnalysis> {
     const raw = localStorage.getItem(analysesKey(username))
     if (!raw) return {}
     const parsed = JSON.parse(raw) as Record<string, GameAnalysis>
+    // Migration: recompute cpLoss + classification from stored evals so older
+    // analyses (saved before the mate-score clamp fix) get sane values.
+    let dirty = false
+    for (const url of Object.keys(parsed)) {
+      const a = parsed[url]
+      const fixed = a.moves.map((m, i) => {
+        const { cpLoss, classification } = recomputeMoveMetrics(m, i)
+        if (cpLoss !== m.cpLoss || classification !== m.classification) dirty = true
+        return { ...m, cpLoss, classification }
+      })
+      parsed[url] = { ...a, moves: fixed }
+    }
+    if (dirty) saveAnalyses(username, parsed)
     return parsed
   } catch (e) {
     console.warn('[storage] failed to load analyses:', e)

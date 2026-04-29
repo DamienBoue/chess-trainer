@@ -18,6 +18,28 @@ interface AnalyzeOptions {
   signal?: AbortSignal
 }
 
+const CP_CLAMP = 1000
+export function clampCp(v: number): number {
+  return Math.max(-CP_CLAMP, Math.min(CP_CLAMP, v))
+}
+
+// Recompute cpLoss + classification from a stored move's evalBefore/evalAfter.
+// Used to migrate analyses persisted before the cp clamp fix.
+export function recomputeMoveMetrics(
+  move: { fenBefore: string; evalBefore: number; evalAfter: number; san: string; bestMoveSan?: string },
+  bookPliesIndex: number,
+  bookPlies: number = 8,
+): { cpLoss: number; classification: ReturnType<typeof classifyByCpLoss> } {
+  const stm = move.fenBefore.split(' ')[1]
+  const sign = stm === 'w' ? 1 : -1
+  const moverEvalBefore = clampCp(sign * move.evalBefore)
+  const moverEvalAfter = clampCp(sign * move.evalAfter)
+  const cpLoss = Math.max(0, moverEvalBefore - moverEvalAfter)
+  const isBest = !!move.bestMoveSan && move.bestMoveSan === move.san
+  const isBook = bookPliesIndex < bookPlies
+  return { cpLoss, classification: classifyByCpLoss(cpLoss, isBest, isBook) }
+}
+
 // Convert a UCI move to SAN given the FEN it is played from.
 function uciToSan(fen: string, uci: string): string | undefined {
   if (!uci || uci.length < 4) return undefined
@@ -96,10 +118,12 @@ export async function analyzeGame(
     const evalAfterWhite = afterScoreWhite
 
     // CP loss from the mover's perspective: how much did the mover's eval drop?
-    const stm = move.fenBefore.split(' ')[1] // 'w' or 'b' — side to move (the one who just moved when looking at fenAfter)
+    // Clamp to ±1000 cp so that mate scores (±99 000+) don't blow up the average:
+    // missing a forced mate counts as a ~1000 cp swing, not a 99 000 cp one.
+    const stm = move.fenBefore.split(' ')[1] // 'w' or 'b' — side to move
     const sign = stm === 'w' ? 1 : -1
-    const moverEvalBefore = sign * evalBeforeWhite
-    const moverEvalAfter = sign * evalAfterWhite
+    const moverEvalBefore = clampCp(sign * evalBeforeWhite)
+    const moverEvalAfter = clampCp(sign * evalAfterWhite)
     const cpLoss = Math.max(0, moverEvalBefore - moverEvalAfter)
 
     // Best move check
