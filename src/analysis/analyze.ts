@@ -10,6 +10,13 @@ export interface AnalyzeProgress {
   currentSan?: string
 }
 
+interface AnalyzeOptions {
+  depth?: number
+  movetimeMs?: number
+  bookPlies?: number
+  onProgress?: (p: AnalyzeProgress) => void
+}
+
 // Convert a UCI move to SAN given the FEN it is played from.
 function uciToSan(fen: string, uci: string): string | undefined {
   if (!uci || uci.length < 4) return undefined
@@ -45,9 +52,9 @@ export async function analyzeGame(
   engine: StockfishEngine,
   game: ChessComGame,
   username: string,
-  options: { depth?: number; bookPlies?: number; onProgress?: (p: AnalyzeProgress) => void } = {},
+  options: AnalyzeOptions = {},
 ): Promise<GameAnalysis> {
-  const { depth = 14, bookPlies = 8, onProgress } = options
+  const { depth = 12, movetimeMs = 600, bookPlies = 8, onProgress } = options
   const moves = extractMoves(game.pgn)
   const headers = parsePgnHeaders(game.pgn)
   const userColor = getUserSide(game, username)
@@ -76,11 +83,11 @@ export async function analyzeGame(
       }
       beforeRaw.scoreCp = prevAfterEval.scoreCpWhite // already white-perspective, used directly below
     } else {
-      const r = await engine.evaluate(move.fenBefore, depth)
+      const r = await engine.evaluate(move.fenBefore, depth, movetimeMs)
       beforeRaw = { scoreCp: toWhitePerspective(r.scoreCp, move.fenBefore), bestMoveUci: r.bestMoveUci, pvUci: r.pvUci, isMate: r.isMate }
     }
 
-    const afterRaw = await engine.evaluate(move.fenAfter, depth)
+    const afterRaw = await engine.evaluate(move.fenAfter, depth, movetimeMs)
     const afterScoreWhite = toWhitePerspective(afterRaw.scoreCp, move.fenAfter)
 
     const evalBeforeWhite = beforeRaw.scoreCp

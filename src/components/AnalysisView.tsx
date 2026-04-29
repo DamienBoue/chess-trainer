@@ -39,7 +39,8 @@ export default function AnalysisView({
       try {
         setProgress({ done: 0, total: 1 })
         const result = await analyzeGame(engine, game, username, {
-          depth: 13,
+          depth: 12,
+          movetimeMs: 600,
           onProgress: (p) => { if (!cancelled) setProgress(p) },
         })
         if (cancelled) return
@@ -47,6 +48,7 @@ export default function AnalysisView({
         onAnalysisComplete(result)
       } catch (err) {
         if (cancelled) return
+        console.error('[analyze] failed:', err)
         setError(err instanceof Error ? err.message : 'Erreur d\'analyse')
       }
     })()

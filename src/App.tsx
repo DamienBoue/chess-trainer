@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import type { ChessComGame, GameAnalysis } from './types'
 import { StockfishEngine } from './engine/stockfish'
 import Home from './components/Home'
@@ -17,9 +17,10 @@ export default function App() {
 
   const engineRef = useRef<StockfishEngine | null>(null)
   if (!engineRef.current) engineRef.current = new StockfishEngine()
-  useEffect(() => {
-    return () => engineRef.current?.destroy()
-  }, [])
+  // Note: we intentionally don't terminate the worker on unmount. React StrictMode
+  // calls useEffect cleanups during dev, which would kill the engine while the ref
+  // still points to it, leaving us with a zombie worker. The browser cleans up the
+  // worker when the tab closes anyway.
 
   const activeAnalysis = activeGameUrl ? analyses[activeGameUrl] : null
   const allAnalyses = useMemo(() => Object.values(analyses), [analyses])

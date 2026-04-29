@@ -13,6 +13,7 @@ export interface EvalResult {
 interface PendingEval {
   fen: string
   depth: number
+  movetimeMs?: number
   resolve: (r: EvalResult) => void
   reject: (e: Error) => void
 }
@@ -26,18 +27,37 @@ export class StockfishEngine {
   private queue: PendingEval[] = []
   private latest: { scoreCp: number; depth: number; pvUci: string[]; isMate: boolean } | null = null
 
+  private debug = (() => {
+    try { return localStorage.getItem('sf.debug') === '1' } catch { return false }
+  })()
+
   constructor() {
     this.worker = new Worker('/stockfish.js')
-    this.worker.onmessage = (e) => this.onMessage(typeof e.data === 'string' ? e.data : String(e.data))
-    this.readyPromise = new Promise((resolve) => {
-      const onReady = () => { resolve() }
+    this.worker.onerror = (e) => {
+      console.error('[stockfish] worker error', e.message || e.type, e)
+    }
+    this.worker.onmessage = (e) => {
+      const line = typeof e.data === 'string' ? e.data : String(e.data)
+      if (this.debug) console.log('[sf <]', line)
+      this.onMessage(line)
+    }
+    this.readyPromise = new Promise((resolve, reject) => {
+      let booted = false
+      const timeout = setTimeout(() => {
+        if (!booted) {
+          console.error('[stockfish] timeout: engine did not reply to "uci" within 15s')
+          reject(new Error('Stockfish ne répond pas. Ouvre /sf-test.html pour diagnostiquer.'))
+        }
+      }, 15000)
       const handler = (e: MessageEvent) => {
         const line = typeof e.data === 'string' ? e.data : String(e.data)
         if (line === 'uciok') {
           this.send('isready')
         } else if (line === 'readyok') {
+          booted = true
+          clearTimeout(timeout)
           this.worker.removeEventListener('message', handler)
-          onReady()
+          resolve()
         }
       }
       this.worker.addEventListener('message', handler)
@@ -50,6 +70,7 @@ export class StockfishEngine {
   }
 
   private send(cmd: string) {
+    if (this.debug) console.log('[sf >]', cmd)
     this.worker.postMessage(cmd)
   }
 
@@ -111,13 +132,16 @@ export class StockfishEngine {
     this.latest = null
     this.send('ucinewgame')
     this.send(`position fen ${next.fen}`)
-    this.send(`go depth ${next.depth}`)
+    const goCmd = next.movetimeMs
+      ? `go depth ${next.depth} movetime ${next.movetimeMs}`
+      : `go depth ${next.depth}`
+    this.send(goCmd)
   }
 
-  async evaluate(fen: string, depth = 14): Promise<EvalResult> {
+  async evaluate(fen: string, depth = 12, movetimeMs = 600): Promise<EvalResult> {
     await this.readyPromise
     return new Promise<EvalResult>((resolve, reject) => {
-      const item: PendingEval = { fen, depth, resolve, reject }
+      const item: PendingEval = { fen, depth, movetimeMs, resolve, reject }
       this.queue.push(item)
       this.processNext()
     })
