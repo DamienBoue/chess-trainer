@@ -25,14 +25,6 @@ export default function RepertoireView({ analyses }: Props) {
       </div>
     )
   }
-  if (roots.length === 0) {
-    return (
-      <div className="p-8 max-w-3xl mx-auto text-neutral-400">
-        Aucune ouverture jouée plus d'une fois pour l'instant.
-      </div>
-    )
-  }
-
   return (
     <div className="p-6 max-w-6xl mx-auto">
       <div className="flex items-baseline justify-between mb-2 flex-wrap gap-3">
@@ -51,6 +43,14 @@ export default function RepertoireView({ analyses }: Props) {
           <TabBtn active={tab === 'explorer'} onClick={() => setTab('explorer')}>Explorer</TabBtn>
         </div>
       </div>
+
+      {roots.length === 0 && (
+        <div className="p-8 text-neutral-400">
+          Aucune ouverture jouée plus d'une fois pour ce filtre.
+        </div>
+      )}
+      {roots.length > 0 && (
+        <>
 
       {tab === 'lines' && (
         <div className="grid lg:grid-cols-[300px_1fr] gap-4">
@@ -95,6 +95,8 @@ export default function RepertoireView({ analyses }: Props) {
 
       {tab === 'explorer' && (
         <ExplorerPanel roots={roots} />
+      )}
+        </>
       )}
     </div>
   )
