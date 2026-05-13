@@ -4,6 +4,10 @@ import { Chessboard } from 'react-chessboard'
 import type { Book, BookExercise, BookProgress, ExerciseOutcome } from '../library/types'
 import { getBook, getProgress, recordOutcome } from '../library/storage'
 import { playMove, playCapture, playSuccess, playWrong } from '../audio/sounds'
+import {
+  fetchTablebase, type TableResponse, type TableCategory,
+  tableCategoryLabel, classifyTableMove,
+} from '../api/lichess'
 import BookRushView from './BookRushView'
 
 type Status = 'pending' | 'wrong' | 'in-progress' | 'solved' | 'revealed'
@@ -111,6 +115,7 @@ function BrowseMode({ book, progress, onProgressChange, onBack, onStartRush }: B
   const cleanRunRef = useRef(true)
   const chessRef = useRef<Chess | null>(null)
   const opponentTimerRef = useRef<number | null>(null)
+  const [tableData, setTableData] = useState<TableResponse | null>(null)
 
   // Reset on exercise change.
   useEffect(() => {
@@ -131,6 +136,17 @@ function BrowseMode({ book, progress, onProgressChange, onBack, onStartRush }: B
   useEffect(() => () => {
     if (opponentTimerRef.current) window.clearTimeout(opponentTimerRef.current)
   }, [])
+
+  // Refresh tablebase verdict whenever the on-board position changes.
+  useEffect(() => {
+    if (!position) { setTableData(null); return }
+    let aborted = false
+    const ctrl = new AbortController()
+    fetchTablebase(position, ctrl.signal).then(r => {
+      if (!aborted) setTableData(r)
+    })
+    return () => { aborted = true; ctrl.abort() }
+  }, [position])
 
   // Keyboard nav
   useEffect(() => {
@@ -191,7 +207,24 @@ function BrowseMode({ book, progress, onProgressChange, onBack, onStartRush }: B
     if (!mv) return false
 
     const expected = active.moves[userIdx]
-    if (!sanMatches(mv.san, expected)) {
+    const matchesCurated = sanMatches(mv.san, expected)
+
+    // Tablebase fallback: if the curated SAN doesn't match, the move can
+    // STILL be correct when the tablebase says it preserves the position's
+    // theoretical value. Only consulted on ≤7-piece positions (where
+    // tableData was populated).
+    let tableAccepted = false
+    if (!matchesCurated && tableData) {
+      const tbMove = tableData.moves.find(m =>
+        sanMatches(m.san, mv.san) || m.uci === mv.from + mv.to + (mv.promotion ?? ''),
+      )
+      if (tbMove) {
+        const tone = classifyTableMove(tableData.category, tbMove.category)
+        if (tone === 'optimal' || tone === 'good') tableAccepted = true
+      }
+    }
+
+    if (!matchesCurated && !tableAccepted) {
       c.undo()
       setStatus('wrong')
       setFeedback(`✗ ${mv.san} — réessaie (H pour la solution)`)
@@ -204,6 +237,17 @@ function BrowseMode({ book, progress, onProgressChange, onBack, onStartRush }: B
     setPosition(c.fen())
     setPlayedMoves(prev => [...prev, mv.san])
     if (mv.captured) playCapture(); else playMove()
+
+    if (tableAccepted && !matchesCurated) {
+      // User found a different-but-optimal idea. The curated line no longer
+      // applies (opponent's next reply wouldn't fit). Mark the exercise
+      // solved immediately on this 1-ply demonstration.
+      setStatus('solved')
+      setFeedback(`✓ ${mv.san} — coup optimal alternatif (validé par tablebase).`)
+      playSuccess()
+      void persistOutcome(cleanRunRef.current ? 'solved' : 'wrong')
+      return true
+    }
 
     const nextIdx = userIdx + 1
     if (nextIdx >= active.moves.length) {
@@ -413,6 +457,8 @@ function BrowseMode({ book, progress, onProgressChange, onBack, onStartRush }: B
               )}
             </div>
 
+            <TablebaseBadge data={tableData} sideToMove={active.side} />
+
             <div className="mt-3">{renderMoveList()}</div>
 
             <div className="mt-3 flex flex-wrap gap-2">
@@ -471,3 +517,37 @@ function ChapterTab({
 
 // Re-export so other components can also import BookExercise from here.
 export type { BookExercise }
+
+// Lichess tablebase verdict for the current on-board position. Hidden when
+// the position is out of tablebase range (>7 pieces) or the API is offline.
+function TablebaseBadge({
+  data, sideToMove,
+}: {
+  data: TableResponse | null
+  sideToMove: 'w' | 'b'
+}) {
+  if (!data) return null
+  const { label, tone } = tableCategoryLabel(data.category as TableCategory)
+  const sideLabel = sideToMove === 'w' ? 'Blancs' : 'Noirs'
+  const toneClasses = tone === 'win' ? 'bg-green-900/40 text-green-300 border-green-800/60'
+    : tone === 'loss' ? 'bg-red-900/40 text-red-300 border-red-800/60'
+    : 'bg-neutral-800 text-neutral-300 border-neutral-700'
+  const dtmText = data.dtm != null
+    ? ` · mat en ${Math.abs(data.dtm)}`
+    : data.dtz != null ? ` · DTZ ${Math.abs(data.dtz)}` : ''
+  const bestMoves = data.moves
+    .filter(m => classifyTableMove(data.category as TableCategory, m.category) === 'optimal')
+    .slice(0, 3)
+    .map(m => m.san)
+  return (
+    <div className={`mt-3 px-3 py-2 rounded border text-xs ${toneClasses}`}>
+      <span className="font-semibold">Tablebase :</span>{' '}
+      {label} pour les {sideLabel}{dtmText}.
+      {bestMoves.length > 0 && (
+        <>
+          {' · '}<span className="font-mono">{bestMoves.join(' / ')}</span>
+        </>
+      )}
+    </div>
+  )
+}
