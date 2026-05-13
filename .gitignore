@@ -28,4 +28,5 @@ dist-ssr
 public/books/*
 *.book.json
 !public/books/lichess-sample.book.json
+!public/books/endgames.book.json
 scripts/__pycache__/

@@ -1,0 +1,351 @@
+{
+  "id": "endgames",
+  "title": "Trainer Finales",
+  "source": "manual",
+  "importedAt": "2026-05-13T21:26:57Z",
+  "exercises": [
+    {
+      "id": "eg-001",
+      "n": 1,
+      "chapter": "Mates de base",
+      "page": null,
+      "fen": "4k3/8/8/8/8/8/8/3QK3 w - - 0 1",
+      "side": "w",
+      "firstMoveSan": "Qd7+",
+      "moves": [
+        "Qd7+",
+        "Kf8",
+        "Ke2",
+        "Kg8",
+        "Ke3",
+        "Kf8",
+        "Ke4",
+        "Kg8",
+        "Ke5",
+        "Kf8",
+        "Ke6",
+        "Kg8",
+        "Qg7+"
+      ],
+      "solutionProse": "Roi + Dame contre Roi — Méthode dite « du carré rétrécissant » : la dame se met à un saut de cavalier du roi noir pour le pousser sur la dernière rangée, puis le roi blanc s'approche pour donner mat sur g7 (ou f7 selon la symétrie)."
+    },
+    {
+      "id": "eg-002",
+      "n": 2,
+      "chapter": "Mates de base",
+      "page": null,
+      "fen": "4k3/8/8/8/8/8/4K3/R7 w - - 0 1",
+      "side": "w",
+      "firstMoveSan": "Ra8+",
+      "moves": [
+        "Ra8+",
+        "Kd7",
+        "Kd3",
+        "Kc7",
+        "Kc4",
+        "Kd6",
+        "Ra6+",
+        "Kc7",
+        "Kc5"
+      ],
+      "solutionProse": "Roi + Tour contre Roi — Technique du « roi qui pousse + tour qui coupe ». La tour coupe une rangée, le roi marche vers le roi adverse, puis on serre. Ne pas mettre la tour près du roi noir sans protection : la zugzwang fait gagner."
+    },
+    {
+      "id": "eg-003",
+      "n": 3,
+      "chapter": "Pion vs Roi",
+      "page": null,
+      "fen": "8/8/8/4k3/8/8/4P3/4K3 w - - 0 1",
+      "side": "w",
+      "firstMoveSan": "Kd2",
+      "moves": [
+        "Kd2"
+      ],
+      "solutionProse": "Opposition gagnante (pion central) — Avec le pion central, les Blancs gagnent en SORTANT le roi AVANT de pousser. Règle : roi devant le pion, jamais derrière. Le roi e1 doit d'abord libérer la case e2 (Kd2 ou Kf2) puis manœuvrer pour prendre l'opposition à la bonne distance."
+    },
+    {
+      "id": "eg-004",
+      "n": 4,
+      "chapter": "Pion vs Roi",
+      "page": null,
+      "fen": "8/8/8/8/8/k7/P7/K7 w - - 0 1",
+      "side": "w",
+      "firstMoveSan": "Kb1",
+      "moves": [
+        "Kb1"
+      ],
+      "solutionProse": "Pion de tour : nulle (roi dans le coin) — Pion de tour : si le roi adverse atteint la case de promotion (a1/a8/h1/h8) avant le pion, c'est nulle. Le roi blanc ne peut pas sortir du coin sans permettre Kxa2, et toute tentative aboutit au pat. Cas pratique : tu es du côté du pion à perdre — fonce dans le coin avec ton roi."
+    },
+    {
+      "id": "eg-005",
+      "n": 5,
+      "chapter": "Pion vs Roi",
+      "page": null,
+      "fen": "8/k7/8/8/8/8/4P3/4K3 w - - 0 1",
+      "side": "w",
+      "firstMoveSan": "e4",
+      "moves": [
+        "e4",
+        "Kb6",
+        "e5",
+        "Kc6",
+        "e6"
+      ],
+      "solutionProse": "Case de la dame (régle du carré) — Règle du carré : du pion à la case de promotion, dessine un carré ; si le roi noir n'est pas DANS ce carré quand il joue, le pion promeut. Ici e2-e8 forme un carré que le roi noir ne peut pas rattraper."
+    },
+    {
+      "id": "eg-006",
+      "n": 6,
+      "chapter": "Pion vs Roi",
+      "page": null,
+      "fen": "8/8/8/4k3/4P3/4K3/8/8 b - - 0 1",
+      "side": "b",
+      "firstMoveSan": "Ke6",
+      "moves": [
+        "Ke6",
+        "Kd4",
+        "Kd6",
+        "e5+",
+        "Ke6",
+        "Ke4"
+      ],
+      "solutionProse": "Cases-clés du pion central — Les cases-clés d'un pion central (e4) sont d5/e5/f5 ET d6/e6/f6 selon le trait. Si le roi blanc atteint une case-clé, il gagne. Les Noirs jouent l'opposition pour empêcher."
+    },
+    {
+      "id": "eg-007",
+      "n": 7,
+      "chapter": "Tours",
+      "page": null,
+      "fen": "1K1k4/1P6/8/8/8/8/r7/2R5 w - - 0 1",
+      "side": "w",
+      "firstMoveSan": "Rc4",
+      "moves": [
+        "Rc4",
+        "Ra1",
+        "Rd4+",
+        "Ke7",
+        "Kc7",
+        "Rc1+",
+        "Kb6",
+        "Rb1+",
+        "Ka6",
+        "Rxb7",
+        "Kxb7"
+      ],
+      "solutionProse": "Position de Lucena (technique du pont) — La technique du pont. Tour sur la 4e rangée, on chasse le roi noir, puis on monte le pont avec Rd4 : la tour blanche bloque les échecs latéraux quand le roi sort. C'est LE schéma à connaître par cœur."
+    },
+    {
+      "id": "eg-008",
+      "n": 8,
+      "chapter": "Tours",
+      "page": null,
+      "fen": "4k3/8/8/8/4P3/r7/8/4K1R1 b - - 0 1",
+      "side": "b",
+      "firstMoveSan": "Ra6",
+      "moves": [
+        "Ra6",
+        "e5",
+        "Rh6"
+      ],
+      "solutionProse": "Position de Philidor (3e rangée) — Défense de Philidor : tour sur la 3e rangée (vue depuis les Noirs, c'est la 6e). Tant que le pion n'avance pas, la tour reste là. Dès que le pion pousse, la tour descend derrière pour vérifications éternelles. NULLE."
+    },
+    {
+      "id": "eg-009",
+      "n": 9,
+      "chapter": "Tours",
+      "page": null,
+      "fen": "8/8/8/8/k1K5/P7/8/r5R1 b - - 0 1",
+      "side": "b",
+      "firstMoveSan": "Rf1",
+      "moves": [
+        "Rf1"
+      ],
+      "solutionProse": "Vancura — défense latérale — Pion de tour avancé : la défense Vancura consiste à attaquer le pion par le flanc (via la 6e rangée typiquement) au lieu de bloquer frontalement. La tour reste prête à donner des échecs latéraux dès que le roi blanc tente de sortir. Tenable contre le pion de tour en 6e/7e."
+    },
+    {
+      "id": "eg-010",
+      "n": 10,
+      "chapter": "Pièces mineures",
+      "page": null,
+      "fen": "8/8/4k3/4p3/4P3/3B4/8/3bK3 w - - 0 1",
+      "side": "w",
+      "firstMoveSan": "Bb1",
+      "moves": [
+        "Bb1"
+      ],
+      "solutionProse": "Fous de couleurs opposées : forteresse — Les fous de couleurs opposées rendent énormément de fins nulles, même avec un pion ou deux de plus. Tant que le fou défenseur peut surveiller la case de promotion depuis sa diagonale, c'est forteresse. Ici le fou blanc ne peut pas attaquer e5 (case foncée) et son pion e4 ne peut pas avancer."
+    },
+    {
+      "id": "eg-011",
+      "n": 11,
+      "chapter": "Pièces mineures",
+      "page": null,
+      "fen": "4k3/8/8/8/8/8/2BB4/4K3 w - - 0 1",
+      "side": "w",
+      "firstMoveSan": "Bc3",
+      "moves": [
+        "Bc3",
+        "Kd7",
+        "Bd3",
+        "Ke6",
+        "Ke2"
+      ],
+      "solutionProse": "K + 2 Fous contre K (mat) — Les deux fous matent en coordonant : on chasse le roi vers UN coin (n'importe lequel), puis on resserre la cage. Comptez ~15-20 coups. À connaître pour ne pas céder en blitz une position théoriquement gagnante."
+    },
+    {
+      "id": "eg-012",
+      "n": 12,
+      "chapter": "Dame contre pion",
+      "page": null,
+      "fen": "8/8/8/8/8/2k5/3p4/K2Q4 w - - 0 1",
+      "side": "w",
+      "firstMoveSan": "Qxd2+",
+      "moves": [
+        "Qxd2+"
+      ],
+      "solutionProse": "Dame contre pion d-7e rangée (gain) — Dame contre pion arrivé en 7e rangée : sauf pion-cavalier (b/g) ou pion-tour (a/h), la dame gagne en capturant le pion par la technique du « zigzag d'échecs » qui force le roi adverse devant son pion, permettant à la dame de gagner un tempo et d'amener son roi soutenir."
+    },
+    {
+      "id": "eg-013",
+      "n": 13,
+      "chapter": "Dame contre pion",
+      "page": null,
+      "fen": "7K/8/8/8/8/2k5/1p6/3Q4 w - - 0 1",
+      "side": "w",
+      "firstMoveSan": "Qd2+",
+      "moves": [
+        "Qd2+"
+      ],
+      "solutionProse": "Dame contre pion-cavalier (nulle) — Exception : pion-cavalier (b2/g2) ou pion-tour, la dame ne peut pas amener son roi à temps — chaque fois que la dame s'approche du pion, le roi adverse se réfugie dans le coin et c'est pat dès que la dame prendrait. NULLE théorique."
+    },
+    {
+      "id": "eg-014",
+      "n": 14,
+      "chapter": "Pions passés",
+      "page": null,
+      "fen": "8/p1p1p3/8/8/8/8/PPP5/8 w - - 0 1",
+      "side": "w",
+      "firstMoveSan": "b4",
+      "moves": [
+        "b4",
+        "a6",
+        "a4",
+        "c6",
+        "b5",
+        "cxb5",
+        "c4",
+        "bxc4",
+        "a5"
+      ],
+      "solutionProse": "Percée à 3 contre 3 — La percée du pion : trois pions blancs contre trois pions noirs alignés en colonnes adjacentes. Le sacrifice par b-b5 puis c-c4 crée un pion passé. Pattern à voir 1 fois pour ne plus jamais le rater."
+    },
+    {
+      "id": "eg-015",
+      "n": 15,
+      "chapter": "Pions passés",
+      "page": null,
+      "fen": "8/8/p7/8/8/4K3/7P/k7 w - - 0 1",
+      "side": "w",
+      "firstMoveSan": "h4",
+      "moves": [
+        "h4",
+        "Kb2",
+        "h5",
+        "a5",
+        "h6",
+        "a4",
+        "h7",
+        "a3",
+        "h8=Q+"
+      ],
+      "solutionProse": "Pion outside passed = victoire — Un pion passé extérieur (de l'autre côté de l'échiquier que les autres pions) force l'adversaire à courir derrière, libérant le terrain de l'autre côté. Pousser le passé est presque toujours décisif quand la course est claire."
+    },
+    {
+      "id": "eg-016",
+      "n": 16,
+      "chapter": "Motifs spéciaux",
+      "page": null,
+      "fen": "8/8/3k4/2pP4/2P5/3K4/8/8 w - - 0 1",
+      "side": "w",
+      "firstMoveSan": "Ke3",
+      "moves": [
+        "Ke3",
+        "Kc7",
+        "Kd3",
+        "Kd7",
+        "Ke4"
+      ],
+      "solutionProse": "Triangulation pour gagner un tempo — Triangulation : le roi décrit un petit triangle (e3-d3-e4 ou similaire) pour passer le trait à l'adversaire en zugzwang. Quand un seul des deux camps peut faire trois coups d'attente sans dégrader, il gagne le tempo."
+    },
+    {
+      "id": "eg-017",
+      "n": 17,
+      "chapter": "Motifs spéciaux",
+      "page": null,
+      "fen": "8/8/8/8/8/k5K1/p7/8 b - - 0 1",
+      "side": "b",
+      "firstMoveSan": "a1=Q",
+      "moves": [
+        "a1=Q"
+      ],
+      "solutionProse": "Pat défensif (sacrifice pour le pat) — Quand on est en perdition matérielle, viser le pat par sacrifice forcé est une ressource sous-estimée. Ici les Noirs promeuvent en h1=Q : si Blanc joue Kxh1, pat ! Toujours regarder les options de promotion mineure (T/F/C) si la dame perd."
+    },
+    {
+      "id": "eg-018",
+      "n": 18,
+      "chapter": "Motifs spéciaux",
+      "page": null,
+      "fen": "6k1/6p1/8/8/8/8/8/3q3K w - - 0 1",
+      "side": "w",
+      "firstMoveSan": null,
+      "moves": [],
+      "solutionProse": "Échec perpétuel comme nulle de salut — Position à chercher quand on a la dame en moins : trouver une suite d'échecs qui force la répétition. Ici les Noirs gagnent banalement, mais la prise de pat / perpétuel est un thème à intégrer en défense."
+    },
+    {
+      "id": "eg-019",
+      "n": 19,
+      "chapter": "Cavaliers",
+      "page": null,
+      "fen": "8/8/8/8/8/8/n4kPK/8 w - - 0 1",
+      "side": "w",
+      "firstMoveSan": "g3",
+      "moves": [
+        "g3",
+        "Nc3",
+        "g4",
+        "Ne4"
+      ],
+      "solutionProse": "Cavalier vs pion-tour 7e rangée — nulle — Cavalier contre pion-tour arrivé en 7e : le cavalier peut généralement freiner le pion s'il a deux coups d'avance. Le cavalier saute pour bloquer la case de promotion et le roi blanc ne peut pas tout faire seul."
+    },
+    {
+      "id": "eg-020",
+      "n": 20,
+      "chapter": "Tours",
+      "page": null,
+      "fen": "8/3k4/8/8/8/8/r3P1K1/3R4 w - - 0 1",
+      "side": "w",
+      "firstMoveSan": "Kg3+",
+      "moves": [
+        "Kg3+"
+      ],
+      "solutionProse": "Tour derrière le pion passé (règle de Tarrasch) — Règle de Tarrasch : la tour DOIT être derrière son pion passé. Ici les Blancs ont la tour devant (sur d1) — mauvais ! Le pion e2 est même cloué par la tour noire ; il faut d'abord déplacer le roi puis basculer la tour derrière le pion avant de pousser."
+    },
+    {
+      "id": "eg-021",
+      "n": 21,
+      "chapter": "Études",
+      "page": null,
+      "fen": "7K/8/k1P5/7p/8/8/8/8 w - - 0 1",
+      "side": "w",
+      "firstMoveSan": "Kg7",
+      "moves": [
+        "Kg7",
+        "h4",
+        "Kf6",
+        "h3",
+        "Ke6"
+      ],
+      "solutionProse": "Réti — le double rôle du roi — Étude de Réti (1921). Le roi blanc, apparemment perdu, atteint à la fois le pion h et soutient son pion c grâce à la diagonale. Magnifique illustration que les pièces peuvent défendre/attaquer simultanément sur des trajets non-rectangulaires."
+    }
+  ]
+}

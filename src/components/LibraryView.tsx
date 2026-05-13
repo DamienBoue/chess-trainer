@@ -60,24 +60,25 @@ export default function LibraryView({ onOpenBook }: Props) {
     await refresh()
   }
 
-  async function installLichessStarter() {
+  async function installBundledBook(url: string, label: string) {
     setBusy(true)
     setError(null)
     try {
-      const res = await fetch(`${import.meta.env.BASE_URL}books/lichess-sample.book.json`)
+      const res = await fetch(`${import.meta.env.BASE_URL}${url}`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const raw = await res.json()
       const book = validateBookJson(raw)
       await saveBook(book)
       await refresh()
     } catch (e) {
-      setError(`Échec du chargement du pack Lichess : ${e instanceof Error ? e.message : e}`)
+      setError(`Échec du chargement de ${label} : ${e instanceof Error ? e.message : e}`)
     } finally {
       setBusy(false)
     }
   }
 
   const hasLichess = rows?.some(r => r.book.id === 'lichess-puzzles') ?? false
+  const hasEndgames = rows?.some(r => r.book.id === 'endgames') ?? false
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
@@ -91,12 +92,22 @@ export default function LibraryView({ onOpenBook }: Props) {
         <div className="flex gap-2 flex-wrap">
           {!hasLichess && (
             <button
-              onClick={installLichessStarter}
+              onClick={() => installBundledBook('books/lichess-sample.book.json', 'Lichess')}
               disabled={busy}
               className="px-3 py-1.5 text-sm rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-200 font-medium"
               title="1000 puzzles Lichess (CC0), répartis sur 4 niveaux de rating"
             >
-              ♟ Installer le pack Lichess (1000)
+              ♟ Pack Lichess (1000)
+            </button>
+          )}
+          {!hasEndgames && (
+            <button
+              onClick={() => installBundledBook('books/endgames.book.json', 'Finales')}
+              disabled={busy}
+              className="px-3 py-1.5 text-sm rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-200 font-medium"
+              title="Positions classiques de finale avec explications"
+            >
+              ♛ Pack Finales (21)
             </button>
           )}
           <label className="px-3 py-1.5 text-sm rounded bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] text-white font-medium cursor-pointer">
