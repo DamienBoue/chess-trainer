@@ -13,6 +13,7 @@ import CompareView from './components/CompareView'
 import RepertoireView from './components/RepertoireView'
 import LibraryView from './components/LibraryView'
 import BookView from './components/BookView'
+import ScoutingView from './components/ScoutingView'
 import {
   GlobalFilters,
   applyGlobalFilters,
@@ -39,7 +40,7 @@ export interface BatchState {
   failed: number
 }
 
-type View = 'home' | 'games' | 'analysis' | 'stats' | 'exercises' | 'rush' | 'daily' | 'compare' | 'repertoire' | 'library' | 'book'
+type View = 'home' | 'games' | 'analysis' | 'stats' | 'exercises' | 'rush' | 'daily' | 'compare' | 'repertoire' | 'library' | 'book' | 'scouting'
 
 export default function App() {
   const [view, setView] = useState<View>('home')
@@ -220,6 +221,7 @@ export default function App() {
                 onClick={() => { setActiveBookId(null); setView('library') }}
               >Bibliothèque</NavBtn>
               <NavBtn active={view === 'compare'} onClick={() => setView('compare')}>Comparer</NavBtn>
+              <NavBtn active={view === 'scouting'} onClick={() => setView('scouting')}>Scouting</NavBtn>
               <NavBtn onClick={() => { setView('home') }}>Changer de compte</NavBtn>
             </>
           )}
@@ -314,6 +316,9 @@ export default function App() {
         )}
         {view === 'library' && (
           <LibraryView onOpenBook={id => { setActiveBookId(id); setView('book') }} />
+        )}
+        {view === 'scouting' && (
+          <ScoutingView />
         )}
         {view === 'book' && activeBookId && (
           <BookView
