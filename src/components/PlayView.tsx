@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Chess } from 'chess.js'
-import { Chessboard } from 'react-chessboard'
+import TrainingBoard from './TrainingBoard'
 import type { StockfishEngine } from '../engine/stockfish'
 import { playMove, playCapture, playSuccess } from '../audio/sounds'
 
@@ -253,17 +253,12 @@ export default function PlayView({ engine }: Props) {
       </div>
 
       <div className="grid lg:grid-cols-[minmax(0,1fr)_280px] gap-4">
-        <div className="w-[min(85vw,560px)] mx-auto">
-          <Chessboard
-            options={{
-              position,
-              boardOrientation: userColor,
-              allowDragging: !outcome && !thinking && game.turn() === userColor[0],
-              animationDurationInMs: 200,
-              onPieceDrop,
-              darkSquareStyle: { backgroundColor: '#769656' },
-              lightSquareStyle: { backgroundColor: '#eeeed2' },
-            }}
+        <div className="mx-auto w-full max-w-[560px]">
+          <TrainingBoard
+            position={position}
+            orientation={userColor}
+            allowDragging={!outcome && !thinking && game.turn() === userColor[0]}
+            onPieceDrop={onPieceDrop}
           />
           <div className="mt-3 flex gap-2">
             {!outcome && (

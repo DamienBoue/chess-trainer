@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Chess } from 'chess.js'
-import { Chessboard } from 'react-chessboard'
+import TrainingBoard from './TrainingBoard'
 import type { Exercise } from '../analysis/exercises'
 import { CATEGORY_LABELS, CATEGORY_COLORS } from '../analysis/exercises'
 
@@ -60,26 +60,17 @@ export default function SharedExerciseView({ exercise, onClose }: Props) {
         {exercise.context.opening && <span className="text-xs text-neutral-500">{exercise.context.opening}</span>}
       </div>
 
-      <div className="flex justify-center mb-3">
-        <div className="w-[min(85vw,560px)]">
-          <Chessboard
-            options={{
-              position,
-              boardOrientation: exercise.userColor,
-              allowDragging: status !== 'correct',
-              animationDurationInMs: 200,
-              darkSquareStyle: { backgroundColor: '#769656' },
-              lightSquareStyle: { backgroundColor: '#eeeed2' },
-              onPieceDrop: ({ sourceSquare, targetSquare }) => {
-                if (!targetSquare) return false
-                return tryMove(sourceSquare, targetSquare)
-              },
-            }}
-          />
-          <div className="text-xs text-neutral-500 text-center mt-2">
-            Trait aux {exercise.sideToMove === 'w' ? 'Blancs' : 'Noirs'} (toi).
-          </div>
-        </div>
+      <TrainingBoard
+        position={position}
+        orientation={exercise.userColor}
+        allowDragging={status !== 'correct'}
+        onPieceDrop={({ sourceSquare, targetSquare }) => {
+          if (!targetSquare) return false
+          return tryMove(sourceSquare, targetSquare)
+        }}
+      />
+      <div className="text-xs text-neutral-500 text-center mb-3">
+        Trait aux {exercise.sideToMove === 'w' ? 'Blancs' : 'Noirs'} (toi).
       </div>
 
       {feedback && (

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Chess } from 'chess.js'
-import { Chessboard } from 'react-chessboard'
+import TrainingBoard from './TrainingBoard'
 import type { Book, BookExercise, BookProgress, ExerciseOutcome } from '../library/types'
 import { getBook, getProgress, recordOutcome } from '../library/storage'
 import { playMove, playCapture, playSuccess, playWrong } from '../audio/sounds'
@@ -433,17 +433,13 @@ function BrowseMode({ book, progress, onProgressChange, onBack, onStartRush }: B
               </div>
             </div>
 
-            <div className="aspect-square max-w-[560px] mx-auto">
-              <Chessboard
-                options={{
-                  position,
-                  boardOrientation: active.side === 'w' ? 'white' : 'black',
-                  allowDragging: status !== 'solved' && status !== 'revealed',
-                  onPieceDrop,
-                  id: active.id,
-                }}
-              />
-            </div>
+            <TrainingBoard
+              position={position}
+              orientation={active.side}
+              allowDragging={status !== 'solved' && status !== 'revealed'}
+              onPieceDrop={onPieceDrop}
+              id={active.id}
+            />
 
             <div className="mt-3 min-h-[2.5rem] text-sm">
               {feedback ? (

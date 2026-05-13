@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Chessboard } from 'react-chessboard'
+import TrainingBoard from './TrainingBoard'
 import type { ChessComGame, GameAnalysis, MoveAnalysis } from '../types'
 import { StockfishEngine } from '../engine/stockfish'
 import { analyzeGame } from '../analysis/analyze'
@@ -137,18 +137,14 @@ export default function AnalysisView({
         <div className="flex gap-2 items-start">
           <EvalBar evalCp={currentEvalWhite} />
           <div className="w-[min(70vw,560px)]">
-            <Chessboard
-              options={{
-                position: currentFen,
-                boardOrientation: flipped
-                  ? (analysis.userColor === 'white' ? 'black' : 'white')
-                  : analysis.userColor,
-                allowDragging: false,
-                animationDurationInMs: 150,
-                arrows,
-                darkSquareStyle: { backgroundColor: '#769656' },
-                lightSquareStyle: { backgroundColor: '#eeeed2' },
-              }}
+            <TrainingBoard
+              position={currentFen}
+              orientation={flipped
+                ? (analysis.userColor === 'white' ? 'black' : 'white')
+                : analysis.userColor}
+              allowDragging={false}
+              animationDurationInMs={150}
+              arrows={arrows}
             />
             <div className="flex items-center justify-between mt-3 text-sm">
               <button onClick={() => setCurrentPly(0)} className="px-2 py-1 hover:bg-neutral-800 rounded">⏮</button>

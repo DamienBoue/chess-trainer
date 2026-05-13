@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Chess } from 'chess.js'
-import { Chessboard } from 'react-chessboard'
+import TrainingBoard from './TrainingBoard'
 import type { Exercise } from '../analysis/exercises'
 import { CATEGORY_COLORS, CATEGORY_LABELS } from '../analysis/exercises'
 import { playSuccess, playWrong, playMove, playCapture } from '../audio/sounds'
@@ -376,26 +376,17 @@ function RushBoard({
         <span className="text-neutral-400">Trait aux {exercise.sideToMove === 'w' ? 'Blancs' : 'Noirs'}</span>
       </div>
 
-      <div className="flex justify-center">
-        <div className="relative w-[min(85vw,560px)]">
-          <Chessboard
-            options={{
-              position,
-              boardOrientation: exercise.userColor,
-              allowDragging: !feedback,
-              animationDurationInMs: 200,
-              squareStyles,
-              darkSquareStyle: { backgroundColor: '#769656' },
-              lightSquareStyle: { backgroundColor: '#eeeed2' },
-              onPieceDrop: ({ sourceSquare, targetSquare }) => {
-                if (!targetSquare) return false
-                return tryMove(sourceSquare, targetSquare)
-              },
-            }}
-          />
-          {feedback && <FeedbackBadge feedback={feedback} />}
-        </div>
-      </div>
+      <TrainingBoard
+        position={position}
+        orientation={exercise.userColor}
+        allowDragging={!feedback}
+        squareStyles={squareStyles}
+        onPieceDrop={({ sourceSquare, targetSquare }) => {
+          if (!targetSquare) return false
+          return tryMove(sourceSquare, targetSquare)
+        }}
+        overlay={feedback ? <FeedbackBadge feedback={feedback} /> : null}
+      />
 
       {feedback && (
         <div className="text-center mt-4 space-y-1">

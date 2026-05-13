@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Chess } from 'chess.js'
-import { Chessboard } from 'react-chessboard'
+import TrainingBoard from './TrainingBoard'
 import type { GameAnalysis } from '../types'
 import {
   buildRepertoire, topLines, alternativesAt, rollupString,
@@ -412,24 +412,16 @@ function TrainerBoard({
       <div className="text-sm text-neutral-300">
         {root.parent} — {root.color === 'white' ? 'Blancs' : 'Noirs'} · coup {session.pathKeys.length + 1}
       </div>
-      <div className="flex justify-center">
-        <div className="w-[min(70vw,440px)]">
-          <Chessboard
-            options={{
-              position: session.currentFen,
-              boardOrientation: root.color,
-              allowDragging: session.status !== 'finished',
-              animationDurationInMs: 200,
-              darkSquareStyle: { backgroundColor: '#769656' },
-              lightSquareStyle: { backgroundColor: '#eeeed2' },
-              onPieceDrop: ({ sourceSquare, targetSquare }) => {
-                if (!targetSquare) return false
-                return tryMove(sourceSquare, targetSquare)
-              },
-            }}
-          />
-        </div>
-      </div>
+      <TrainingBoard
+        position={session.currentFen}
+        orientation={root.color}
+        allowDragging={session.status !== 'finished'}
+        maxWidth={440}
+        onPieceDrop={({ sourceSquare, targetSquare }) => {
+          if (!targetSquare) return false
+          return tryMove(sourceSquare, targetSquare)
+        }}
+      />
       {session.feedback && (
         <div className={`text-sm rounded p-2 ${
           session.status === 'correct' || session.status === 'finished' ? 'text-green-400 bg-green-500/10'
@@ -646,18 +638,15 @@ function ExplorerPanel({ roots }: ExplorerProps) {
       </div>
 
       <div className="grid lg:grid-cols-[auto_1fr] gap-4">
-        <div className="w-[min(70vw,440px)]">
-          <Chessboard
-            options={{
-              position: currentFen,
-              boardOrientation: orientation,
-              animationDurationInMs: 200,
-              darkSquareStyle: { backgroundColor: '#769656' },
-              lightSquareStyle: { backgroundColor: '#eeeed2' },
-              onPieceDrop: ({ sourceSquare, targetSquare }) => {
-                if (!targetSquare) return false
-                return manualMove(sourceSquare, targetSquare)
-              },
+        <div className="mx-auto w-full max-w-[440px]">
+          <TrainingBoard
+            position={currentFen}
+            orientation={orientation}
+            allowDragging={true}
+            maxWidth={440}
+            onPieceDrop={({ sourceSquare, targetSquare }) => {
+              if (!targetSquare) return false
+              return manualMove(sourceSquare, targetSquare)
             }}
           />
           <div className="flex items-center gap-2 mt-2 text-xs">

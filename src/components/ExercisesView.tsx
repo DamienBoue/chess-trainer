@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Chess } from 'chess.js'
-import { Chessboard } from 'react-chessboard'
+import TrainingBoard from './TrainingBoard'
 import type { GameAnalysis } from '../types'
 import {
   type Exercise,
@@ -444,28 +444,27 @@ function ExercisePractice({
         {/* Board column */}
         <div className="flex gap-2 items-start">
           <EvalBar evalCp={exercise.evalBeforeWhite} />
-          <div className="relative w-[min(70vw,560px)]">
-            <Chessboard
-              options={{
-                position,
-                boardOrientation: exercise.userColor,
-                allowDragging: status !== 'completed' && status !== 'revealed' && isUserTurn,
-                animationDurationInMs: 200,
-                squareStyles,
-                darkSquareStyle: { backgroundColor: '#769656' },
-                lightSquareStyle: { backgroundColor: '#eeeed2' },
-                onPieceDrop: ({ sourceSquare, targetSquare }) => {
-                  if (!targetSquare) return false
-                  return tryMove(sourceSquare, targetSquare)
-                },
+          <div className="w-[min(70vw,560px)]">
+            <TrainingBoard
+              position={position}
+              orientation={exercise.userColor}
+              allowDragging={status !== 'completed' && status !== 'revealed' && isUserTurn}
+              squareStyles={squareStyles}
+              onPieceDrop={({ sourceSquare, targetSquare }) => {
+                if (!targetSquare) return false
+                return tryMove(sourceSquare, targetSquare)
               }}
+              overlay={
+                <>
+                  {showBadge && (status === 'progress' || status === 'wrong') && (
+                    <FeedbackBadge correct={status === 'progress'} />
+                  )}
+                  {status === 'completed' && (
+                    <FeedbackBadge correct={true} />
+                  )}
+                </>
+              }
             />
-            {showBadge && (status === 'progress' || status === 'wrong') && (
-              <FeedbackBadge correct={status === 'progress'} />
-            )}
-            {status === 'completed' && (
-              <FeedbackBadge correct={true} />
-            )}
             <div className="text-xs text-neutral-500 text-center mt-2">
               {status === 'completed' || status === 'revealed'
                 ? <>Ligne {hasContinuation ? `(${lineSans.length} coups)` : ''} affichée.</>

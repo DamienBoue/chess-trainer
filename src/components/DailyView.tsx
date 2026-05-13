@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Chess } from 'chess.js'
-import { Chessboard } from 'react-chessboard'
+import TrainingBoard from './TrainingBoard'
 import type { Exercise } from '../analysis/exercises'
 import { CATEGORY_COLORS, CATEGORY_LABELS, CATEGORY_DESCRIPTIONS } from '../analysis/exercises'
 import {
@@ -152,26 +152,17 @@ function DailyPuzzle({
 
       <p className="text-sm text-neutral-300">{CATEGORY_DESCRIPTIONS[exercise.category]}</p>
 
-      <div className="flex justify-center">
-        <div className="w-[min(85vw,560px)]">
-          <Chessboard
-            options={{
-              position,
-              boardOrientation: exercise.userColor,
-              allowDragging: status !== 'solved',
-              animationDurationInMs: 200,
-              darkSquareStyle: { backgroundColor: '#769656' },
-              lightSquareStyle: { backgroundColor: '#eeeed2' },
-              onPieceDrop: ({ sourceSquare, targetSquare }) => {
-                if (!targetSquare) return false
-                return tryMove(sourceSquare, targetSquare)
-              },
-            }}
-          />
-          <div className="text-xs text-neutral-500 text-center mt-2">
-            Trait aux {exercise.sideToMove === 'w' ? 'Blancs' : 'Noirs'} (toi).
-          </div>
-        </div>
+      <TrainingBoard
+        position={position}
+        orientation={exercise.userColor}
+        allowDragging={status !== 'solved'}
+        onPieceDrop={({ sourceSquare, targetSquare }) => {
+          if (!targetSquare) return false
+          return tryMove(sourceSquare, targetSquare)
+        }}
+      />
+      <div className="text-xs text-neutral-500 text-center">
+        Trait aux {exercise.sideToMove === 'w' ? 'Blancs' : 'Noirs'} (toi).
       </div>
 
       {feedback && (

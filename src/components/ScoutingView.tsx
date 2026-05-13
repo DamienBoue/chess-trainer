@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Chess } from 'chess.js'
-import { Chessboard } from 'react-chessboard'
+import TrainingBoard from './TrainingBoard'
 import type { ChessComGame } from '../types'
 import { getRecentGames } from '../api/chesscom'
 import { scoutingProfile, type ScoutingProfile, type OpeningStat, type ColorSplit } from '../analysis/scouting'
@@ -188,16 +188,13 @@ function LichessExplorerPanel({ username }: { username: string }) {
 
       <div className="grid md:grid-cols-[260px_1fr] gap-4">
         <div>
-          <div className="aspect-square">
-            <Chessboard
-              options={{
-                position: node.fen,
-                boardOrientation: color,
-                allowDragging: false,
-                id: 'scout-explorer',
-              }}
-            />
-          </div>
+          <TrainingBoard
+            position={node.fen}
+            orientation={color}
+            allowDragging={false}
+            id="scout-explorer"
+            maxWidth={260}
+          />
           <div className="mt-2 text-xs text-neutral-500 break-words">
             {node.history.length > 0 ? (
               <>

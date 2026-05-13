@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Chess } from 'chess.js'
-import { Chessboard } from 'react-chessboard'
+import TrainingBoard from './TrainingBoard'
 import type { Square } from 'chess.js'
 import type { GameAnalysis } from '../types'
 import { extractExercises } from '../analysis/exercises'
@@ -196,20 +196,14 @@ export default function BlunderDrillView({ analyses, onExit }: Props) {
       </div>
 
       <div className="grid lg:grid-cols-[minmax(0,1fr)_320px] gap-4">
-        <div className="w-[min(85vw,560px)] mx-auto">
-          <Chessboard
-            options={{
-              position: current.fen,
-              boardOrientation: current.userColor,
-              allowDragging: false,
-              squareStyles,
-              darkSquareStyle: { backgroundColor: '#769656' },
-              lightSquareStyle: { backgroundColor: '#eeeed2' },
-              id: current.id,
-              onSquareClick,
-            }}
-          />
-        </div>
+        <TrainingBoard
+          position={current.fen}
+          orientation={current.userColor}
+          allowDragging={false}
+          squareStyles={squareStyles}
+          onSquareClick={onSquareClick}
+          id={current.id}
+        />
 
         <aside className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-4 space-y-3">
           <h3 className="font-semibold text-sm">Quelle est la menace ?</h3>

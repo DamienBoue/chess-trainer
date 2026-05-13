@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Chess } from 'chess.js'
-import { Chessboard } from 'react-chessboard'
+import TrainingBoard from './TrainingBoard'
 import type { GameAnalysis } from '../types'
 import { extractExercises } from '../analysis/exercises'
 import { playSuccess, playWrong } from '../audio/sounds'
@@ -156,16 +156,13 @@ export default function CalcDepthView({ analyses, onExit }: Props) {
       </div>
 
       <div className="grid lg:grid-cols-[minmax(0,1fr)_360px] gap-4">
-        <div className="w-[min(85vw,500px)] mx-auto">
-          <Chessboard
-            options={{
-              position: fenToShow,
-              boardOrientation: current.userColor,
-              allowDragging: false,
-              darkSquareStyle: { backgroundColor: '#769656' },
-              lightSquareStyle: { backgroundColor: '#eeeed2' },
-              id: current.id,
-            }}
+        <div className="mx-auto w-full max-w-[500px]">
+          <TrainingBoard
+            position={fenToShow}
+            orientation={current.userColor}
+            allowDragging={false}
+            id={current.id}
+            maxWidth={500}
           />
           <div className="mt-2 text-xs text-neutral-500 text-center">
             {result
