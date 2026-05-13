@@ -1,7 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { Chess } from 'chess.js'
+import { Chessboard } from 'react-chessboard'
 import type { ChessComGame } from '../types'
 import { getRecentGames } from '../api/chesscom'
 import { scoutingProfile, type ScoutingProfile, type OpeningStat, type ColorSplit } from '../analysis/scouting'
+import { fetchExplorer, type ExplorerResponse, type ExplorerMove } from '../api/lichess'
 
 export default function ScoutingView() {
   const [name, setName] = useState('')
@@ -80,7 +83,216 @@ export default function ScoutingView() {
       )}
 
       {profile && games && <ProfileCard profile={profile} games={games} />}
+      {profile && <LichessExplorerPanel username={profile.username} />}
     </div>
+  )
+}
+
+// ---- Lichess opening explorer panel ----------------------------------------
+// Shows the opening tree this player has actually played on Lichess.
+// Walks the user from the start position down the tree as they pick moves.
+
+interface ExplorerNode {
+  fen: string
+  history: Array<{ san: string; mover: 'w' | 'b' }>
+}
+
+function LichessExplorerPanel({ username }: { username: string }) {
+  const [color, setColor] = useState<'white' | 'black'>('white')
+  const [node, setNode] = useState<ExplorerNode>(() => ({
+    fen: new Chess().fen(),
+    history: [],
+  }))
+  const [data, setData] = useState<ExplorerResponse | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  // Reset traversal when color or player changes.
+  useEffect(() => {
+    setNode({ fen: new Chess().fen(), history: [] })
+  }, [color, username])
+
+  useEffect(() => {
+    let aborted = false
+    const ctrl = new AbortController()
+    setLoading(true)
+    setError(null)
+    fetchExplorer({
+      source: 'player',
+      player: username,
+      color,
+      fen: node.fen,
+      speeds: ['blitz', 'rapid', 'classical'],
+      moves: 10,
+    }, ctrl.signal).then(r => {
+      if (aborted) return
+      if (!r) setError('Lichess injoignable (pseudo absent ou compte privé ?)')
+      setData(r)
+      setLoading(false)
+    })
+    return () => { aborted = true; ctrl.abort() }
+  }, [username, color, node.fen])
+
+  function pushMove(san: string) {
+    const board = new Chess(node.fen)
+    const mv = board.move(san)
+    if (!mv) return
+    setNode({
+      fen: board.fen(),
+      history: [...node.history, { san: mv.san, mover: mv.color === 'w' ? 'w' : 'b' }],
+    })
+  }
+
+  function popMove() {
+    if (node.history.length === 0) return
+    const board = new Chess()
+    const newHist = node.history.slice(0, -1)
+    for (const h of newHist) board.move(h.san)
+    setNode({ fen: board.fen(), history: newHist })
+  }
+
+  function reset() {
+    setNode({ fen: new Chess().fen(), history: [] })
+  }
+
+  const totalGames = data ? data.white + data.draws + data.black : 0
+  const playerScore = data && totalGames > 0
+    ? (color === 'white'
+        ? (data.white + 0.5 * data.draws) / totalGames
+        : (data.black + 0.5 * data.draws) / totalGames)
+    : 0
+
+  return (
+    <div className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-4 space-y-3">
+      <div className="flex items-center gap-3 flex-wrap">
+        <h3 className="font-semibold text-sm">
+          🎯 Explorateur Lichess
+          <span className="text-xs text-neutral-500 ml-2">(parties effectives de @{username})</span>
+        </h3>
+        <div className="ml-auto inline-flex rounded-md border border-[var(--color-border)] bg-neutral-900 p-0.5 text-xs">
+          <button
+            onClick={() => setColor('white')}
+            className={`px-2 py-1 rounded ${color === 'white' ? 'bg-[var(--color-accent)] text-white' : 'text-neutral-300 hover:bg-neutral-800'}`}
+          >Quand il joue Blancs</button>
+          <button
+            onClick={() => setColor('black')}
+            className={`px-2 py-1 rounded ${color === 'black' ? 'bg-[var(--color-accent)] text-white' : 'text-neutral-300 hover:bg-neutral-800'}`}
+          >Quand il joue Noirs</button>
+        </div>
+      </div>
+
+      <p className="text-xs text-neutral-500">
+        Si @{username} a un compte Lichess avec le même pseudo, ses parties publiques y sont indexées.
+        Clique une réponse pour explorer la suite de son répertoire.
+      </p>
+
+      <div className="grid md:grid-cols-[260px_1fr] gap-4">
+        <div>
+          <div className="aspect-square">
+            <Chessboard
+              options={{
+                position: node.fen,
+                boardOrientation: color,
+                allowDragging: false,
+                id: 'scout-explorer',
+              }}
+            />
+          </div>
+          <div className="mt-2 text-xs text-neutral-500 break-words">
+            {node.history.length > 0 ? (
+              <>
+                <span className="text-neutral-300">{formatLine(node.history)}</span>
+                <div className="mt-1 flex gap-2">
+                  <button onClick={popMove} className="px-2 py-0.5 rounded bg-neutral-800 hover:bg-neutral-700">← Annuler</button>
+                  <button onClick={reset} className="px-2 py-0.5 rounded bg-neutral-800 hover:bg-neutral-700">Position initiale</button>
+                </div>
+              </>
+            ) : (
+              <>Position initiale.</>
+            )}
+          </div>
+        </div>
+
+        <div>
+          {loading && <p className="text-sm text-neutral-500">Chargement…</p>}
+          {error && <p className="text-sm text-orange-300">{error}</p>}
+          {data && !loading && !error && (
+            <>
+              <div className="text-xs text-neutral-400 mb-2">
+                {totalGames} parties · score de @{username} : {(playerScore * 100).toFixed(0)}%
+                {data.opening?.name && <> · <span className="text-neutral-300">{data.opening.name}</span></>}
+              </div>
+              {data.moves.length === 0 ? (
+                <p className="text-sm text-neutral-500">Aucun coup recensé depuis cette position.</p>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead className="text-neutral-500 text-xs">
+                    <tr>
+                      <th className="text-left font-normal pb-1">Coup</th>
+                      <th className="text-right font-normal">Parties</th>
+                      <th className="text-right font-normal">Score</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.moves.slice(0, 8).map(m => (
+                      <MoveRow
+                        key={m.uci}
+                        move={m}
+                        playerColor={color}
+                        totalForPosition={totalGames}
+                        onClick={() => pushMove(m.san)}
+                      />
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function formatLine(history: Array<{ san: string; mover: 'w' | 'b' }>): string {
+  let out = ''
+  for (let i = 0; i < history.length; i++) {
+    if (i % 2 === 0) out += `${Math.floor(i / 2) + 1}.`
+    out += ` ${history[i].san}`
+  }
+  return out.trim()
+}
+
+function MoveRow({
+  move, playerColor, totalForPosition, onClick,
+}: {
+  move: ExplorerMove
+  playerColor: 'white' | 'black'
+  totalForPosition: number
+  onClick: () => void
+}) {
+  const total = move.white + move.draws + move.black
+  const freq = totalForPosition > 0 ? total / totalForPosition : 0
+  const playerScore = total > 0
+    ? (playerColor === 'white'
+        ? (move.white + 0.5 * move.draws) / total
+        : (move.black + 0.5 * move.draws) / total)
+    : 0
+  const scoreColor = playerScore >= 0.6 ? 'text-green-400'
+    : playerScore >= 0.4 ? 'text-neutral-300' : 'text-red-400'
+  return (
+    <tr className="border-t border-[var(--color-border)]/40 hover:bg-neutral-900/50">
+      <td className="py-1.5">
+        <button onClick={onClick} className="text-left font-mono text-neutral-200 hover:text-white">
+          {move.san}
+          <span className="text-neutral-600 ml-2 text-xs">{(freq * 100).toFixed(0)}%</span>
+        </button>
+      </td>
+      <td className="py-1.5 text-right text-neutral-400 font-mono text-xs">{total}</td>
+      <td className={`py-1.5 text-right font-mono text-xs ${scoreColor}`}>
+        {(playerScore * 100).toFixed(0)}%
+      </td>
+    </tr>
   )
 }
 
