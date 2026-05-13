@@ -198,27 +198,12 @@ export default function App() {
         <h1 className="text-lg font-semibold tracking-tight">
           ♞ Chess Trainer
         </h1>
-        {username && (
-          <span className="text-sm text-neutral-400">@{username}</span>
-        )}
-        <nav className="ml-auto flex gap-1 text-sm flex-wrap">
+        <nav className="ml-auto flex items-center gap-1 text-sm flex-wrap">
           {username && (
             <>
               <NavBtn active={view === 'games'} onClick={() => setView('games')}>Parties</NavBtn>
               <NavBtn active={view === 'daily'} onClick={() => setView('daily')} disabled={exerciseCount === 0}>
                 {dailySolvedToday ? '✓ ' : ''}Quotidien{dailyStreak > 0 ? ` 🔥${dailyStreak}` : ''}
-              </NavBtn>
-              <NavBtn active={view === 'exercises'} onClick={() => setView('exercises')} disabled={exerciseCount === 0}>
-                Exercices {dueCount > 0 ? `(${dueCount} dus${exerciseCount !== dueCount ? `/${exerciseCount}` : ''})` : exerciseCount > 0 ? `(${exerciseCount})` : ''}
-              </NavBtn>
-              <NavBtn active={view === 'rush'} onClick={() => setView('rush')} disabled={exerciseCount < 5}>
-                Puzzle Rush
-              </NavBtn>
-              <NavBtn active={view === 'blunder'} onClick={() => setView('blunder')} disabled={exerciseCount < 3}>
-                Blunder
-              </NavBtn>
-              <NavBtn active={view === 'calc'} onClick={() => setView('calc')} disabled={exerciseCount < 3}>
-                Calcul
               </NavBtn>
               <NavBtn active={view === 'stats'} onClick={() => setView('stats')} disabled={filteredAnalyses.length === 0}>
                 Stats {filteredAnalyses.length > 0 && `(${filteredAnalyses.length})`}
@@ -226,15 +211,74 @@ export default function App() {
               <NavBtn active={view === 'repertoire'} onClick={() => setView('repertoire')} disabled={filteredAnalyses.length < 3}>
                 Répertoire
               </NavBtn>
-              <NavBtn
-                active={view === 'library' || view === 'book'}
-                onClick={() => { setActiveBookId(null); setView('library') }}
-              >Bibliothèque</NavBtn>
-              <NavBtn active={view === 'compare'} onClick={() => setView('compare')}>Comparer</NavBtn>
-              <NavBtn active={view === 'scouting'} onClick={() => setView('scouting')}>Scouting</NavBtn>
-              <NavBtn active={view === 'players'} onClick={() => setView('players')}>Joueurs PGN</NavBtn>
+              <NavGroup
+                label="Entraînement"
+                active={view === 'exercises' || view === 'rush' || view === 'blunder' || view === 'calc' || view === 'library' || view === 'book'}
+                items={[
+                  {
+                    key: 'exercises',
+                    label: `Exercices${dueCount > 0 ? ` (${dueCount} dus${exerciseCount !== dueCount ? `/${exerciseCount}` : ''})` : exerciseCount > 0 ? ` (${exerciseCount})` : ''}`,
+                    onClick: () => setView('exercises'),
+                    disabled: exerciseCount === 0,
+                    active: view === 'exercises',
+                  },
+                  {
+                    key: 'rush',
+                    label: 'Puzzle Rush',
+                    onClick: () => setView('rush'),
+                    disabled: exerciseCount < 5,
+                    active: view === 'rush',
+                  },
+                  {
+                    key: 'blunder',
+                    label: 'Blunder reflex',
+                    onClick: () => setView('blunder'),
+                    disabled: exerciseCount < 3,
+                    active: view === 'blunder',
+                  },
+                  {
+                    key: 'calc',
+                    label: 'Calcul (séquence)',
+                    onClick: () => setView('calc'),
+                    disabled: exerciseCount < 3,
+                    active: view === 'calc',
+                  },
+                  { key: '-', divider: true } as NavMenuItem,
+                  {
+                    key: 'library',
+                    label: 'Bibliothèque (livres)',
+                    onClick: () => { setActiveBookId(null); setView('library') },
+                    active: view === 'library' || view === 'book',
+                  },
+                ]}
+              />
+              <NavGroup
+                label="Adversaires"
+                active={view === 'compare' || view === 'scouting' || view === 'players'}
+                items={[
+                  {
+                    key: 'compare',
+                    label: 'Comparer (ami chess.com)',
+                    onClick: () => setView('compare'),
+                    active: view === 'compare',
+                  },
+                  {
+                    key: 'scouting',
+                    label: 'Scouting (chess.com)',
+                    onClick: () => setView('scouting'),
+                    active: view === 'scouting',
+                  },
+                  {
+                    key: 'players',
+                    label: 'Joueurs PGN (FIDE / OTB)',
+                    onClick: () => setView('players'),
+                    active: view === 'players',
+                  },
+                ]}
+              />
               <NavBtn active={view === 'play'} onClick={() => setView('play')}>Jouer</NavBtn>
-              <NavBtn onClick={() => { setView('home') }}>Changer de compte</NavBtn>
+              <span className="mx-1 h-5 w-px bg-neutral-700/60" aria-hidden="true" />
+              <NavBtn onClick={() => { setView('home') }}>@{username}</NavBtn>
             </>
           )}
           <a
@@ -368,5 +412,80 @@ function NavBtn({ children, active, onClick, disabled }: { children: React.React
     >
       {children}
     </button>
+  )
+}
+
+// Item in a NavGroup dropdown. A `divider` entry renders a horizontal rule.
+interface NavMenuItem {
+  key: string
+  label?: string
+  onClick?: () => void
+  disabled?: boolean
+  active?: boolean
+  divider?: boolean
+}
+
+function NavGroup({ label, active, items }: { label: string; active: boolean; items: NavMenuItem[] }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    if (!open) return
+    function onDoc(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    function onEsc(e: KeyboardEvent) { if (e.key === 'Escape') setOpen(false) }
+    document.addEventListener('mousedown', onDoc)
+    document.addEventListener('keydown', onEsc)
+    return () => {
+      document.removeEventListener('mousedown', onDoc)
+      document.removeEventListener('keydown', onEsc)
+    }
+  }, [open])
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        className={`px-3 py-1.5 rounded-md transition-colors flex items-center gap-1 ${
+          active
+            ? 'bg-[var(--color-accent)] text-white'
+            : 'text-neutral-300 hover:bg-neutral-800'
+        }`}
+        aria-haspopup="menu"
+        aria-expanded={open}
+      >
+        {label}
+        <svg width="10" height="10" viewBox="0 0 12 12" className="opacity-70" aria-hidden="true">
+          <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+        </svg>
+      </button>
+      {open && (
+        <div
+          role="menu"
+          className="absolute right-0 mt-1 min-w-[14rem] bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md shadow-lg z-20 py-1"
+        >
+          {items.map(item => {
+            if (item.divider) {
+              return <div key={item.key} className="my-1 border-t border-[var(--color-border)]" />
+            }
+            return (
+              <button
+                key={item.key}
+                role="menuitem"
+                disabled={item.disabled}
+                onClick={() => { setOpen(false); item.onClick?.() }}
+                className={`w-full text-left px-3 py-1.5 text-sm transition-colors ${
+                  item.active
+                    ? 'bg-[var(--color-accent)] text-white'
+                    : 'text-neutral-300 hover:bg-neutral-800 disabled:opacity-40 disabled:hover:bg-transparent'
+                }`}
+              >
+                {item.label}
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
   )
 }
