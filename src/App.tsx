@@ -11,7 +11,8 @@ import SharedExerciseView from './components/SharedExerciseView'
 import DailyView from './components/DailyView'
 import CompareView from './components/CompareView'
 import RepertoireView from './components/RepertoireView'
-import WoodpeckerView from './components/WoodpeckerView'
+import LibraryView from './components/LibraryView'
+import BookView from './components/BookView'
 import {
   GlobalFilters,
   applyGlobalFilters,
@@ -38,10 +39,11 @@ export interface BatchState {
   failed: number
 }
 
-type View = 'home' | 'games' | 'analysis' | 'stats' | 'exercises' | 'rush' | 'daily' | 'compare' | 'repertoire' | 'woodpecker'
+type View = 'home' | 'games' | 'analysis' | 'stats' | 'exercises' | 'rush' | 'daily' | 'compare' | 'repertoire' | 'library' | 'book'
 
 export default function App() {
   const [view, setView] = useState<View>('home')
+  const [activeBookId, setActiveBookId] = useState<string | null>(null)
   const [username, setUsername] = useState<string>(() => localStorage.getItem('chess.username') ?? '')
   const [games, setGames] = useState<ChessComGame[]>(() =>
     username ? loadGames(username) : [],
@@ -213,7 +215,10 @@ export default function App() {
               <NavBtn active={view === 'repertoire'} onClick={() => setView('repertoire')} disabled={filteredAnalyses.length < 3}>
                 Répertoire
               </NavBtn>
-              <NavBtn active={view === 'woodpecker'} onClick={() => setView('woodpecker')}>Woodpecker</NavBtn>
+              <NavBtn
+                active={view === 'library' || view === 'book'}
+                onClick={() => { setActiveBookId(null); setView('library') }}
+              >Bibliothèque</NavBtn>
               <NavBtn active={view === 'compare'} onClick={() => setView('compare')}>Comparer</NavBtn>
               <NavBtn onClick={() => { setView('home') }}>Changer de compte</NavBtn>
             </>
@@ -233,7 +238,7 @@ export default function App() {
         </nav>
       </header>
 
-      {username && allAnalyses.length > 0 && view !== 'home' && view !== 'analysis' && view !== 'woodpecker' && (
+      {username && allAnalyses.length > 0 && view !== 'home' && view !== 'analysis' && view !== 'library' && view !== 'book' && (
         <div className="border-b border-[var(--color-border)] bg-[var(--color-panel)]/60 px-6 py-2 flex items-center gap-3 flex-wrap">
           <GlobalFilters
             tcValue={tcFilter}
@@ -307,8 +312,14 @@ export default function App() {
         {view === 'repertoire' && (
           <RepertoireView analyses={filteredAnalyses} />
         )}
-        {view === 'woodpecker' && (
-          <WoodpeckerView />
+        {view === 'library' && (
+          <LibraryView onOpenBook={id => { setActiveBookId(id); setView('book') }} />
+        )}
+        {view === 'book' && activeBookId && (
+          <BookView
+            bookId={activeBookId}
+            onBack={() => { setActiveBookId(null); setView('library') }}
+          />
         )}
       </main>
     </div>

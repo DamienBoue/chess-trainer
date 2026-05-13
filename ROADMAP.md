@@ -8,6 +8,8 @@ These were proposed and explicitly held off by the user. Don't drop them; pick t
 
 ## Ideas (not yet committed to)
 
+- Library cloud sync (move IndexedDB store to a self-hosted backend so books + progress follow the user across devices). Imported book content is copyrighted so anything we upload needs to stay in the user's own scope.
+- Image-based PDF importer (ChessBase exports): vision-LLM transcription of bitmap diagrams to FEN, or template matching against a curated pieces bank. Out of scope for now.
 - Cloud sync of analyses across devices (Supabase / Cloudflare KV / a tiny self-hosted endpoint).
 - Stockfish full (NNUE) build for deeper analysis on capable machines, with a setting toggle.
 - Multi-engine pool to run several Stockfish workers in parallel during batch analyses.

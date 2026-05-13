@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Imported book content (copyright — user-imported locally only)
+public/books/
+*.book.json
+scripts/__pycache__/
