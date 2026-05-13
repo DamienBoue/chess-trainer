@@ -17,6 +17,7 @@ import ScoutingView from './components/ScoutingView'
 import PlayView from './components/PlayView'
 import BlunderDrillView from './components/BlunderDrillView'
 import CalcDepthView from './components/CalcDepthView'
+import PlayersView from './components/PlayersView'
 import {
   GlobalFilters,
   applyGlobalFilters,
@@ -43,7 +44,7 @@ export interface BatchState {
   failed: number
 }
 
-type View = 'home' | 'games' | 'analysis' | 'stats' | 'exercises' | 'rush' | 'daily' | 'compare' | 'repertoire' | 'library' | 'book' | 'scouting' | 'play' | 'blunder' | 'calc'
+type View = 'home' | 'games' | 'analysis' | 'stats' | 'exercises' | 'rush' | 'daily' | 'compare' | 'repertoire' | 'library' | 'book' | 'scouting' | 'play' | 'blunder' | 'calc' | 'players'
 
 export default function App() {
   const [view, setView] = useState<View>('home')
@@ -231,6 +232,7 @@ export default function App() {
               >Bibliothèque</NavBtn>
               <NavBtn active={view === 'compare'} onClick={() => setView('compare')}>Comparer</NavBtn>
               <NavBtn active={view === 'scouting'} onClick={() => setView('scouting')}>Scouting</NavBtn>
+              <NavBtn active={view === 'players'} onClick={() => setView('players')}>Joueurs PGN</NavBtn>
               <NavBtn active={view === 'play'} onClick={() => setView('play')}>Jouer</NavBtn>
               <NavBtn onClick={() => { setView('home') }}>Changer de compte</NavBtn>
             </>
@@ -338,6 +340,9 @@ export default function App() {
         )}
         {view === 'calc' && (
           <CalcDepthView analyses={filteredAnalyses} onExit={() => setView('exercises')} />
+        )}
+        {view === 'players' && (
+          <PlayersView />
         )}
         {view === 'book' && activeBookId && (
           <BookView
