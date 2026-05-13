@@ -23,7 +23,9 @@ dist-ssr
 *.sln
 *.sw?
 
-# Imported book content (copyright — user-imported locally only)
-public/books/
+# Imported book content (copyright — user-imported locally only).
+# We DO ship the Lichess CC0 sample; everything else stays out of git.
+public/books/*
 *.book.json
+!public/books/lichess-sample.book.json
 scripts/__pycache__/

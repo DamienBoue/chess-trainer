@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Book } from '../library/types'
-import { listBooks, deleteBook, getProgress } from '../library/storage'
-import { importBookFromFile, migrateLegacyWoodpeckerProgress } from '../library/import'
+import { listBooks, deleteBook, getProgress, saveBook } from '../library/storage'
+import { importBookFromFile, migrateLegacyWoodpeckerProgress, validateBookJson } from '../library/import'
 
 interface Props {
   onOpenBook: (bookId: string) => void
@@ -60,6 +60,25 @@ export default function LibraryView({ onOpenBook }: Props) {
     await refresh()
   }
 
+  async function installLichessStarter() {
+    setBusy(true)
+    setError(null)
+    try {
+      const res = await fetch(`${import.meta.env.BASE_URL}books/lichess-sample.book.json`)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const raw = await res.json()
+      const book = validateBookJson(raw)
+      await saveBook(book)
+      await refresh()
+    } catch (e) {
+      setError(`Échec du chargement du pack Lichess : ${e instanceof Error ? e.message : e}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const hasLichess = rows?.some(r => r.book.id === 'lichess-puzzles') ?? false
+
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <div className="mb-4 flex items-baseline justify-between flex-wrap gap-3">
@@ -69,7 +88,17 @@ export default function LibraryView({ onOpenBook }: Props) {
             Tes livres d'exercices importés. Les fichiers JSON sont stockés localement (IndexedDB) — rien n'est uploadé.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          {!hasLichess && (
+            <button
+              onClick={installLichessStarter}
+              disabled={busy}
+              className="px-3 py-1.5 text-sm rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-200 font-medium"
+              title="1000 puzzles Lichess (CC0), répartis sur 4 niveaux de rating"
+            >
+              ♟ Installer le pack Lichess (1000)
+            </button>
+          )}
           <label className="px-3 py-1.5 text-sm rounded bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] text-white font-medium cursor-pointer">
             {busy ? 'Import…' : '＋ Importer un JSON'}
             <input
@@ -95,12 +124,22 @@ export default function LibraryView({ onOpenBook }: Props) {
         <summary className="cursor-pointer text-neutral-300">Comment importer un livre ?</summary>
         <div className="mt-3 text-neutral-400 leading-relaxed space-y-2">
           <p>
-            Lance <code className="bg-neutral-900 px-1 py-0.5 rounded text-xs">scripts/import_book.py &lt;chemin.pdf&gt;</code> sur ton PDF
-            (il faut <code>pymupdf</code> et <code>python-chess</code>). Le script produit un fichier JSON que tu déposes ici.
-          </p>
-          <p>
+            <strong>PDF (livre d'exercices)</strong> — lance{' '}
+            <code className="bg-neutral-900 px-1 py-0.5 rounded text-xs">scripts/import_book.py &lt;chemin.pdf&gt;</code> sur ton PDF
+            (il faut <code>pymupdf</code> et <code>python-chess</code>). Le script produit un JSON que tu déposes ici.
             Ça fonctionne sur les PDFs qui utilisent une police d'échecs vectorielle (Quality Chess, Gambit, Everyman…).
             Pour les PDFs avec diagrammes en images (ChessBase), repasse par un export PGN puis l'onglet "Parties".
+          </p>
+          <p>
+            <strong>Lichess Puzzle DB</strong> — télécharge{' '}
+            <a href="https://database.lichess.org/lichess_db_puzzle.csv.zst" className="underline text-neutral-200" target="_blank" rel="noopener">
+              lichess_db_puzzle.csv.zst
+            </a>{' '}(CC0, ~280 MB) puis :{' '}
+            <code className="bg-neutral-900 px-1 py-0.5 rounded text-xs">
+              scripts/import_lichess_puzzles.py lichess_db_puzzle.csv.zst --max 2000 --balanced-bands
+            </code>.
+            Tu obtiens un JSON à importer ici (par défaut 1000 puzzles répartis sur 4 niveaux). Tu peux filtrer par
+            thème (<code>--theme fork --theme pin</code>) ou rating (<code>--min-rating 1400</code>).
           </p>
         </div>
       </details>
