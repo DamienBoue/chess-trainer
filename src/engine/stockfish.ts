@@ -149,6 +149,23 @@ export class StockfishEngine {
     })
   }
 
+  /** Configure the engine's nominal strength.
+   *  `elo === null` removes the cap (full strength).
+   *  Otherwise must be 1320..3190 (Stockfish 16 range); anything below 1320
+   *  is clamped — Stockfish doesn't go below that. We accept lower target
+   *  numbers for ergonomics and clamp here.
+   */
+  async setStrength(elo: number | null): Promise<void> {
+    await this.readyPromise
+    if (elo === null) {
+      this.send('setoption name UCI_LimitStrength value false')
+      return
+    }
+    const clamped = Math.max(1320, Math.min(3190, Math.round(elo)))
+    this.send('setoption name UCI_LimitStrength value true')
+    this.send(`setoption name UCI_Elo value ${clamped}`)
+  }
+
   destroy() {
     this.worker.terminate()
   }
