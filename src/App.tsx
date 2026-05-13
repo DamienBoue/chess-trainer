@@ -15,6 +15,7 @@ import LibraryView from './components/LibraryView'
 import BookView from './components/BookView'
 import ScoutingView from './components/ScoutingView'
 import PlayView from './components/PlayView'
+import BlunderDrillView from './components/BlunderDrillView'
 import {
   GlobalFilters,
   applyGlobalFilters,
@@ -41,7 +42,7 @@ export interface BatchState {
   failed: number
 }
 
-type View = 'home' | 'games' | 'analysis' | 'stats' | 'exercises' | 'rush' | 'daily' | 'compare' | 'repertoire' | 'library' | 'book' | 'scouting' | 'play'
+type View = 'home' | 'games' | 'analysis' | 'stats' | 'exercises' | 'rush' | 'daily' | 'compare' | 'repertoire' | 'library' | 'book' | 'scouting' | 'play' | 'blunder'
 
 export default function App() {
   const [view, setView] = useState<View>('home')
@@ -211,6 +212,9 @@ export default function App() {
               <NavBtn active={view === 'rush'} onClick={() => setView('rush')} disabled={exerciseCount < 5}>
                 Puzzle Rush
               </NavBtn>
+              <NavBtn active={view === 'blunder'} onClick={() => setView('blunder')} disabled={exerciseCount < 3}>
+                Blunder
+              </NavBtn>
               <NavBtn active={view === 'stats'} onClick={() => setView('stats')} disabled={filteredAnalyses.length === 0}>
                 Stats {filteredAnalyses.length > 0 && `(${filteredAnalyses.length})`}
               </NavBtn>
@@ -324,6 +328,9 @@ export default function App() {
         )}
         {view === 'play' && (
           <PlayView engine={engineRef.current!} />
+        )}
+        {view === 'blunder' && (
+          <BlunderDrillView analyses={filteredAnalyses} onExit={() => setView('exercises')} />
         )}
         {view === 'book' && activeBookId && (
           <BookView
