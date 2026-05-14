@@ -496,7 +496,10 @@ export default function App() {
           <PlanView
             analyses={filteredAnalyses}
             progress={progress}
-            onNavigate={target => setView(target as View)}
+            onNavigate={(target, opts) => {
+              if (opts?.motif) setDrillMotif(opts.motif)
+              setView(target as View)
+            }}
           />
         )}
         {view === 'roadmap' && (

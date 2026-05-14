@@ -23,10 +23,11 @@ A 10-15 min curated session synthesising every training signal:
 1. Daily puzzle (if not solved today)
 2. Up to 5 SRS exercises that are due
 3. Up to 5 repertoire SRS cards that are due
-4. The single most costly recurring mistake
-5. The most-visited repertoire hole
+4. **Drill by motif** — your worst-performing motif (e.g. forks missed) when miss-rate ≥ 50% and ≥ 3 missed.
+5. The single most costly recurring mistake
+6. The most-visited repertoire hole
 
-Completion state persists per-day. Deep-links to the relevant view.
+**Adaptive ordering**: items are reranked based on your skill bracket — beginners get tactics-heavy priority, experts get opening prep priority. Completion state persists per-day. Deep-links to the relevant view.
 
 ## Game analysis
 
@@ -118,12 +119,9 @@ Completion state persists per-day. Deep-links to the relevant view.
 
 ## Planned (next loops)
 
-- Engine PV step-through inline in AnalysisView and on every blunder card.
-- Drill-by-motif mode (10 positions where you missed forks, etc.).
-- Tactical motif classification of your own blunders (fork-missed, pin-missed, ...).
 - Personal annotations per position.
 - Annotated PGN export.
 - Optional LLM hook (Anthropic / OpenAI) for prose blunder explanations.
-- Elo-bracket → curriculum module (full version).
 - Reverse-color drill (play the same position from the other side).
 - Phase-specific deep dive (which opening eats your endgames?).
+- Auto-fill the bracket via chess.com rating header on first import (currently uses median user rating across recent analyses).

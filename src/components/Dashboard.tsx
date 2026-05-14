@@ -42,9 +42,14 @@ export default function Dashboard({ username, analyses, progress, onNavigate }: 
   const dailyDone = dailyState?.date === today && dailyState.solved
   const dailyStreak = dailyState?.streak ?? 0
 
+  const totalGames = analyses.length
+  const eloPref = useMemo(() => loadEloPreference(), [])
+  const elo = effectiveElo(eloPref, analyses)
+  const bracket = bracketForElo(elo)
+
   const plan = useMemo(
-    () => buildPlan(analyses, progress, repProgress, { dailyDone: !!dailyDone }),
-    [analyses, progress, repProgress, dailyDone],
+    () => buildPlan(analyses, progress, repProgress, { dailyDone: !!dailyDone, bracket }),
+    [analyses, progress, repProgress, dailyDone, bracket],
   )
   const planState = useMemo(() => loadPlanState(today), [today])
   const planDoneCount = useMemo(() => {
@@ -53,11 +58,6 @@ export default function Dashboard({ username, analyses, progress, onNavigate }: 
     return plan.filter(p => doneSet.has(p.id)).length
   }, [plan, planState, dailyDone])
   const planMinutes = totalMinutes(plan)
-
-  const totalGames = analyses.length
-  const eloPref = useMemo(() => loadEloPreference(), [])
-  const elo = effectiveElo(eloPref, analyses)
-  const bracket = bracketForElo(elo)
 
   if (totalGames === 0) {
     return (

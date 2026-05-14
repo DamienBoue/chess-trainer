@@ -4,12 +4,15 @@ import { type ExerciseProgress, loadRepertoireProgress } from '../storage/persis
 import { buildPlan, totalMinutes, type PlanItem } from '../analysis/plan'
 import { loadDaily, todayString } from '../storage/daily'
 import { loadPlanState, markPlanItemDone, unmarkPlanItem } from '../storage/plan'
+import { bracketForElo, effectiveElo, loadEloPreference } from '../skill/elo'
+import { MOTIF_LABELS } from '../analysis/motifs'
+import type { MotifTag } from '../analysis/motifs'
 import EmptyState from './EmptyState'
 
 interface Props {
   analyses: GameAnalysis[]
   progress: Record<string, ExerciseProgress>
-  onNavigate: (target: 'daily' | 'exercises' | 'repertoire' | 'stats') => void
+  onNavigate: (target: 'daily' | 'exercises' | 'repertoire' | 'stats', opts?: { motif?: MotifTag }) => void
 }
 
 export default function PlanView({ analyses, progress, onNavigate }: Props) {
@@ -17,10 +20,14 @@ export default function PlanView({ analyses, progress, onNavigate }: Props) {
   const dailyState = loadDaily()
   const dailyDone = dailyState?.date === today && !!dailyState.solved
   const repProgress = useMemo(() => loadRepertoireProgress(), [])
+  const bracket = useMemo(
+    () => bracketForElo(effectiveElo(loadEloPreference(), analyses)),
+    [analyses],
+  )
 
   const items = useMemo(
-    () => buildPlan(analyses, progress, repProgress, { dailyDone }),
-    [analyses, progress, repProgress, dailyDone],
+    () => buildPlan(analyses, progress, repProgress, { dailyDone, bracket }),
+    [analyses, progress, repProgress, dailyDone, bracket],
   )
 
   const [planState, setPlanState] = useState(() => loadPlanState(today))
@@ -93,7 +100,7 @@ export default function PlanView({ analyses, progress, onNavigate }: Props) {
               if (!doneSet.has(item.id) && item.id !== 'daily') {
                 setPlanState(markPlanItemDone(today, item.id))
               }
-              onNavigate(item.target)
+              onNavigate(item.target, item.motif ? { motif: item.motif } : undefined)
             }}
           />
         ))}
@@ -178,6 +185,7 @@ const KIND_LABELS: Record<PlanItem['kind'], string> = {
   'daily': 'Quotidien',
   'srs-exercises': 'SRS exercices',
   'srs-repertoire': 'SRS répertoire',
+  'motif-drill': 'Drill motif',
   'recurring': 'Erreur récurrente',
   'hole': 'Trou répertoire',
 }
@@ -186,6 +194,9 @@ const ACCENTS: Record<PlanItem['kind'], string> = {
   'daily': 'text-orange-300',
   'srs-exercises': 'text-blue-300',
   'srs-repertoire': 'text-purple-300',
+  'motif-drill': 'text-pink-300',
   'recurring': 'text-red-300',
   'hole': 'text-amber-300',
 }
+
+void MOTIF_LABELS // re-exported by motifs; keep import for type narrowing
