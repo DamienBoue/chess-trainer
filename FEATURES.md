@@ -7,7 +7,7 @@ Living inventory of what the app does today. Updated at the end of every improve
 - **No backend**. Everything runs in the browser. IndexedDB + localStorage for persistence. The user's data never leaves their device.
 - **Self-hosted per user**. Open the page, type your chess.com username, that's it. No accounts, no SaaS.
 - **Adapts to your level**. The trainer's recommendations, drill difficulty, and study priority shift based on your declared Elo rating bracket.
-- **Bring-your-own LLM (planned)**. If you paste an API key (Anthropic / OpenAI), the trainer can call it to produce prose explanations of your blunders. No key = full functionality, just no prose layer.
+- **Bring-your-own LLM**. Paste an Anthropic or OpenAI API key in Settings; the trainer calls it directly from the browser (no proxy, no backend). Used today to produce a prose explanation of a blunder right next to the engine's PV. No key = full functionality, just no prose layer.
 
 ## Data sources
 
@@ -117,11 +117,17 @@ A 10-15 min curated session synthesising every training signal:
 - **PWA** — offline cache for the shell.
 - **GitHub Pages**-deployable as a static site.
 
+## LLM coach (optional)
+
+- **BYO key** — Anthropic (`sk-ant-…`) or OpenAI (`sk-…`). Stored in localStorage, sent only to the provider.
+- **Direct browser calls** — uses `anthropic-dangerous-direct-browser-access` and OpenAI's CORS-enabled chat endpoint; no proxy.
+- **"Expliquer ce coup"** — in AnalysisView's detail panel, on every blunder or mistake. The prompt includes FEN, played move, classification, cpLoss, engine best, and engine PV. The coach answers in 3-5 short sentences naming the motif.
+
 ## Planned (next loops)
 
 - Personal annotations per position.
 - Annotated PGN export.
-- Optional LLM hook (Anthropic / OpenAI) for prose blunder explanations.
 - Reverse-color drill (play the same position from the other side).
 - Phase-specific deep dive (which opening eats your endgames?).
+- LLM-driven plan summary / weekly recap email-style.
 - Auto-fill the bracket via chess.com rating header on first import (currently uses median user rating across recent analyses).

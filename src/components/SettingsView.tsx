@@ -5,6 +5,7 @@ import {
   getEngineDepth, setEngineDepth,
 } from '../storage/settings'
 import { exportAll, importAll, downloadJson, readJsonFile } from '../storage/exportImport'
+import { DEFAULT_MODEL, loadLlmConfig, saveLlmConfig, type LlmProvider } from '../llm/config'
 import { toast } from './Toast'
 import { resetOnboarding } from './Onboarding'
 
@@ -22,6 +23,13 @@ export default function SettingsView({ username, onPurgeAnalyses, onResetProgres
   const [depth, setDepth] = useState(getEngineDepth())
   const [busy, setBusy] = useState(false)
   const fileRef = useRef<HTMLInputElement | null>(null)
+  const [llm, setLlm] = useState(() => loadLlmConfig())
+
+  function updateLlm(patch: Partial<typeof llm>) {
+    const next = { ...llm, ...patch }
+    setLlm(next)
+    saveLlmConfig(next)
+  }
 
   async function doExport() {
     setBusy(true)
@@ -161,6 +169,64 @@ export default function SettingsView({ username, onPurgeAnalyses, onResetProgres
           <div className="font-medium text-neutral-200">Rejouer le tour d'onboarding</div>
           <div className="text-xs text-neutral-500">Recharge la page et affiche les 5 cartes d'introduction.</div>
         </button>
+      </section>
+
+      <section className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-4 space-y-3">
+        <h3 className="font-semibold text-sm">Coach IA (optionnel)</h3>
+        <p className="text-xs text-neutral-500 leading-relaxed">
+          Branche ta clé Anthropic ou OpenAI pour activer les explications en langage naturel
+          (« Pourquoi ce coup est-il mauvais ? »). La clé est stockée <strong>uniquement dans ton navigateur</strong>{' '}
+          et envoyée directement au fournisseur — l'app n'a pas de backend qui pourrait l'intercepter.
+        </p>
+        <div className="flex gap-2 items-center flex-wrap">
+          <label className="text-sm text-neutral-300">Fournisseur</label>
+          <select
+            value={llm.provider}
+            onChange={e => updateLlm({ provider: e.target.value as LlmProvider })}
+            className="px-2 py-1 text-sm rounded bg-neutral-900 border border-[var(--color-border)]"
+          >
+            <option value="disabled">Désactivé</option>
+            <option value="anthropic">Anthropic (Claude)</option>
+            <option value="openai">OpenAI (GPT)</option>
+          </select>
+        </div>
+        {llm.provider !== 'disabled' && (
+          <>
+            <div>
+              <label className="block text-sm text-neutral-300 mb-1">Clé API</label>
+              <input
+                type="password"
+                value={llm.apiKey}
+                onChange={e => updateLlm({ apiKey: e.target.value })}
+                placeholder={llm.provider === 'anthropic' ? 'sk-ant-…' : 'sk-…'}
+                className="w-full px-2 py-1.5 text-sm rounded bg-neutral-900 border border-[var(--color-border)] font-mono"
+                autoComplete="off"
+                spellCheck={false}
+              />
+              <p className="text-[11px] text-neutral-500 mt-1">
+                {llm.provider === 'anthropic'
+                  ? 'Obtenir une clé : console.anthropic.com/settings/keys'
+                  : 'Obtenir une clé : platform.openai.com/api-keys'}
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm text-neutral-300 mb-1">
+                Modèle <span className="text-xs text-neutral-500">(vide = {DEFAULT_MODEL[llm.provider]})</span>
+              </label>
+              <input
+                type="text"
+                value={llm.model}
+                onChange={e => updateLlm({ model: e.target.value })}
+                placeholder={DEFAULT_MODEL[llm.provider]}
+                className="w-full px-2 py-1.5 text-sm rounded bg-neutral-900 border border-[var(--color-border)] font-mono"
+                spellCheck={false}
+              />
+            </div>
+            <p className="text-[11px] text-amber-400/80">
+              ⚠ La clé est lisible par toute extension de navigateur qui aurait accès à ton localStorage. À éviter si tu partages cet ordinateur.
+            </p>
+          </>
+        )}
       </section>
 
       <section className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-4 space-y-3">

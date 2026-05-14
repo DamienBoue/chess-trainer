@@ -8,6 +8,7 @@ import { CLASSIFICATION_COLORS, CLASSIFICATION_LABELS } from '../analysis/classi
 import { generateGameSummary } from '../analysis/summary'
 import { buildRepertoire } from '../analysis/repertoire'
 import { fetchExplorer, type ExplorerResponse } from '../api/lichess'
+import { explainBlunder, llmAvailable } from '../llm/coach'
 import EvalBar from './EvalBar'
 import EvalGraph from './EvalGraph'
 
@@ -239,6 +240,10 @@ export default function AnalysisView({
                 )}
               </div>
 
+              {(currentMove.classification === 'blunder' || currentMove.classification === 'mistake') && (
+                <CoachExplain analysis={analysis} move={currentMove} />
+              )}
+
               {pvSans.length > 0 && currentMove.bestMoveSan && currentMove.bestMoveSan !== currentMove.san && (
                 <div className="mt-3 pt-3 border-t border-[var(--color-border)]">
                   <div className="flex items-baseline justify-between mb-1.5">
@@ -275,6 +280,63 @@ export default function AnalysisView({
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+// "Explain in plain French" — only renders when the user has configured
+// an LLM provider + key in Settings. Calls Anthropic or OpenAI directly
+// from the browser, no backend.
+function CoachExplain({ analysis, move }: { analysis: GameAnalysis; move: MoveAnalysis }) {
+  const [text, setText] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+  const available = llmAvailable()
+
+  // Reset whenever we navigate to a different move.
+  useEffect(() => { setText(null); setErr(null); setLoading(false) }, [move.ply, analysis.url])
+
+  if (!available) {
+    return (
+      <div className="mt-3 pt-3 border-t border-[var(--color-border)] text-xs text-neutral-500">
+        Active une clé LLM dans Préférences pour expliquer ce coup en langage naturel.
+      </div>
+    )
+  }
+
+  async function run() {
+    setLoading(true); setErr(null); setText(null)
+    try {
+      const out = await explainBlunder(analysis, move)
+      setText(out || '(Réponse vide.)')
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Erreur LLM')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="mt-3 pt-3 border-t border-[var(--color-border)]">
+      {!text && !loading && !err && (
+        <button
+          onClick={run}
+          className="text-xs px-2.5 py-1 rounded bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 border border-purple-500/30"
+        >
+          ✨ Expliquer ce coup (IA)
+        </button>
+      )}
+      {loading && <p className="text-xs text-neutral-400">L'IA réfléchit…</p>}
+      {err && <p className="text-xs text-red-400">⚠ {err}</p>}
+      {text && (
+        <div className="text-sm text-neutral-200 leading-relaxed whitespace-pre-wrap">
+          {text}
+          <button
+            onClick={run}
+            className="block mt-2 text-[11px] text-neutral-500 hover:text-white underline"
+          >Régénérer</button>
+        </div>
+      )}
     </div>
   )
 }
