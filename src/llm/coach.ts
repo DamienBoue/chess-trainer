@@ -3,6 +3,8 @@
 // prompts themselves.
 
 import type { GameAnalysis, MoveAnalysis } from '../types'
+import type { PlanItem } from '../analysis/plan'
+import type { SkillBracket } from '../skill/elo'
 import { complete } from './client'
 import { isLlmEnabled, loadLlmConfig } from './config'
 
@@ -43,3 +45,26 @@ export async function explainBlunder(
 
   return complete(cfg, SYSTEM_COACH, prompt, { maxTokens: 500, signal: opts.signal })
 }
+
+/** A 2-3 sentence "today's focus" framing for the daily plan. */
+export async function summariseDailyPlan(
+  items: PlanItem[],
+  bracket: SkillBracket,
+  opts: { signal?: AbortSignal } = {},
+): Promise<string> {
+  const cfg = loadLlmConfig()
+  const lines = items.map((it, i) =>
+    `${i + 1}. [${it.kind}] ${it.title} — ${it.subtitle} (priorité ${it.priority}, ~${it.estMinutes} min)`,
+  ).join('\n')
+  const prompt = [
+    `Palier du joueur : ${bracket.label} (${bracket.min}-${bracket.max}).`,
+    `Plan calculé automatiquement pour aujourd'hui (trié par priorité décroissante) :`,
+    lines,
+    '',
+    `Rédige une mise en bouche de 2-3 phrases en français pour ce joueur.`,
+    `Désigne UN axe prioritaire (en justifiant pourquoi vu son palier),`,
+    `et finis par une mini-règle d'attitude à garder pendant la session.`,
+  ].join('\n')
+  return complete(cfg, SYSTEM_COACH, prompt, { maxTokens: 300, signal: opts.signal })
+}
+

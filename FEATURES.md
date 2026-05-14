@@ -64,6 +64,7 @@ A 10-15 min curated session synthesising every training signal:
 - **Motif radar** — your strength across tactical motifs (fork, pin, skewer, discovery, deflection, mate).
 - **Recurring mistakes** — same SAN played wrong in same position (exact) or same opening (loose), with cumulative cp loss.
 - **Per-phase breakdown** — cpLoss + accuracy split across opening (0–12 plies), middlegame (13–30), endgame (31+).
+- **Strengths panel** — positive counterpart to weaknesses: precision vs opponents, mastered motifs, best-performing opening, strongest phase. Up to 3 lines, each one quotes a concrete number.
 - **Study recommendations** — auto-derived from weakest motifs / openings.
 
 ## Opponents / players
@@ -129,6 +130,7 @@ A 10-15 min curated session synthesising every training signal:
 - **BYO key** — Anthropic (`sk-ant-…`) or OpenAI (`sk-…`). Stored in localStorage, sent only to the provider.
 - **Direct browser calls** — uses `anthropic-dangerous-direct-browser-access` and OpenAI's CORS-enabled chat endpoint; no proxy.
 - **"Expliquer ce coup"** — in AnalysisView's detail panel, on every blunder or mistake. The prompt includes FEN, played move, classification, cpLoss, engine best, and engine PV. The coach answers in 3-5 short sentences naming the motif.
+- **Plan cadrage** — on the Plan du jour, a "✨ Demander à l'IA un cadrage" button asks the coach to frame today's session: one priority axis (justified for the player's bracket) + one mini-rule of attitude.
 
 ## Planned (next loops)
 

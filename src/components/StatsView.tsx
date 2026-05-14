@@ -16,6 +16,7 @@ import PositionExplorer from './PositionExplorer'
 import { daysAgo } from '../utils/format'
 import { buildTimeline } from '../analysis/timeline'
 import { computeTrend, trendDirection, type Trend, type TrendDelta } from '../analysis/trend'
+import { buildStrengths } from '../analysis/strengths'
 
 interface Props {
   analyses: GameAnalysis[]
@@ -26,10 +27,9 @@ interface Props {
 export default function StatsView({ analyses, onDrillMotif, onGoToGames }: Props) {
   const stats = useMemo(() => aggregate(analyses), [analyses])
   const insights = useMemo(() => deriveInsights(stats), [stats])
-  const motifRadar = useMemo(
-    () => computeMotifRadar(extractExercises(analyses)),
-    [analyses],
-  )
+  const exercises = useMemo(() => extractExercises(analyses), [analyses])
+  const motifRadar = useMemo(() => computeMotifRadar(exercises), [exercises])
+  const strengths = useMemo(() => buildStrengths({ stats, exercises }), [stats, exercises])
   const recurring = useMemo(() => findRecurringMistakes(analyses), [analyses])
   const trend = useMemo(() => computeTrend(buildTimeline(analyses)), [analyses])
 
@@ -83,6 +83,20 @@ export default function StatsView({ analyses, onDrillMotif, onGoToGames }: Props
 
       {(recurring.exact.length > 0 || recurring.byOpening.length > 0) && (
         <RecurringMistakesPanel exact={recurring.exact} byOpening={recurring.byOpening} />
+      )}
+
+      {strengths.length > 0 && (
+        <div className="bg-green-500/5 border border-green-500/30 rounded-md p-4">
+          <h3 className="font-semibold mb-3 text-green-200">✓ Tes points forts</h3>
+          <ul className="space-y-1.5 text-sm">
+            {strengths.map((s, idx) => (
+              <li key={idx} className="flex items-start gap-2">
+                <span className="mt-1 w-2 h-2 rounded-full bg-green-400 shrink-0" />
+                <span className="text-neutral-200">{s.text}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
 
       {insights.length > 0 && (
