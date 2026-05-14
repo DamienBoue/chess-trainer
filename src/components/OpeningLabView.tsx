@@ -80,7 +80,7 @@ export default function OpeningLabView({ analyses, initialKey, onBack }: Props) 
 
 function LabBody({ root }: { root: RepertoireRoot }) {
   const line = useMemo(() => mostPlayedLine(root, { maxPlies: 8 }), [root])
-  const [exploreFen, setExploreFen] = useState<string | null>(null)
+  const [explore, setExplore] = useState<{ fen: string; played?: string; best?: string } | null>(null)
 
   if (line.length === 0) {
     return <p className="text-sm text-neutral-500">Pas assez de données pour reconstruire une ligne — peu de plies enregistrés.</p>
@@ -107,16 +107,18 @@ function LabBody({ root }: { root: RepertoireRoot }) {
             key={i}
             step={step}
             plyNumber={i + 1}
-            onExplore={() => setExploreFen(step.fenBefore)}
+            onExplore={(opts) => setExplore({ fen: step.fenBefore, ...opts })}
           />
         ))}
       </div>
 
-      {exploreFen && (
+      {explore && (
         <PositionExplorer
-          fen={exploreFen}
-          onClose={() => setExploreFen(null)}
-          title="Explorer la position"
+          fen={explore.fen}
+          playedSan={explore.played}
+          bestSan={explore.best}
+          onClose={() => setExplore(null)}
+          title={explore.best ? `Drill : ${explore.best}` : 'Explorer la position'}
         />
       )}
     </div>
@@ -125,7 +127,11 @@ function LabBody({ root }: { root: RepertoireRoot }) {
 
 function PlyComparison({
   step, plyNumber, onExplore,
-}: { step: OpeningLineStep; plyNumber: number; onExplore: () => void }) {
+}: {
+  step: OpeningLineStep
+  plyNumber: number
+  onExplore: (opts: { played?: string; best?: string }) => void
+}) {
   const [masters, setMasters] = useState<ExplorerResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [err, setErr] = useState(false)
@@ -156,10 +162,19 @@ function PlyComparison({
             <span className="text-sm text-neutral-400 font-mono">{step.oppPrev}</span>
           )}
         </div>
-        <button
-          onClick={onExplore}
-          className="text-xs px-2 py-0.5 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-300"
-        >Ouvrir l'échiquier →</button>
+        <div className="flex gap-1.5">
+          {isBookDeviation && masters?.moves[0] && (
+            <button
+              onClick={() => onExplore({ played: step.userSan, best: masters.moves[0].san })}
+              className="text-xs px-2 py-0.5 rounded bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 border border-purple-500/30"
+              title={`Drill : trouve le coup des maîtres (${masters.moves[0].san})`}
+            >🎯 Drill</button>
+          )}
+          <button
+            onClick={() => onExplore({})}
+            className="text-xs px-2 py-0.5 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-300"
+          >Ouvrir l'échiquier →</button>
+        </div>
       </div>
 
       <div className="grid md:grid-cols-2 gap-3">

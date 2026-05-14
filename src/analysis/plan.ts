@@ -42,6 +42,8 @@ export interface PlanItem {
   recurring?: RecurringMistake
   hole?: RepertoireHole
   phase?: Phase
+  /** Optional pointer to a concept-library entry that contextualises the item. */
+  conceptId?: string
 }
 
 interface BuildPlanOptions {
@@ -145,6 +147,7 @@ export function buildPlan(
       priority: 60,
       target: 'stats',
       recurring: topMistake,
+      conceptId: 'checks-captures-threats',
     })
   }
 
@@ -164,6 +167,7 @@ export function buildPlan(
       priority: bracketBoost(bracket, 'opening', 50),
       target: 'repertoire',
       hole: topHole,
+      conceptId: 'prophylaxis',
     })
   }
 
@@ -191,6 +195,7 @@ export function buildPlan(
           priority: 65,
           target: 'stats',
           phase: worst,
+          conceptId: worst === 'endgame' ? 'rook-endgame' : worst === 'opening' ? 'pawn-structure' : 'silmans-imbalances',
         })
       }
     }

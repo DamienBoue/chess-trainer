@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { buildPlan, totalMinutes } from './plan'
 import { BRACKETS } from '../skill/elo'
 import { buildGame } from './__fixtures__'
+import { findConcept } from '../concepts/lookup'
 
 describe('buildPlan', () => {
   it('returns an empty plan when there is no data', () => {
@@ -77,6 +78,19 @@ describe('buildPlan', () => {
     // May or may not trigger phase-focus depending on phase math; this
     // exercises the code path.
     expect(out.some(i => i.kind === 'phase-focus' || i.kind === 'recurring' || i.kind === 'daily')).toBe(true)
+  })
+
+  it('every conceptId set on an item points to a real concept', () => {
+    const games = [
+      buildGame({ userColor: 'white', moves: [{ ply: 9, san: '?', cpLoss: 300, classification: 'blunder', bestMoveSan: 'X' }] }),
+      buildGame({ userColor: 'white', moves: [{ ply: 9, san: '?', cpLoss: 300, classification: 'blunder', bestMoveSan: 'X' }] }),
+    ]
+    const out = buildPlan(games, {}, {}, { dailyDone: false })
+    for (const item of out) {
+      if (item.conceptId) {
+        expect(findConcept(item.conceptId), `plan item ${item.id}: unknown conceptId '${item.conceptId}'`).toBeTruthy()
+      }
+    }
   })
 
   it('respects maxSrsExercises cap', () => {

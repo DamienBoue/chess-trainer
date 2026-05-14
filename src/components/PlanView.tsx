@@ -262,9 +262,13 @@ function PlanRow({
       <div className="flex items-baseline gap-2 flex-wrap">
         <span className={`text-xs font-medium ${accent}`}>{KIND_LABELS[item.kind]}</span>
         <span className="text-xs text-neutral-500">≈ {item.estMinutes} min</span>
-        {item.motif && conceptForMotif(item.motif) && (
+        {(item.conceptId || (item.motif && conceptForMotif(item.motif))) && (
           <button
-            onClick={e => { e.stopPropagation(); openConcept(conceptForMotif(item.motif!)!.id) }}
+            onClick={e => {
+              e.stopPropagation()
+              const id = item.conceptId ?? (item.motif ? conceptForMotif(item.motif)?.id : undefined)
+              if (id) openConcept(id)
+            }}
             className="text-[10px] px-1.5 py-0.5 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-300"
             title="Voir la fiche concept"
           >📖 Lire</button>
