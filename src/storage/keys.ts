@@ -20,6 +20,9 @@ export const KEYS = {
   filterColor:     'chess.filter.color',
   debugStockfish:  'sf.debug',
 
+  // UI tour
+  onboardingDone:  'chess.onboarding.completed',
+
   // Domain state
   daily:           'chess.daily.v1',
   plan:            'chess.plan.v1',

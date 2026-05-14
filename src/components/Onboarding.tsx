@@ -4,8 +4,9 @@
 // or finishes. State stored in localStorage so we never nag again.
 
 import { useEffect, useState } from 'react'
+import { KEYS } from '../storage/keys'
 
-const STORAGE_KEY = 'chess.onboarding.completed'
+const STORAGE_KEY = KEYS.onboardingDone
 
 const STEPS: Array<{ title: string; body: string }> = [
   {
