@@ -8,6 +8,7 @@ import { ToastHost, toast } from './components/Toast'
 import KeyboardShortcutsModal, { openShortcutsHelp } from './components/KeyboardShortcutsModal'
 import Onboarding from './components/Onboarding'
 import CommandPalette, { type CommandTarget } from './components/CommandPalette'
+import Breadcrumbs from './components/Breadcrumbs'
 import { getEngineDepth } from './storage/settings'
 import GamesList from './components/GamesList'
 import AnalysisView from './components/AnalysisView'
@@ -389,6 +390,8 @@ export default function App() {
         </div>
       )}
 
+      <Breadcrumbs crumbs={buildCrumbs(view, setView, activeGameUrl, games, activeBookId, setActiveBookId)} />
+
       <main className="flex-1 overflow-auto">
         {view === 'home' && (
           username ? (
@@ -598,6 +601,31 @@ function MobileNavSheet({
       </div>
     </div>
   )
+}
+
+function buildCrumbs(
+  view: View,
+  setView: (v: View) => void,
+  activeGameUrl: string | null,
+  games: ChessComGame[],
+  activeBookId: string | null,
+  setActiveBookId: (id: string | null) => void,
+): Array<{ label: string; onClick?: () => void }> {
+  // Only nested views deserve a crumb trail. Most top-level views skip it.
+  if (view === 'analysis' && activeGameUrl) {
+    const g = games.find(g => g.url === activeGameUrl)
+    return [
+      { label: 'Parties', onClick: () => setView('games') },
+      { label: g ? `vs ${g.white.username === activeGameUrl ? g.black.username : g.white.username}` : 'Analyse' },
+    ]
+  }
+  if (view === 'book' && activeBookId) {
+    return [
+      { label: 'Bibliothèque', onClick: () => { setActiveBookId(null); setView('library') } },
+      { label: 'Livre' },
+    ]
+  }
+  return []
 }
 
 function NavBtn({ children, active, onClick, disabled }: { children: React.ReactNode; active?: boolean; onClick: () => void; disabled?: boolean }) {
