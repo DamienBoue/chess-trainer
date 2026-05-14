@@ -482,4 +482,124 @@ export const CONCEPTS: Concept[] = [
     shortDef: 'Avec un avantage matériel : échange les pièces, pas les pions. Sans avantage : échange les pions, pas les pièces.',
     detail: 'En finale gagnée, échanger les pièces réduit la complexité et facilite la conversion. À l\'inverse, en position défensive, échanger les pièces accentue ton désavantage (moins de matériel = moins de chances de contre-jeu).',
   },
+
+  // ---------------- RULES (often-misunderstood) ----------------
+  {
+    id: 'en-passant',
+    title: 'Prise en passant',
+    category: 'mindset',
+    aliases: ['en passant', 'e.p.'],
+    shortDef: 'Quand un pion ennemi avance de deux cases et passe à côté du tien, tu peux le prendre comme s\'il n\'avait avancé que d\'une case. Mais SEULEMENT au coup suivant immédiat.',
+    detail: 'Conditions strictes : (1) ton pion est sur sa 5e rangée (4e côté noir) ; (2) un pion adverse avance de 2 cases et atterrit à côté du tien ; (3) tu joues la prise DANS LA FOULÉE — si tu joues autre chose d\'abord, le droit est perdu pour toujours. C\'est l\'une des règles que beaucoup oublient à 800-1500 Elo.',
+    links: [
+      { label: 'Prise en passant (Wikipedia)', url: 'https://fr.wikipedia.org/wiki/Prise_en_passant', kind: 'wikipedia' },
+    ],
+    positions: [
+      {
+        fen: 'rnbqkbnr/ppp1pppp/8/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 3',
+        caption: 'Blanc peut jouer exd6 e.p. (le pion d est arrivé sur d5 au coup précédent).',
+        bestSan: 'exd6',
+      },
+    ],
+  },
+  {
+    id: 'castling',
+    title: 'Roque',
+    category: 'mindset',
+    aliases: ['castling', 'O-O', 'O-O-O'],
+    shortDef: 'Le seul coup où deux pièces bougent en même temps. Conditions : roi+tour n\'ont jamais bougé, aucune case du trajet attaquée, roi pas en échec.',
+    detail: 'Petit roque (O-O) : roi g1, tour f1. Grand roque (O-O-O) : roi c1, tour d1. Trois conditions doivent être SIMULTANÉMENT remplies : (1) ni le roi ni la tour concernée n\'ont jamais bougé ; (2) aucune pièce entre les deux ; (3) le roi n\'est pas en échec, ne PASSE par une case attaquée, ni n\'ARRIVE en case attaquée. Note : passer par une case attaquée empêche le roque même côté grand roque (la case b1/b8 peut être attaquée sans empêcher le roque puisque le roi ne s\'y arrête pas).',
+    links: [
+      { label: 'Roque (Wikipedia)', url: 'https://fr.wikipedia.org/wiki/Roque_(%C3%A9checs)', kind: 'wikipedia' },
+    ],
+  },
+  {
+    id: 'threefold-repetition',
+    title: 'Triple répétition',
+    category: 'mindset',
+    aliases: ['threefold repetition', 'triple repetition'],
+    shortDef: 'La même position (même trait, mêmes droits de roque, même e.p.) répétée 3 fois → nulle si tu le réclames.',
+    detail: 'Pas automatique : tu dois RÉCLAMER la nulle (sauf sur Lichess/chess.com où c\'est auto). La position doit être EXACTEMENT la même : pièces sur les mêmes cases, MÊME camp au trait, MÊMES droits de roque, MÊME possibilité de prise en passant. Utile en défense quand tu joues plus faible (lutte pour nulle) ou si l\'adversaire t\'oublie la position.',
+    links: [
+      { label: 'Triple occurrence de la position (Wikipedia)', url: 'https://fr.wikipedia.org/wiki/Triple_occurrence_de_la_position', kind: 'wikipedia' },
+    ],
+    related: ['fifty-move-rule', 'stalemate'],
+  },
+  {
+    id: 'fifty-move-rule',
+    title: 'Règle des 50 coups',
+    category: 'mindset',
+    aliases: ['50 move rule', 'fifty move rule'],
+    shortDef: 'Si 50 coups consécutifs (50 par camp) se jouent sans capture ni mouvement de pion, n\'importe quel joueur peut réclamer la nulle.',
+    detail: 'Le compteur repart à 0 à chaque capture ou poussée de pion. À titre de comparaison : K+R vs K se mate en moins de 50 coups (≤ 17 coups), donc cette règle ne sauve jamais le faible. K+B+B vs K mate en ≤ 19 coups. K+B+N vs K (méthode du W) ≤ 33 coups. Mais K+R+B vs K+R = parfois > 50 coups → l\'attaquant doit savoir convertir vite.',
+    related: ['threefold-repetition'],
+  },
+  {
+    id: 'stalemate',
+    title: 'Pat',
+    category: 'mindset',
+    aliases: ['stalemate'],
+    shortDef: 'Le joueur au trait n\'a aucun coup légal mais n\'est PAS en échec → partie nulle.',
+    detail: 'Différent du mat (où le roi EST en échec sans coup légal). Ressources défensives : quand tu es écrasé matériellement, joue pour réduire les options à 0 → l\'adversaire risque de te pater. Côté attaquant : laisse TOUJOURS une case d\'évasion au roi adverse jusqu\'au coup final. Le pat est le piège #1 du débutant qui finit K+Q vs K.',
+    links: [
+      { label: 'Pat (Wikipedia)', url: 'https://fr.wikipedia.org/wiki/Pat_(%C3%A9checs)', kind: 'wikipedia' },
+    ],
+    positions: [
+      {
+        fen: '7k/8/6KP/8/8/8/8/8 b - - 0 1',
+        caption: 'Noir au trait sans aucun coup légal → pat → nulle.',
+      },
+    ],
+    related: ['kqk-mate'],
+  },
+
+  // ---------------- More tactical motifs ----------------
+  {
+    id: 'zwischenzug',
+    title: 'Coup intermédiaire (Zwischenzug)',
+    category: 'tactics',
+    aliases: ['zwischenzug', 'in-between move', 'intermède'],
+    shortDef: 'Avant de jouer le coup "évident" (reprendre une pièce, parer une menace), tu joues d\'abord un coup encore plus fort qui force la réponse adverse.',
+    detail: 'Cas classique : adversaire prend ton cavalier. Tu allais reprendre, MAIS tu peux d\'abord donner un échec en posant le mat dans la foulée. La séquence "intermède puis reprise" gagne souvent du matériel. Erreur courante : jouer la reprise automatique au lieu de chercher mieux.',
+  },
+  {
+    id: 'windmill',
+    title: 'Moulin (Windmill)',
+    category: 'tactics',
+    aliases: ['windmill', 'moulin'],
+    shortDef: 'Combinaison de découvertes + échecs alternés qui ratisse plusieurs pièces adverses sans contrôle.',
+    detail: 'Pattern : tour + fou (souvent) où la tour donne échec à la découverte, l\'adversaire est forcé de bouger le roi, puis la pièce qui couvre revient en arrière (encore échec à la découverte) et capture une autre pièce, et ainsi de suite. Exemple iconique : Torre vs Lasker 1925.',
+  },
+  {
+    id: 'anastasia-mate',
+    title: 'Mat d\'Anastasia',
+    category: 'tactics',
+    aliases: ['anastasia mate'],
+    shortDef: 'Cavalier en e7 (ou e2) + tour en h-file mate le roi noir coincé en h8 (ou h1 côté blanc).',
+    detail: 'Pattern : roi noir en h7, cavalier blanc en e7, tour blanche descend en h5+ → mat. Le cavalier couvre f5/g6, la tour fait l\'échec, le roi n\'a aucune case (g7 attaquée par cavalier, h8 attaquée par tour, g8 vide mais bloquée par fil ami souvent). Très joli à voir une fois pour le reconnaître.',
+  },
+
+  // ---------------- Opening: London ----------------
+  {
+    id: 'london-system',
+    title: 'Système de Londres',
+    category: 'opening',
+    aliases: ['london system'],
+    shortDef: '1.d4 Nf6 2.Bf4 — système solide jouable peu importe la réponse noire. Bcp joué à club car peu théorique.',
+    detail: 'Plan blanc : Bf4, e3, Nf3, Bd3, c3, Nbd2, h3, O-O. Pas de cassure centrale rapide ; on construit pas-à-pas et on attaque sur l\'aile-roi. Inconvénient : peut devenir un peu sec si noir joue précisément (...c5+...Nc6+...Qb6). Carlsen l\'a beaucoup joué récemment.',
+    links: [
+      { label: 'Système de Londres (Wikipedia)', url: 'https://fr.wikipedia.org/wiki/Syst%C3%A8me_de_Londres', kind: 'wikipedia' },
+    ],
+  },
+
+  // ---------------- Strategy ----------------
+  {
+    id: 'piece-activity',
+    title: 'Activité des pièces',
+    category: 'strategy',
+    aliases: ['piece activity', 'activité'],
+    shortDef: 'Une pièce active vaut plus que sa valeur nominale. Un cavalier passif peut valoir moins qu\'un pion.',
+    detail: 'Mesurer l\'activité : combien de cases la pièce contrôle, peut-elle participer à un plan, est-elle bloquée par des pions amis ? La règle "tour active vaut un pion" est un cas particulier. Maxime de Lasker : "Si un coup améliore la position de ta pire pièce, joue-le."',
+    related: ['initiative', 'two-weaknesses'],
+  },
 ]
