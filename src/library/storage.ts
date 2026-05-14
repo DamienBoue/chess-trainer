@@ -8,42 +8,10 @@
 // can replace this layer without touching the consumers.
 
 import type { Book, BookProgress, ExerciseOutcome, ExerciseProgress } from './types'
+import { dbTx as tx } from '../storage/db'
 
-const DB_NAME = 'chess-trainer-library'
-const DB_VERSION = 1
 const BOOKS_STORE = 'books'
 const PROGRESS_STORE = 'progress'
-
-let dbPromise: Promise<IDBDatabase> | null = null
-
-function openDb(): Promise<IDBDatabase> {
-  if (dbPromise) return dbPromise
-  dbPromise = new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, DB_VERSION)
-    req.onupgradeneeded = () => {
-      const db = req.result
-      if (!db.objectStoreNames.contains(BOOKS_STORE)) {
-        db.createObjectStore(BOOKS_STORE, { keyPath: 'id' })
-      }
-      if (!db.objectStoreNames.contains(PROGRESS_STORE)) {
-        db.createObjectStore(PROGRESS_STORE, { keyPath: 'bookId' })
-      }
-    }
-    req.onsuccess = () => resolve(req.result)
-    req.onerror = () => reject(req.error)
-  })
-  return dbPromise
-}
-
-function tx<T>(store: string, mode: IDBTransactionMode, run: (store: IDBObjectStore) => IDBRequest<T>): Promise<T> {
-  return openDb().then(db => new Promise<T>((resolve, reject) => {
-    const t = db.transaction(store, mode)
-    const s = t.objectStore(store)
-    const req = run(s)
-    req.onsuccess = () => resolve(req.result)
-    req.onerror = () => reject(req.error)
-  }))
-}
 
 // ---------- Books ----------------------------------------------------------
 

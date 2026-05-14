@@ -1,71 +1,12 @@
-import type { ChessComGame, GameAnalysis } from '../types'
-import { recomputeMoveMetrics } from '../analysis/analyze'
+// Games + analyses storage has moved to IndexedDB (see ../storage/games.ts
+// and ../storage/analyses.ts). Re-exported here so existing import paths
+// keep working.
+
+export { loadGames, saveGames, clearGames } from './games'
+export { loadAnalyses, saveAnalyses, clearAnalyses } from './analyses'
 
 const VERSION = 'v1'
-
-function analysesKey(username: string): string {
-  return `chess.analyses.${username.toLowerCase()}.${VERSION}`
-}
-function gamesKey(username: string): string {
-  return `chess.games.${username.toLowerCase()}.${VERSION}`
-}
 const PROGRESS_KEY = `chess.progress.${VERSION}`
-
-export function loadGames(username: string): ChessComGame[] {
-  if (!username) return []
-  try {
-    const raw = localStorage.getItem(gamesKey(username))
-    if (!raw) return []
-    return JSON.parse(raw) as ChessComGame[]
-  } catch (e) {
-    console.warn('[storage] failed to load games:', e)
-    return []
-  }
-}
-
-export function saveGames(username: string, games: ChessComGame[]): void {
-  if (!username) return
-  try {
-    localStorage.setItem(gamesKey(username), JSON.stringify(games))
-  } catch (e) {
-    console.warn('[storage] failed to save games (quota?):', e)
-  }
-}
-
-export function loadAnalyses(username: string): Record<string, GameAnalysis> {
-  if (!username) return {}
-  try {
-    const raw = localStorage.getItem(analysesKey(username))
-    if (!raw) return {}
-    const parsed = JSON.parse(raw) as Record<string, GameAnalysis>
-    // Migration: recompute cpLoss + classification from stored evals so older
-    // analyses (saved before the mate-score clamp fix) get sane values.
-    let dirty = false
-    for (const url of Object.keys(parsed)) {
-      const a = parsed[url]
-      const fixed = a.moves.map((m, i) => {
-        const { cpLoss, classification } = recomputeMoveMetrics(m, i)
-        if (cpLoss !== m.cpLoss || classification !== m.classification) dirty = true
-        return { ...m, cpLoss, classification }
-      })
-      parsed[url] = { ...a, moves: fixed }
-    }
-    if (dirty) saveAnalyses(username, parsed)
-    return parsed
-  } catch (e) {
-    console.warn('[storage] failed to load analyses:', e)
-    return {}
-  }
-}
-
-export function saveAnalyses(username: string, analyses: Record<string, GameAnalysis>): void {
-  if (!username) return
-  try {
-    localStorage.setItem(analysesKey(username), JSON.stringify(analyses))
-  } catch (e) {
-    console.warn('[storage] failed to save analyses (quota?):', e)
-  }
-}
 
 export interface ExerciseProgress {
   attempts: number

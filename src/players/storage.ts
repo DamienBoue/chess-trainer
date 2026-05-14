@@ -5,9 +5,8 @@
 // different lifecycle — but it lives in the same database for simplicity.
 
 import type { ChessComGame } from '../types'
+import { dbTx } from '../storage/db'
 
-const DB_NAME = 'chess-trainer-library'   // shared with library/storage.ts
-const DB_VERSION = 2
 const PLAYERS_STORE = 'players'
 
 export interface PlayerProfile {
@@ -18,32 +17,8 @@ export interface PlayerProfile {
   games: ChessComGame[]
 }
 
-let dbPromise: Promise<IDBDatabase> | null = null
-
-function openDb(): Promise<IDBDatabase> {
-  if (dbPromise) return dbPromise
-  dbPromise = new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, DB_VERSION)
-    req.onupgradeneeded = () => {
-      const db = req.result
-      if (!db.objectStoreNames.contains('books'))    db.createObjectStore('books',    { keyPath: 'id' })
-      if (!db.objectStoreNames.contains('progress')) db.createObjectStore('progress', { keyPath: 'bookId' })
-      if (!db.objectStoreNames.contains(PLAYERS_STORE)) db.createObjectStore(PLAYERS_STORE, { keyPath: 'id' })
-    }
-    req.onsuccess = () => resolve(req.result)
-    req.onerror = () => reject(req.error)
-  })
-  return dbPromise
-}
-
 function tx<T>(mode: IDBTransactionMode, run: (store: IDBObjectStore) => IDBRequest<T>): Promise<T> {
-  return openDb().then(db => new Promise<T>((resolve, reject) => {
-    const t = db.transaction(PLAYERS_STORE, mode)
-    const s = t.objectStore(PLAYERS_STORE)
-    const req = run(s)
-    req.onsuccess = () => resolve(req.result)
-    req.onerror = () => reject(req.error)
-  }))
+  return dbTx(PLAYERS_STORE, mode, run)
 }
 
 export async function listPlayers(): Promise<PlayerProfile[]> {

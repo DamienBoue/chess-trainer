@@ -37,7 +37,7 @@ import { extractExercises } from './analysis/exercises'
 import { readSharedFromHash, clearShareHash } from './api/share'
 import { analyzeGame } from './analysis/analyze'
 import {
-  loadAnalyses, saveAnalyses,
+  loadAnalyses, saveAnalyses, clearAnalyses,
   loadGames, saveGames,
   loadProgress, saveProgress,
   type ExerciseProgress, updateProgressAfterAttempt, isDue,
@@ -62,13 +62,15 @@ export default function App() {
   const [drillMotif, setDrillMotif] = useState<import('./analysis/motifs').MotifTag | null>(null)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [username, setUsername] = useState<string>(() => localStorage.getItem('chess.username') ?? '')
-  const [games, setGames] = useState<ChessComGame[]>(() =>
-    username ? loadGames(username) : [],
-  )
+  // Games + analyses now live in IndexedDB → loaded asynchronously after
+  // mount. We start empty, then hydrate from IDB in the effect below.
+  const [games, setGames] = useState<ChessComGame[]>([])
   const [reloading, setReloading] = useState(false)
-  const [analyses, setAnalyses] = useState<Record<string, GameAnalysis>>(() =>
-    username ? loadAnalyses(username) : {},
-  )
+  const [analyses, setAnalyses] = useState<Record<string, GameAnalysis>>({})
+  // Skip the first saveGames / saveAnalyses calls that fire on initial
+  // mount (before hydration completes) so we don't clobber the IDB state
+  // with the empty defaults.
+  const hydratedRef = useRef(false)
   const [progress, setProgress] = useState<Record<string, ExerciseProgress>>(() => loadProgress())
   const [activeGameUrl, setActiveGameUrl] = useState<string | null>(null)
   const [batch, setBatch] = useState<BatchState | null>(null)
@@ -90,13 +92,32 @@ export default function App() {
   // still points to it, leaving us with a zombie worker. The browser cleans up the
   // worker when the tab closes anyway.
 
-  // Persist analyses whenever they change (debounced via effect batching)
+  // Hydrate games + analyses from IndexedDB whenever the username changes.
   useEffect(() => {
-    if (username) saveAnalyses(username, analyses)
+    hydratedRef.current = false
+    if (!username) {
+      setGames([]); setAnalyses({})
+      hydratedRef.current = true
+      return
+    }
+    let cancelled = false
+    Promise.all([loadGames(username), loadAnalyses(username)]).then(([g, a]) => {
+      if (cancelled) return
+      setGames(g)
+      setAnalyses(a)
+      hydratedRef.current = true
+    })
+    return () => { cancelled = true }
+  }, [username])
+
+  // Persist analyses whenever they change — but only after hydration so we
+  // don't overwrite the IDB record with the empty initial state.
+  useEffect(() => {
+    if (username && hydratedRef.current) void saveAnalyses(username, analyses)
   }, [analyses, username])
 
   useEffect(() => {
-    if (username) saveGames(username, games)
+    if (username && hydratedRef.current) void saveGames(username, games)
   }, [games, username])
 
   useEffect(() => {
@@ -123,7 +144,7 @@ export default function App() {
   function purgeAnalyses() {
     if (!username) return
     setAnalyses({})
-    localStorage.removeItem(`chess.analyses.${username}`)
+    void clearAnalyses(username)
   }
 
   function resetProgress() {
@@ -147,7 +168,8 @@ export default function App() {
     setUsername(u)
     localStorage.setItem('chess.username', u)
     setGames(fetched)
-    setAnalyses(loadAnalyses(u))   // load this user's saved analyses
+    // The username-change effect above will hydrate analyses from IDB once
+    // it's resolved; in the meantime we keep whatever is currently in state.
     setView('games')
   }
 
