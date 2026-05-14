@@ -7,6 +7,7 @@ import { loadPlanState, markPlanItemDone, unmarkPlanItem } from '../storage/plan
 import { bracketForElo, effectiveElo, loadEloPreference } from '../skill/elo'
 import { MOTIF_LABELS } from '../analysis/motifs'
 import type { MotifTag } from '../analysis/motifs'
+import ChecklistRow from './ChecklistRow'
 import EmptyState from './EmptyState'
 
 interface Props {
@@ -125,59 +126,47 @@ function PlanRow({
   onGo: () => void
 }) {
   const accent = ACCENTS[item.kind]
-  return (
-    <div
-      className={`bg-[var(--color-panel)] border rounded-md p-3 flex items-center gap-3 transition-all ${
-        done ? 'border-green-500/30 opacity-60' : 'border-[var(--color-border)] hover:border-neutral-600'
-      }`}
+  const action = (
+    <button
+      onClick={onGo}
+      className="px-3 py-1.5 text-sm rounded bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] text-white font-medium"
     >
-      <button
-        onClick={onToggle}
-        disabled={item.id === 'daily'}
-        className={`w-6 h-6 shrink-0 rounded-full border-2 flex items-center justify-center transition-colors ${
-          done
-            ? 'bg-green-500/30 border-green-500/60 text-green-300'
-            : 'border-neutral-600 hover:border-neutral-400'
-        } ${item.id === 'daily' ? 'cursor-default' : ''}`}
-        title={item.id === 'daily' ? 'Marqué automatiquement quand le quotidien est résolu' : (done ? 'Marquer non fait' : 'Marquer fait')}
-        aria-label={done ? 'Marquer non fait' : 'Marquer fait'}
-      >
-        {done ? '✓' : ''}
-      </button>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-baseline gap-2 flex-wrap">
-          <span className={`text-xs font-medium ${accent}`}>{KIND_LABELS[item.kind]}</span>
-          <span className="text-xs text-neutral-500">≈ {item.estMinutes} min</span>
-        </div>
-        <h3 className={`font-semibold ${done ? 'line-through text-neutral-500' : ''}`}>{item.title}</h3>
-        <p className="text-xs text-neutral-400 mt-0.5">{item.subtitle}</p>
-        {item.recurring && (
-          <p className="mt-1 text-xs text-red-300 font-mono">
-            {item.recurring.parentOpening ? `${item.recurring.parentOpening} · ` : ''}
-            {item.recurring.sanPlayed}
-            {item.recurring.bestSan && item.recurring.bestSan !== item.recurring.sanPlayed && (
-              <> → <span className="text-green-300">{item.recurring.bestSan}</span></>
-            )}
-          </p>
-        )}
-        {item.hole && (
-          <p className="mt-1 text-xs text-neutral-400">
-            <span className="font-mono">{item.hole.oppPrev}</span> · {item.hole.visits} visites ·{' '}
-            {item.hole.choices.slice(0, 3).map(c => (
-              <span key={c.san} className="font-mono mr-1.5">
-                {c.san} <span className="text-neutral-500">{Math.round(c.share * 100)}%</span>
-              </span>
-            ))}
-          </p>
-        )}
+      {done ? 'Revoir' : 'Faire'}
+    </button>
+  )
+  return (
+    <ChecklistRow
+      done={done}
+      onToggle={onToggle}
+      toggleLocked={item.id === 'daily'}
+      action={action}
+    >
+      <div className="flex items-baseline gap-2 flex-wrap">
+        <span className={`text-xs font-medium ${accent}`}>{KIND_LABELS[item.kind]}</span>
+        <span className="text-xs text-neutral-500">≈ {item.estMinutes} min</span>
       </div>
-      <button
-        onClick={onGo}
-        className="px-3 py-1.5 text-sm rounded bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] text-white font-medium shrink-0"
-      >
-        {done ? 'Revoir' : 'Faire'}
-      </button>
-    </div>
+      <h3 className={`font-semibold ${done ? 'line-through text-neutral-500' : ''}`}>{item.title}</h3>
+      <p className="text-xs text-neutral-400 mt-0.5">{item.subtitle}</p>
+      {item.recurring && (
+        <p className="mt-1 text-xs text-red-300 font-mono">
+          {item.recurring.parentOpening ? `${item.recurring.parentOpening} · ` : ''}
+          {item.recurring.sanPlayed}
+          {item.recurring.bestSan && item.recurring.bestSan !== item.recurring.sanPlayed && (
+            <> → <span className="text-green-300">{item.recurring.bestSan}</span></>
+          )}
+        </p>
+      )}
+      {item.hole && (
+        <p className="mt-1 text-xs text-neutral-400">
+          <span className="font-mono">{item.hole.oppPrev}</span> · {item.hole.visits} visites ·{' '}
+          {item.hole.choices.slice(0, 3).map(c => (
+            <span key={c.san} className="font-mono mr-1.5">
+              {c.san} <span className="text-neutral-500">{Math.round(c.share * 100)}%</span>
+            </span>
+          ))}
+        </p>
+      )}
+    </ChecklistRow>
   )
 }
 

@@ -16,6 +16,7 @@ import {
   type ModuleArea,
   type RoadmapModule,
 } from '../skill/roadmap'
+import ChecklistRow from './ChecklistRow'
 
 interface Props {
   analyses: GameAnalysis[]
@@ -142,39 +143,22 @@ function BracketLadder({ activeBracket }: { activeBracket: SkillBracket }) {
 function ModuleRow({
   mod, done, onToggle, onGo,
 }: { mod: RoadmapModule; done: boolean; onToggle: () => void; onGo: () => void }) {
-  return (
-    <div
-      className={`border rounded-md p-3 flex items-start gap-3 transition-all ${
-        done ? 'border-green-500/30 opacity-60' : 'border-[var(--color-border)] hover:border-neutral-600'
-      }`}
+  const action = mod.surface ? (
+    <button
+      onClick={onGo}
+      className="text-xs px-2.5 py-1 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-200"
     >
-      <button
-        onClick={onToggle}
-        className={`w-6 h-6 shrink-0 mt-0.5 rounded-full border-2 flex items-center justify-center transition-colors ${
-          done
-            ? 'bg-green-500/30 border-green-500/60 text-green-300'
-            : 'border-neutral-600 hover:border-neutral-400'
-        }`}
-        aria-label={done ? 'Décocher' : 'Cocher'}
-      >
-        {done && '✓'}
-      </button>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-baseline gap-2 flex-wrap">
-          <span className={`text-[10px] uppercase tracking-wider ${AREA_COLORS[mod.area]}`}>{AREA_LABELS[mod.area]}</span>
-        </div>
-        <h4 className={`font-medium ${done ? 'line-through text-neutral-500' : ''}`}>{mod.title}</h4>
-        <p className="text-xs text-neutral-400 mt-0.5">{mod.why}</p>
+      Aller →
+    </button>
+  ) : null
+  return (
+    <ChecklistRow done={done} onToggle={onToggle} action={action}>
+      <div className="flex items-baseline gap-2 flex-wrap">
+        <span className={`text-[10px] uppercase tracking-wider ${AREA_COLORS[mod.area]}`}>{AREA_LABELS[mod.area]}</span>
       </div>
-      {mod.surface && (
-        <button
-          onClick={onGo}
-          className="text-xs px-2.5 py-1 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-200 shrink-0"
-        >
-          Aller →
-        </button>
-      )}
-    </div>
+      <h4 className={`font-medium ${done ? 'line-through text-neutral-500' : ''}`}>{mod.title}</h4>
+      <p className="text-xs text-neutral-400 mt-0.5">{mod.why}</p>
+    </ChecklistRow>
   )
 }
 
