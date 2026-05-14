@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { soundsEnabled, setSoundsEnabled } from '../audio/sounds'
 import {
   getBoardTheme, setBoardTheme, type BoardTheme,
   getEngineDepth, setEngineDepth,
 } from '../storage/settings'
+import { exportAll, importAll, downloadJson, readJsonFile } from '../storage/exportImport'
 import { toast } from './Toast'
 import { resetOnboarding } from './Onboarding'
 
@@ -19,6 +20,38 @@ export default function SettingsView({ username, onPurgeAnalyses, onResetProgres
   const [sounds, setSounds] = useState(soundsEnabled())
   const [theme, setTheme] = useState<BoardTheme>(getBoardTheme())
   const [depth, setDepth] = useState(getEngineDepth())
+  const [busy, setBusy] = useState(false)
+  const fileRef = useRef<HTMLInputElement | null>(null)
+
+  async function doExport() {
+    setBusy(true)
+    try {
+      const data = await exportAll()
+      const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
+      downloadJson(data, `chess-trainer-${username || 'export'}-${stamp}.json`)
+      toast.success('Sauvegarde téléchargée')
+    } catch (e) {
+      console.error('[settings] export failed:', e)
+      toast.info('Export échoué')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function doImport(file: File, merge: boolean) {
+    setBusy(true)
+    try {
+      const data = await readJsonFile(file)
+      await importAll(data, { merge })
+      toast.success(merge ? 'Données fusionnées — recharge la page' : 'Données restaurées — recharge la page')
+    } catch (e) {
+      console.error('[settings] import failed:', e)
+      toast.info(`Import échoué : ${e instanceof Error ? e.message : 'fichier invalide'}`)
+    } finally {
+      setBusy(false)
+      if (fileRef.current) fileRef.current.value = ''
+    }
+  }
 
   function changeSounds(on: boolean) {
     setSounds(on)
@@ -128,6 +161,47 @@ export default function SettingsView({ username, onPurgeAnalyses, onResetProgres
           <div className="font-medium text-neutral-200">Rejouer le tour d'onboarding</div>
           <div className="text-xs text-neutral-500">Recharge la page et affiche les 5 cartes d'introduction.</div>
         </button>
+      </section>
+
+      <section className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-4 space-y-3">
+        <h3 className="font-semibold text-sm">Sauvegarde / restauration</h3>
+        <p className="text-xs text-neutral-500">
+          Exporte parties analysées, progression SRS, répertoire, livres et préférences vers un fichier JSON. Sert de backup ou pour migrer d'un appareil à l'autre.
+        </p>
+        <div className="flex flex-col gap-2">
+          <button
+            onClick={doExport}
+            disabled={busy}
+            className="text-left px-3 py-2 text-sm rounded bg-neutral-900 border border-[var(--color-border)] hover:bg-neutral-800 disabled:opacity-50"
+          >
+            <div className="font-medium text-neutral-200">Exporter toutes les données</div>
+            <div className="text-xs text-neutral-500">Télécharge un fichier JSON avec l'intégralité de ton état local.</div>
+          </button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            onChange={async e => {
+              const f = e.target.files?.[0]
+              if (!f) return
+              const merge = confirm(
+                'Importer en fusionnant avec tes données actuelles ?\n\n' +
+                '• OK → fusionner (garde tes données + ajoute celles du fichier)\n' +
+                '• Annuler → remplacer (efface tes données actuelles d\'abord)',
+              )
+              await doImport(f, merge)
+            }}
+          />
+          <button
+            onClick={() => fileRef.current?.click()}
+            disabled={busy}
+            className="text-left px-3 py-2 text-sm rounded bg-neutral-900 border border-[var(--color-border)] hover:bg-neutral-800 disabled:opacity-50"
+          >
+            <div className="font-medium text-neutral-200">Importer depuis un fichier</div>
+            <div className="text-xs text-neutral-500">Choisis un .json précédemment exporté. Tu choisis ensuite fusion ou remplacement.</div>
+          </button>
+        </div>
       </section>
 
       <section className="bg-red-900/10 border border-red-700/40 rounded-md p-4 space-y-3">
