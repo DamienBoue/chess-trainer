@@ -1,3 +1,4 @@
+import { Chess } from 'chess.js'
 import type { Color, GameAnalysis } from '../types'
 import { getParentOpening } from './openings'
 
@@ -316,3 +317,93 @@ function critiqueScore(c: RepertoireCritique): number {
 }
 
 void ALL_RESULTS
+
+// ---------------------------------------------------------------------------
+// Drill-card enumeration for the spaced-repetition trainer.
+// Each "card" = a single decision point in the user's repertoire (a position
+// where they have a habitual move). The card carries the FEN to display,
+// the expected SAN, and a stable id used as the SM-2 key.
+// ---------------------------------------------------------------------------
+
+export interface DrillCard {
+  id: string
+  rootKey: string            // "<parent>::<colour>"
+  rootParent: string
+  rootColor: Color
+  pathKeys: string[]
+  fen: string                // user to move at this FEN
+  expectedSan: string
+  habitualSan: string        // may differ from expectedSan in 'improve' mode
+  isSfRecommended: boolean
+  count: number              // observed games at this node
+  depth: number              // user-ply decisions deep
+}
+
+const STARTPOS_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
+
+function keyOfRoot(r: RepertoireRoot): string {
+  return `${r.parent}::${r.color}`
+}
+
+export function enumerateDrillCards(
+  roots: RepertoireRoot[],
+  options: { mode?: 'habits' | 'improve'; minCount?: number; maxDepth?: number } = {},
+): DrillCard[] {
+  const { mode = 'habits', minCount = 2, maxDepth = 8 } = options
+  const out: DrillCard[] = []
+
+  function walk(
+    root: RepertoireRoot,
+    children: Map<string, RepertoireNode>,
+    pathKeys: string[],
+    board: Chess,
+  ): void {
+    if (children.size === 0 || pathKeys.length >= maxDepth) return
+    const arr = Array.from(children.entries())
+    const [topKey, top] = arr.reduce((a, b) => (a[1].count >= b[1].count ? a : b))
+    const oppPrev = topKey.split('|')[0]
+
+    const decisionBoard = new Chess(board.fen())
+    if (oppPrev && oppPrev !== '<start>') {
+      try { decisionBoard.move(oppPrev) } catch { return }
+    }
+
+    let expectedSan = top.san
+    let isSfRecommended = false
+    if (mode === 'improve' && top.engineSuggestions.size > 0) {
+      const [sfSan] = Array.from(top.engineSuggestions.entries())
+        .reduce((a, b) => (a[1] >= b[1] ? a : b))
+      if (sfSan && sfSan !== top.san) {
+        expectedSan = sfSan
+        isSfRecommended = true
+      }
+    }
+
+    if (top.count >= minCount) {
+      const newPath = [...pathKeys, topKey]
+      out.push({
+        id: `${keyOfRoot(root)}::${newPath.join('/')}::${mode}`,
+        rootKey: keyOfRoot(root),
+        rootParent: root.parent,
+        rootColor: root.color,
+        pathKeys: newPath,
+        fen: decisionBoard.fen(),
+        expectedSan,
+        habitualSan: top.san,
+        isSfRecommended,
+        count: top.count,
+        depth: newPath.length,
+      })
+    }
+
+    // Recurse along the habitual line so depth reflects observed play.
+    const nextBoard = new Chess(decisionBoard.fen())
+    try { nextBoard.move(top.san) } catch { return }
+    walk(root, top.children, [...pathKeys, topKey], nextBoard)
+  }
+
+  for (const root of roots) {
+    walk(root, root.children, [], new Chess(STARTPOS_FEN))
+  }
+  return out
+}

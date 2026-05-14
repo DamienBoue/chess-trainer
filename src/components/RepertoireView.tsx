@@ -4,12 +4,18 @@ import TrainingBoard from './TrainingBoard'
 import type { GameAnalysis } from '../types'
 import {
   buildRepertoire, topLines, alternativesAt, rollupString,
-  critiqueRepertoire, type RepertoireRoot, type RepertoireCritique,
+  critiqueRepertoire, enumerateDrillCards,
+  type RepertoireRoot, type RepertoireCritique, type DrillCard,
 } from '../analysis/repertoire'
+import {
+  loadRepertoireProgress, saveRepertoireProgress,
+  updateProgressAfterAttempt, isDue,
+  type ExerciseProgress,
+} from '../storage/persist'
 
 interface Props { analyses: GameAnalysis[] }
 
-type Tab = 'lines' | 'critiques' | 'trainer' | 'explorer'
+type Tab = 'lines' | 'critiques' | 'trainer' | 'srs' | 'explorer'
 
 export default function RepertoireView({ analyses }: Props) {
   const roots = useMemo(() => buildRepertoire(analyses), [analyses])
@@ -40,6 +46,7 @@ export default function RepertoireView({ analyses }: Props) {
             Critiques {critiques.length > 0 && `(${critiques.length})`}
           </TabBtn>
           <TabBtn active={tab === 'trainer'} onClick={() => setTab('trainer')}>Trainer</TabBtn>
+          <TabBtn active={tab === 'srs'} onClick={() => setTab('srs')}>SRS</TabBtn>
           <TabBtn active={tab === 'explorer'} onClick={() => setTab('explorer')}>Explorer</TabBtn>
         </div>
       </div>
@@ -91,6 +98,10 @@ export default function RepertoireView({ analyses }: Props) {
 
       {tab === 'trainer' && (
         <TrainerPanel roots={roots} />
+      )}
+
+      {tab === 'srs' && (
+        <SrsPanel roots={roots} />
       )}
 
       {tab === 'explorer' && (
@@ -434,6 +445,190 @@ function TrainerBoard({
           Indice
         </button>
       </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Spaced-repetition panel.
+// Walks the user's habit tree, turns each decision point into a "card", and
+// schedules reviews via the existing SM-2 helpers.
+// ---------------------------------------------------------------------------
+
+type SrsMode = 'habits' | 'improve'
+
+function SrsPanel({ roots }: { roots: RepertoireRoot[] }) {
+  const [mode, setMode] = useState<SrsMode>('habits')
+  const allCards = useMemo(() => enumerateDrillCards(roots, { mode }), [roots, mode])
+  const [progress, setProgress] = useState<Record<string, ExerciseProgress>>(() => loadRepertoireProgress())
+  useEffect(() => { saveRepertoireProgress(progress) }, [progress])
+
+  const due = useMemo(() => allCards.filter(c => isDue(progress[c.id])), [allCards, progress])
+  const [current, setCurrent] = useState<DrillCard | null>(null)
+  const [status, setStatus] = useState<'pending' | 'wrong' | 'correct'>('pending')
+  const [feedback, setFeedback] = useState<string>('')
+  const [position, setPosition] = useState<string>('')
+  const [revealed, setRevealed] = useState(false)
+
+  // Pick a card when the queue changes (and we don't have one yet).
+  useEffect(() => {
+    if (current) return
+    pickNext()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [due.length, current])
+
+  // Reset on mode change.
+  useEffect(() => {
+    setCurrent(null); setStatus('pending'); setFeedback(''); setRevealed(false)
+  }, [mode])
+
+  function pickNext() {
+    if (due.length === 0) { setCurrent(null); return }
+    // Order: oldest-due first, then shallower decisions first (foundations).
+    const sorted = [...due].sort((a, b) => {
+      const da = progress[a.id]?.nextDueAt ?? 0
+      const db = progress[b.id]?.nextDueAt ?? 0
+      if (da !== db) return da - db
+      return a.depth - b.depth
+    })
+    const next = sorted[0]
+    setCurrent(next)
+    setPosition(next.fen)
+    setStatus('pending')
+    setFeedback('')
+    setRevealed(false)
+  }
+
+  function onPieceDrop({ sourceSquare, targetSquare, piece }: {
+    sourceSquare: string; targetSquare: string | null; piece: { pieceType: string }
+  }): boolean {
+    if (!current || !targetSquare || status === 'correct') return false
+    const c = new Chess(position)
+    const promotion = piece.pieceType.endsWith('P') && (targetSquare[1] === '1' || targetSquare[1] === '8') ? 'q' : undefined
+    let mv
+    try { mv = c.move({ from: sourceSquare, to: targetSquare, promotion }) } catch { return false }
+    if (!mv) return false
+    if (mv.san.replace(/[+#]$/, '') === current.expectedSan.replace(/[+#]$/, '')) {
+      setPosition(c.fen())
+      setStatus('correct')
+      setFeedback(revealed ? `✓ ${mv.san} — révélé.` : `✓ ${mv.san}.`)
+      const outcome = revealed ? 'after-retry' : 'first-try'
+      setProgress(prev => ({ ...prev, [current.id]: updateProgressAfterAttempt(prev[current.id], outcome) }))
+      return true
+    }
+    // Wrong: undo and signal.
+    c.undo()
+    setStatus('wrong')
+    setFeedback(`✗ ${mv.san} ≠ ${current.expectedSan}.`)
+    return false
+  }
+
+  function reveal() {
+    if (!current) return
+    setRevealed(true)
+    setFeedback(`Coup attendu : ${current.expectedSan}. Joue-le sur l'échiquier pour valider.`)
+  }
+
+  function skip() {
+    if (!current) return
+    setProgress(prev => ({ ...prev, [current.id]: updateProgressAfterAttempt(prev[current.id], 'failed') }))
+    setCurrent(null)  // useEffect picks the next due card
+  }
+
+  function nextCard() {
+    setCurrent(null)
+  }
+
+  const stats = useMemo(() => {
+    const seen = Object.keys(progress).filter(k => allCards.some(c => c.id === k)).length
+    const total = allCards.length
+    const dueNow = due.length
+    return { seen, total, dueNow }
+  }, [progress, allCards, due])
+
+  if (allCards.length === 0) {
+    return (
+      <div className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-6 text-sm text-neutral-400">
+        Pas assez de répétitions dans le répertoire pour générer un drill SRS. Analyse au moins 2-3 parties dans une même ouverture.
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-3 flex flex-wrap items-center gap-3 justify-between">
+        <div className="text-sm text-neutral-300">
+          <span className="font-mono text-green-300">{stats.dueNow}</span>
+          <span className="text-neutral-500"> dus / {stats.total} cartes · </span>
+          <span className="text-neutral-400">{stats.seen} déjà vues</span>
+        </div>
+        <div className="inline-flex rounded-md border border-[var(--color-border)] bg-neutral-900 p-0.5 text-xs">
+          <button
+            onClick={() => setMode('habits')}
+            className={`px-2 py-1 rounded ${mode === 'habits' ? 'bg-[var(--color-accent)] text-white' : 'text-neutral-300 hover:bg-neutral-800'}`}
+          >Habitudes</button>
+          <button
+            onClick={() => setMode('improve')}
+            className={`px-2 py-1 rounded ${mode === 'improve' ? 'bg-[var(--color-accent)] text-white' : 'text-neutral-300 hover:bg-neutral-800'}`}
+            title="Drille les corrections recommandées par Stockfish au lieu de tes habitudes"
+          >Améliorer</button>
+        </div>
+      </div>
+
+      {!current ? (
+        <div className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-6 text-sm text-neutral-300">
+          ✓ Tu as fini la file. Reviens demain pour les prochaines révisions, ou change de mode.
+        </div>
+      ) : (
+        <div className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-4 space-y-3">
+          <div className="text-sm text-neutral-300 flex flex-wrap items-baseline gap-2">
+            <span className="font-semibold">{current.rootParent}</span>
+            <span className="text-neutral-500 text-xs">
+              {current.rootColor === 'white' ? '♔ Blancs' : '♚ Noirs'} · coup {current.depth} · {current.count} parties observées
+            </span>
+            {current.isSfRecommended && (
+              <span className="text-xs px-1.5 py-0.5 rounded bg-blue-900/40 text-blue-300">SF correction</span>
+            )}
+          </div>
+          <TrainingBoard
+            position={position}
+            orientation={current.rootColor}
+            allowDragging={status !== 'correct'}
+            maxWidth={440}
+            onPieceDrop={onPieceDrop}
+            id={current.id}
+          />
+          <div className="min-h-[1.5rem] text-sm">
+            {feedback && (
+              <span className={
+                status === 'correct' ? 'text-green-400' :
+                status === 'wrong' ? 'text-red-400' : 'text-neutral-300'
+              }>{feedback}</span>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {status === 'correct' ? (
+              <button
+                onClick={nextCard}
+                className="px-3 py-1.5 text-sm rounded bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] text-white"
+              >Suivant ({stats.dueNow - 1} restant{stats.dueNow - 1 > 1 ? 's' : ''})</button>
+            ) : (
+              <>
+                <button
+                  onClick={reveal}
+                  disabled={revealed}
+                  className="px-3 py-1.5 text-sm rounded bg-neutral-800 hover:bg-neutral-700 disabled:opacity-40"
+                >Révéler</button>
+                <button
+                  onClick={skip}
+                  className="px-3 py-1.5 text-sm rounded bg-neutral-800 hover:bg-neutral-700"
+                  title="Marque comme échec et passe à la suivante"
+                >Passer</button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

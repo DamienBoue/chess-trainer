@@ -152,6 +152,29 @@ export function isDue(progress: ExerciseProgress | undefined, now: number = Date
   return progress.nextDueAt <= now
 }
 
+// Repertoire SRS progress lives under its own key — same shape, separate
+// namespace so an exercise id never collides with a drill-card id.
+const REPERTOIRE_PROGRESS_KEY = 'chess.repertoire.progress'
+
+export function loadRepertoireProgress(): Record<string, ExerciseProgress> {
+  try {
+    const raw = localStorage.getItem(REPERTOIRE_PROGRESS_KEY)
+    if (!raw) return {}
+    return JSON.parse(raw) as Record<string, ExerciseProgress>
+  } catch (e) {
+    console.warn('[storage] failed to load repertoire progress:', e)
+    return {}
+  }
+}
+
+export function saveRepertoireProgress(progress: Record<string, ExerciseProgress>): void {
+  try {
+    localStorage.setItem(REPERTOIRE_PROGRESS_KEY, JSON.stringify(progress))
+  } catch (e) {
+    console.warn('[storage] failed to save repertoire progress:', e)
+  }
+}
+
 // Group/derive helpers
 export function progressSummary(progress: Record<string, ExerciseProgress>) {
   const list = Object.values(progress)
