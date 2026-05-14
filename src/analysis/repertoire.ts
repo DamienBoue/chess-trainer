@@ -319,6 +319,128 @@ function critiqueScore(c: RepertoireCritique): number {
 void ALL_RESULTS
 
 // ---------------------------------------------------------------------------
+// Repertoire holes: positions you reach often where you DON'T have a clear
+// habitual move. The critique surfaces "you play X poorly"; this surfaces
+// "you're not sure what to play here at all" — different signal, different
+// fix (memorise one specific reply instead of unlearning a bad one).
+//
+// Heuristic:
+//   * the node has been reached enough times (≥ minVisits)
+//   * the top move's share of visits is below `topShareThreshold` (default 60%)
+//     → you're splitting between several choices, never committing
+//   * we record up to `top` competing alternatives so the UI can show what
+//     you've tried so far.
+// ---------------------------------------------------------------------------
+
+export interface RepertoireHole {
+  parent: string
+  color: Color
+  oppPrev: string                  // opponent move that led here
+  fenBefore: string                // FEN to display
+  visits: number                   // total visits at this node
+  topShare: number                 // share of visits taken by the most-played move (0..1)
+  avgCpLoss: number                // mean cpLoss across all your choices here
+  winRate: number                  // (W + 0.5*D)/total at this node
+  choices: Array<{ san: string; count: number; share: number }>  // sorted by count desc
+  ply: number                      // user-side ply depth
+  score: number                    // bigger = more urgent
+}
+
+export function findRepertoireHoles(
+  roots: RepertoireRoot[],
+  opts: {
+    minVisits?: number
+    topShareThreshold?: number
+    maxPliesEachSide?: number
+    topChoices?: number
+  } = {},
+): RepertoireHole[] {
+  const {
+    minVisits = 3,
+    topShareThreshold = 0.6,
+    maxPliesEachSide = 8,
+    topChoices = 4,
+  } = opts
+
+  const out: RepertoireHole[] = []
+
+  function visit(
+    parent: string,
+    color: Color,
+    children: Map<string, RepertoireNode>,
+    depth: number,
+  ) {
+    if (depth >= maxPliesEachSide) return
+    // Group sibling children by oppPrev — each opponent context is its own
+    // decision point.
+    const byOpp = new Map<string, RepertoireNode[]>()
+    for (const [composite, node] of children) {
+      const opp = composite.split('|')[0]
+      const arr = byOpp.get(opp) ?? []
+      arr.push(node)
+      byOpp.set(opp, arr)
+    }
+    for (const [opp, siblings] of byOpp) {
+      const totalVisits = siblings.reduce((s, n) => s + n.count, 0)
+      if (totalVisits < minVisits) continue
+      // Aggregate same-SAN nodes (different deeper paths but same user move).
+      const byMove = new Map<string, RepertoireNode[]>()
+      for (const n of siblings) {
+        const arr = byMove.get(n.san) ?? []
+        arr.push(n)
+        byMove.set(n.san, arr)
+      }
+      const movesAgg = Array.from(byMove.entries()).map(([san, list]) => ({
+        san,
+        count: list.reduce((s, n) => s + n.count, 0),
+        cpLossSum: list.reduce((s, n) => s + n.cpLossSum, 0),
+        wins: list.reduce((s, n) => s + n.wins, 0),
+        losses: list.reduce((s, n) => s + n.losses, 0),
+        draws: list.reduce((s, n) => s + n.draws, 0),
+        fen: list[0].fenBeforeSamples[0] ?? '',
+      }))
+      movesAgg.sort((a, b) => b.count - a.count)
+      if (movesAgg.length < 2) continue                 // need uncertainty
+      const top = movesAgg[0]
+      const topShare = top.count / totalVisits
+      if (topShare >= topShareThreshold) continue        // clear favourite → not a hole
+      const cpLossSum = movesAgg.reduce((s, m) => s + m.cpLossSum, 0)
+      const totalCpMoves = movesAgg.reduce((s, m) => s + m.count, 0)
+      const wins = movesAgg.reduce((s, m) => s + m.wins, 0)
+      const draws = movesAgg.reduce((s, m) => s + m.draws, 0)
+      const losses = movesAgg.reduce((s, m) => s + m.losses, 0)
+      const total = wins + draws + losses
+      const avgCp = totalCpMoves > 0 ? cpLossSum / totalCpMoves : 0
+      const wr = total > 0 ? (wins + 0.5 * draws) / total : 0
+      out.push({
+        parent,
+        color,
+        oppPrev: opp,
+        fenBefore: top.fen,
+        visits: totalVisits,
+        topShare,
+        avgCpLoss: avgCp,
+        winRate: wr,
+        choices: movesAgg.slice(0, topChoices).map(m => ({
+          san: m.san,
+          count: m.count,
+          share: m.count / totalVisits,
+        })),
+        ply: depth + 1,
+        // Higher = more urgent. Visits × (uncertainty + bad results).
+        score: totalVisits * ((1 - topShare) + (1 - wr) * 0.5 + Math.min(avgCp, 100) / 100),
+      })
+      // Recurse into top children so deeper holes are also surfaced.
+      for (const n of siblings) visit(parent, color, n.children, depth + 1)
+    }
+  }
+  for (const r of roots) {
+    visit(r.parent, r.color, r.children, 0)
+  }
+  return out.sort((a, b) => b.score - a.score)
+}
+
+// ---------------------------------------------------------------------------
 // Drill-card enumeration for the spaced-repetition trainer.
 // Each "card" = a single decision point in the user's repertoire (a position
 // where they have a habitual move). The card carries the FEN to display,
