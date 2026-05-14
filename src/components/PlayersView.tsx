@@ -4,6 +4,7 @@ import { listPlayers, savePlayer, deletePlayer } from '../players/storage'
 import { buildPlayerProfiles } from '../players/import'
 import { scoutingProfile, type ScoutingProfile, type OpeningStat } from '../analysis/scouting'
 import { compareProfiles, type OpeningOpportunity } from '../analysis/playerCompare'
+import { SkeletonListItem } from './Skeleton'
 
 export default function PlayersView() {
   const [profiles, setProfiles] = useState<PlayerProfile[] | null>(null)
@@ -118,7 +119,10 @@ export default function PlayersView() {
       )}
 
       {!profiles ? (
-        <p className="text-neutral-400 text-sm">Chargement…</p>
+        <div className="space-y-2">
+          <SkeletonListItem />
+          <SkeletonListItem />
+        </div>
       ) : profiles.length === 0 ? (
         <details className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded p-4 text-sm">
           <summary className="cursor-pointer">D'où télécharger des PGN ?</summary>

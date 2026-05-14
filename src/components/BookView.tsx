@@ -9,6 +9,7 @@ import {
   tableCategoryLabel, classifyTableMove,
 } from '../api/lichess'
 import BookRushView from './BookRushView'
+import { SkeletonBox, SkeletonBoard } from './Skeleton'
 
 type Status = 'pending' | 'wrong' | 'in-progress' | 'solved' | 'revealed'
 
@@ -58,7 +59,13 @@ export default function BookView({ bookId, onBack }: Props) {
     )
   }
   if (!book || !progress) {
-    return <div className="p-8 max-w-3xl mx-auto text-neutral-400">Chargement…</div>
+    return (
+      <div className="p-6 max-w-6xl mx-auto space-y-4">
+        <SkeletonBox className="h-8 w-1/3" />
+        <SkeletonBox className="h-4 w-2/3" />
+        <SkeletonBoard maxWidth={520} />
+      </div>
+    )
   }
 
   if (subMode === 'rush') {

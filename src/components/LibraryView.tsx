@@ -3,6 +3,7 @@ import type { Book } from '../library/types'
 import { listBooks, deleteBook, getProgress, saveBook } from '../library/storage'
 import { importBookFromFile, migrateLegacyWoodpeckerProgress, validateBookJson } from '../library/import'
 import { toast } from './Toast'
+import { SkeletonListItem } from './Skeleton'
 
 interface Props {
   onOpenBook: (bookId: string) => void
@@ -161,7 +162,11 @@ export default function LibraryView({ onOpenBook }: Props) {
       </details>
 
       {!rows ? (
-        <p className="text-neutral-400">Chargement…</p>
+        <div className="space-y-2">
+          <SkeletonListItem />
+          <SkeletonListItem />
+          <SkeletonListItem />
+        </div>
       ) : rows.length === 0 ? (
         <div className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded p-8 text-center">
           <p className="text-neutral-400 mb-2">Aucun livre importé pour l'instant.</p>
