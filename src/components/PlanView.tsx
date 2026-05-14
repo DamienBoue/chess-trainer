@@ -7,8 +7,9 @@ import { loadPlanState, markPlanItemDone, unmarkPlanItem } from '../storage/plan
 import { bracketForElo, effectiveElo, loadEloPreference } from '../skill/elo'
 import { MOTIF_LABELS } from '../analysis/motifs'
 import type { MotifTag } from '../analysis/motifs'
-import { llmAvailable, summariseDailyPlan } from '../llm/coach'
+import { summariseDailyPlan } from '../llm/coach'
 import ChecklistRow from './ChecklistRow'
+import LlmAskBox from './LlmAskBox'
 import EmptyState from './EmptyState'
 
 interface Props {
@@ -121,46 +122,17 @@ export default function PlanView({ analyses, progress, onNavigate }: Props) {
 }
 
 // Optional AI-generated framing of today's session. Hidden if no LLM key.
-// Stored cache key includes plan signature so the prose stays stable
-// across re-renders of the same plan.
 function CoachIntro({ items, bracket }: { items: PlanItem[]; bracket: ReturnType<typeof bracketForElo> }) {
-  const available = useMemo(() => llmAvailable(), [])
-  const [text, setText] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [err, setErr] = useState<string | null>(null)
-
-  if (!available || items.length === 0) return null
-
-  async function run() {
-    setLoading(true); setErr(null); setText(null)
-    try {
-      setText(await summariseDailyPlan(items, bracket) || '(Réponse vide.)')
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Erreur LLM')
-    } finally {
-      setLoading(false)
-    }
-  }
-
+  if (items.length === 0) return null
+  const signature = items.map(i => i.id).join('|')
   return (
-    <div className="mb-4 p-3 rounded-md bg-purple-500/5 border border-purple-500/30">
-      {!text && !loading && !err && (
-        <button
-          onClick={run}
-          className="text-xs px-2.5 py-1 rounded bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 border border-purple-500/30"
-        >✨ Demander à l'IA un cadrage pour aujourd'hui</button>
-      )}
-      {loading && <p className="text-xs text-neutral-400">L'IA prépare la session…</p>}
-      {err && <p className="text-xs text-red-400">⚠ {err}</p>}
-      {text && (
-        <>
-          <div className="text-sm text-neutral-200 leading-relaxed whitespace-pre-wrap">{text}</div>
-          <button
-            onClick={run}
-            className="mt-2 text-[11px] text-neutral-500 hover:text-white underline"
-          >Régénérer</button>
-        </>
-      )}
+    <div className="mb-4">
+      <LlmAskBox
+        ctaLabel="✨ Demander à l'IA un cadrage pour aujourd'hui"
+        tinted
+        resetKey={signature}
+        run={signal => summariseDailyPlan(items, bracket, { signal })}
+      />
     </div>
   )
 }
