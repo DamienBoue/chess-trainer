@@ -2,7 +2,6 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import type { ChessComGame, GameAnalysis } from './types'
 import { StockfishEngine } from './engine/stockfish'
 import Home from './components/Home'
-import Dashboard from './components/Dashboard'
 import { ToastHost, toast } from './components/Toast'
 import KeyboardShortcutsModal, { openShortcutsHelp } from './components/KeyboardShortcutsModal'
 import Onboarding from './components/Onboarding'
@@ -57,7 +56,7 @@ export interface BatchState {
   failed: number
 }
 
-type View = 'home' | 'games' | 'analysis' | 'stats' | 'exercises' | 'rush' | 'daily' | 'plan' | 'roadmap' | 'compare' | 'repertoire' | 'library' | 'book' | 'scouting' | 'play' | 'blunder' | 'calc' | 'players' | 'settings'
+type View = 'home' | 'games' | 'analysis' | 'stats' | 'exercises' | 'rush' | 'daily' | 'roadmap' | 'compare' | 'repertoire' | 'library' | 'book' | 'scouting' | 'play' | 'blunder' | 'calc' | 'players' | 'settings'
 
 export default function App() {
   const [view, setView] = useState<View>('home')
@@ -281,12 +280,8 @@ export default function App() {
         <nav className={`${username ? 'hidden sm:flex' : 'flex'} ml-auto items-center gap-1 text-sm flex-wrap`}>
           {username && (
             <>
-              <NavBtn active={view === 'plan'} onClick={() => setView('plan')} disabled={filteredAnalyses.length === 0}>
-                Plan du jour
-              </NavBtn>
-              <NavBtn active={view === 'roadmap'} onClick={() => setView('roadmap')}>
-                Roadmap
-              </NavBtn>
+              <NavBtn active={view === 'home'} onClick={() => setView('home')}>Plan</NavBtn>
+              <NavBtn active={view === 'roadmap'} onClick={() => setView('roadmap')}>Roadmap</NavBtn>
               <NavBtn active={view === 'games'} onClick={() => setView('games')}>Parties</NavBtn>
               <NavBtn active={view === 'daily'} onClick={() => setView('daily')} disabled={exerciseCount === 0}>
                 {dailySolvedToday ? '✓ ' : ''}Quotidien{dailyStreak > 0 ? ` 🔥${dailyStreak}` : ''}
@@ -385,7 +380,11 @@ export default function App() {
                   <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
                 </svg>
               </button>
-              <NavBtn active={view === 'home'} onClick={() => setView('home')}>@{username}</NavBtn>
+              <button
+                onClick={handleLogout}
+                className="px-3 py-1.5 rounded-md text-neutral-300 hover:bg-neutral-800 text-xs"
+                title="Se déconnecter"
+              >@{username}</button>
             </>
           )}
           <a
@@ -429,13 +428,14 @@ export default function App() {
         <Suspense fallback={<LazyFallback />}>
         {view === 'home' && (
           username ? (
-            <Dashboard
+            <PlanView
               username={username}
               analyses={filteredAnalyses}
               progress={progress}
-              onNavigate={v => {
-                if (v === 'home') handleLogout()
-                else setView(v as View)
+              onNavigate={(target, opts) => {
+                if (opts?.motif) setDrillMotif(opts.motif)
+                if (target === 'home') handleLogout()
+                else setView(target as View)
               }}
             />
           ) : (
@@ -491,16 +491,6 @@ export default function App() {
         )}
         {view === 'daily' && (
           <DailyView exercises={exercises} onGoToGames={() => setView('games')} />
-        )}
-        {view === 'plan' && (
-          <PlanView
-            analyses={filteredAnalyses}
-            progress={progress}
-            onNavigate={(target, opts) => {
-              if (opts?.motif) setDrillMotif(opts.motif)
-              setView(target as View)
-            }}
-          />
         )}
         {view === 'roadmap' && (
           <RoadmapView
@@ -620,8 +610,7 @@ function MobileNavSheet({
           <button onClick={onClose} className="text-neutral-400 hover:text-white text-xl">×</button>
         </div>
         <div className="text-xs text-neutral-500 px-4 pt-3 uppercase tracking-wider">Données</div>
-        {item('home', 'Accueil')}
-        {item('plan', 'Plan du jour', counts.analyses === 0)}
+        {item('home', 'Plan du jour')}
         {item('roadmap', 'Roadmap')}
         {item('games', 'Parties')}
         {item('daily', 'Quotidien', counts.exercises === 0)}

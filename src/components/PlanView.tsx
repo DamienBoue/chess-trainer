@@ -5,20 +5,21 @@ import { buildPlan, totalMinutes, type PlanItem } from '../analysis/plan'
 import { loadDaily, todayString } from '../storage/daily'
 import { loadPlanState, markPlanItemDone, unmarkPlanItem } from '../storage/plan'
 import { bracketForElo, effectiveElo, loadEloPreference } from '../skill/elo'
+import { aggregate } from '../analysis/aggregate'
 import { MOTIF_LABELS } from '../analysis/motifs'
 import type { MotifTag } from '../analysis/motifs'
 import { summariseDailyPlan } from '../llm/coach'
 import ChecklistRow from './ChecklistRow'
 import LlmAskBox from './LlmAskBox'
-import EmptyState from './EmptyState'
 
 interface Props {
   analyses: GameAnalysis[]
   progress: Record<string, ExerciseProgress>
-  onNavigate: (target: 'daily' | 'exercises' | 'repertoire' | 'stats', opts?: { motif?: MotifTag }) => void
+  username?: string
+  onNavigate: (target: 'daily' | 'exercises' | 'repertoire' | 'stats' | 'games' | 'roadmap' | 'home', opts?: { motif?: MotifTag }) => void
 }
 
-export default function PlanView({ analyses, progress, onNavigate }: Props) {
+export default function PlanView({ analyses, progress, username, onNavigate }: Props) {
   const today = todayString()
   const dailyState = loadDaily()
   const dailyDone = dailyState?.date === today && !!dailyState.solved
@@ -47,21 +48,32 @@ export default function PlanView({ analyses, progress, onNavigate }: Props) {
   const totalMin = totalMinutes(items)
   const completion = items.length === 0 ? 0 : totalDone / items.length
 
+  // Empty state: user is connected but hasn't analysed anything yet.
   if (analyses.length === 0) {
     return (
-      <EmptyState
-        icon="📋"
-        title="Pas encore de plan"
-        description="Le plan quotidien synthétise tes SRS dues, ton répertoire et tes erreurs récurrentes en une session de 10-15 min. Il faut au moins une partie analysée pour démarrer."
-      />
+      <div className="p-6 max-w-2xl mx-auto space-y-5">
+        {username && <PlanHeader username={username} analyses={analyses} onOpenRoadmap={() => onNavigate('roadmap')} onLogout={() => onNavigate('home')} />}
+        <div className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-5">
+          <h3 className="font-semibold mb-2">Démarrer en 3 étapes</h3>
+          <ol className="list-decimal pl-5 text-sm text-neutral-300 space-y-1 mb-4">
+            <li>Va dans <strong>Parties</strong> — tes dernières parties chess.com sont déjà chargées.</li>
+            <li>Clique <em>Tout analyser</em>. Stockfish tourne en local.</li>
+            <li>Reviens ici : ton plan, tes exercices et ton répertoire sont débloqués.</li>
+          </ol>
+          <button
+            onClick={() => onNavigate('games')}
+            className="px-4 py-2 text-sm rounded bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] text-white font-medium"
+          >Voir mes parties</button>
+        </div>
+      </div>
     )
   }
 
   if (items.length === 0) {
     return (
-      <div className="p-6 max-w-3xl mx-auto">
-        <h2 className="text-2xl font-semibold mb-2">Plan du jour</h2>
-        <p className="text-sm text-neutral-500 mb-4">{today}</p>
+      <div className="p-6 max-w-3xl mx-auto space-y-5">
+        {username && <PlanHeader username={username} analyses={analyses} onOpenRoadmap={() => onNavigate('roadmap')} onLogout={() => onNavigate('home')} />}
+        <h2 className="text-xl font-semibold">Plan du jour <span className="text-sm font-normal text-neutral-500 ml-2">{today}</span></h2>
         <div className="bg-green-500/10 border border-green-500/30 rounded-md p-5 text-sm text-green-200">
           <p className="font-semibold mb-1">✓ Rien au programme aujourd'hui</p>
           <p>SRS à jour, pas d'erreur récurrente flagrante, répertoire propre. Reviens demain.</p>
@@ -71,12 +83,14 @@ export default function PlanView({ analyses, progress, onNavigate }: Props) {
   }
 
   return (
-    <div className="p-4 lg:p-6 max-w-3xl mx-auto">
-      <div className="flex items-baseline justify-between flex-wrap gap-3 mb-4">
+    <div className="p-4 lg:p-6 max-w-3xl mx-auto space-y-5">
+      {username && <PlanHeader username={username} analyses={analyses} onOpenRoadmap={() => onNavigate('roadmap')} onLogout={() => onNavigate('home')} />}
+
+      <div className="flex items-baseline justify-between flex-wrap gap-3">
         <div>
-          <h2 className="text-2xl font-semibold">Plan du jour</h2>
-          <p className="text-sm text-neutral-400">
-            {today} · {items.length} étape{items.length > 1 ? 's' : ''} · ≈ {totalMin} min
+          <h2 className="text-xl font-semibold">Plan du jour <span className="text-sm font-normal text-neutral-500 ml-2">{today}</span></h2>
+          <p className="text-xs text-neutral-500">
+            {items.length} étape{items.length > 1 ? 's' : ''} · ≈ {totalMin} min
           </p>
         </div>
         <div className="text-sm">
@@ -117,6 +131,50 @@ export default function PlanView({ analyses, progress, onNavigate }: Props) {
           <p>Tu as fait toutes les étapes du jour. Reviens demain pour la suivante.</p>
         </div>
       )}
+    </div>
+  )
+}
+
+// Greeting + Elo bracket badge + 1-line stats. Sits at the top of the
+// authenticated home (= Plan). Replaces the old Dashboard banner.
+function PlanHeader({
+  username, analyses, onOpenRoadmap, onLogout,
+}: {
+  username: string
+  analyses: GameAnalysis[]
+  onOpenRoadmap: () => void
+  onLogout: () => void
+}) {
+  const bracket = useMemo(
+    () => bracketForElo(effectiveElo(loadEloPreference(), analyses)),
+    [analyses],
+  )
+  const elo = useMemo(() => effectiveElo(loadEloPreference(), analyses), [analyses])
+  const stats = useMemo(() => aggregate(analyses), [analyses])
+
+  return (
+    <div className="flex items-baseline justify-between flex-wrap gap-3 pb-4 border-b border-[var(--color-border)]">
+      <div>
+        <h1 className="text-2xl font-semibold flex items-center gap-2 flex-wrap">
+          Bonjour @{username}
+          <button
+            onClick={onOpenRoadmap}
+            className="text-[11px] px-2 py-0.5 rounded bg-neutral-800 hover:bg-neutral-700 font-normal uppercase tracking-wider"
+            title="Niveau actuel — ouvrir la roadmap"
+          >
+            {bracket.label}{elo != null && <span className="ml-1 text-neutral-400">{elo}</span>}
+          </button>
+        </h1>
+        {analyses.length > 0 && (
+          <p className="text-sm text-neutral-400">
+            {analyses.length} parties analysées · précision moyenne {stats.avgCpLossUser.toFixed(0)} cp/coup
+          </p>
+        )}
+      </div>
+      <button
+        onClick={onLogout}
+        className="text-xs text-neutral-400 hover:text-white underline"
+      >Changer de compte</button>
     </div>
   )
 }
