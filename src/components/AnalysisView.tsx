@@ -8,7 +8,7 @@ import { CLASSIFICATION_COLORS, CLASSIFICATION_LABELS } from '../analysis/classi
 import { generateGameSummary } from '../analysis/summary'
 import { buildRepertoire } from '../analysis/repertoire'
 import { fetchExplorer, type ExplorerResponse } from '../api/lichess'
-import { explainBlunder, reviewGame } from '../llm/coach'
+import { explainBlunder, reviewGame } from '../coach/coach'
 import LlmAskBox from './LlmAskBox'
 import { exportAnnotatedPgn } from '../analysis/pgnExport'
 import EvalBar from './EvalBar'

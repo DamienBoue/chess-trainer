@@ -5,7 +5,7 @@ import {
   getEngineDepth, setEngineDepth,
 } from '../storage/settings'
 import { exportAll, importAll, downloadJson, readJsonFile } from '../storage/exportImport'
-import { DEFAULT_MODEL, loadLlmConfig, saveLlmConfig, type LlmProvider } from '../llm/config'
+import { DEFAULT_MODEL, loadLlmConfig, saveLlmConfig, type LlmProvider } from '../coach/config'
 import { toast } from './Toast'
 import { resetOnboarding } from './Onboarding'
 

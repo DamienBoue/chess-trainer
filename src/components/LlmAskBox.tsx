@@ -4,7 +4,7 @@
 // fetch function — this component knows nothing about chess.
 
 import { useEffect, useRef, useState } from 'react'
-import { llmAvailable } from '../llm/coach'
+import { llmAvailable } from '../coach/coach'
 
 interface Props {
   /** Call the LLM. Should resolve to the model's text response. */

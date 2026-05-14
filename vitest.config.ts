@@ -15,8 +15,8 @@ export default defineConfig({
         'src/storage/**/*.ts',
         'src/api/share.ts',
         'src/api/lichess.ts',
-        'src/llm/config.ts',
-        'src/llm/coach.ts',
+        'src/coach/config.ts',
+        'src/coach/coach.ts',
         'src/utils/**/*.ts',
       ],
       exclude: [
@@ -34,7 +34,7 @@ export default defineConfig({
         // Depends on the Stockfish Worker — not unit-testable in node.
         'src/analysis/analyze.ts',
         // Network-only (HTTP wrappers); the dispatcher logic is too thin.
-        'src/llm/client.ts',
+        'src/coach/client.ts',
       ],
       thresholds: {
         lines:     80,
