@@ -58,6 +58,7 @@ export default function App() {
   // Cross-view deep link: clicking a motif in Stats jumps to Exercises with
   // that motif preselected.
   const [drillMotif, setDrillMotif] = useState<import('./analysis/motifs').MotifTag | null>(null)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [username, setUsername] = useState<string>(() => localStorage.getItem('chess.username') ?? '')
   const [games, setGames] = useState<ChessComGame[]>(() =>
     username ? loadGames(username) : [],
@@ -235,7 +236,20 @@ export default function App() {
         <h1 className="text-lg font-semibold tracking-tight">
           ♞ Chess Trainer
         </h1>
-        <nav className="ml-auto flex items-center gap-1 text-sm flex-wrap">
+        {username && (
+          <button
+            onClick={() => setMobileMenuOpen(true)}
+            className="sm:hidden ml-auto px-2 py-1.5 rounded-md text-neutral-300 hover:bg-neutral-800"
+            aria-label="Menu"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <line x1="3" y1="6" x2="21" y2="6"/>
+              <line x1="3" y1="12" x2="21" y2="12"/>
+              <line x1="3" y1="18" x2="21" y2="18"/>
+            </svg>
+          </button>
+        )}
+        <nav className={`${username ? 'hidden sm:flex' : 'flex'} ml-auto items-center gap-1 text-sm flex-wrap`}>
           {username && (
             <>
               <NavBtn active={view === 'games'} onClick={() => setView('games')}>Parties</NavBtn>
@@ -481,6 +495,88 @@ export default function App() {
       <ToastHost />
       <KeyboardShortcutsModal />
       <Onboarding />
+      {mobileMenuOpen && username && (
+        <MobileNavSheet
+          username={username}
+          view={view}
+          counts={{ exercises: exerciseCount, due: dueCount, analyses: filteredAnalyses.length }}
+          onNavigate={v => { setView(v); setMobileMenuOpen(false) }}
+          onClose={() => setMobileMenuOpen(false)}
+          onOpenSettings={() => { setView('settings'); setMobileMenuOpen(false) }}
+          onOpenShortcuts={() => { openShortcutsHelp(); setMobileMenuOpen(false) }}
+          onLogout={() => { handleLogout(); setMobileMenuOpen(false) }}
+        />
+      )}
+    </div>
+  )
+}
+
+interface MobileNavSheetProps {
+  username: string
+  view: View
+  counts: { exercises: number; due: number; analyses: number }
+  onNavigate: (v: View) => void
+  onClose: () => void
+  onOpenSettings: () => void
+  onOpenShortcuts: () => void
+  onLogout: () => void
+}
+
+function MobileNavSheet({
+  username, view, counts, onNavigate, onClose, onOpenSettings, onOpenShortcuts, onLogout,
+}: MobileNavSheetProps) {
+  const item = (v: View, label: string, disabled?: boolean) => (
+    <button
+      key={v}
+      onClick={() => !disabled && onNavigate(v)}
+      disabled={disabled}
+      className={`w-full text-left px-4 py-3 border-b border-[var(--color-border)] ${
+        view === v ? 'bg-[var(--color-accent)]/20 text-white'
+                  : 'text-neutral-200 hover:bg-neutral-800 disabled:opacity-40'
+      }`}
+    >{label}</button>
+  )
+  return (
+    <div className="fixed inset-0 z-40 bg-black/60 sm:hidden" onClick={onClose}>
+      <div
+        className="absolute right-0 top-0 bottom-0 w-72 max-w-[85vw] bg-[var(--color-panel)] border-l border-[var(--color-border)] overflow-y-auto"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="px-4 py-3 border-b border-[var(--color-border)] flex items-center justify-between">
+          <span className="font-semibold">@{username}</span>
+          <button onClick={onClose} className="text-neutral-400 hover:text-white text-xl">×</button>
+        </div>
+        <div className="text-xs text-neutral-500 px-4 pt-3 uppercase tracking-wider">Données</div>
+        {item('home', 'Accueil')}
+        {item('games', 'Parties')}
+        {item('daily', 'Quotidien', counts.exercises === 0)}
+        {item('stats', `Stats (${counts.analyses})`, counts.analyses === 0)}
+        {item('repertoire', 'Répertoire', counts.analyses < 3)}
+        <div className="text-xs text-neutral-500 px-4 pt-3 uppercase tracking-wider">Entraînement</div>
+        {item('exercises', `Exercices${counts.due > 0 ? ` (${counts.due})` : ''}`, counts.exercises === 0)}
+        {item('rush', 'Puzzle Rush', counts.exercises < 5)}
+        {item('blunder', 'Blunder reflex', counts.exercises < 3)}
+        {item('calc', 'Calcul', counts.exercises < 3)}
+        {item('library', 'Bibliothèque')}
+        <div className="text-xs text-neutral-500 px-4 pt-3 uppercase tracking-wider">Adversaires</div>
+        {item('compare', 'Comparer')}
+        {item('scouting', 'Scouting')}
+        {item('players', 'Joueurs PGN')}
+        <div className="text-xs text-neutral-500 px-4 pt-3 uppercase tracking-wider">Autre</div>
+        {item('play', 'Jouer vs Stockfish')}
+        <button
+          onClick={onOpenSettings}
+          className="w-full text-left px-4 py-3 border-b border-[var(--color-border)] hover:bg-neutral-800 text-neutral-200"
+        >Préférences</button>
+        <button
+          onClick={onOpenShortcuts}
+          className="w-full text-left px-4 py-3 border-b border-[var(--color-border)] hover:bg-neutral-800 text-neutral-200"
+        >Raccourcis clavier</button>
+        <button
+          onClick={onLogout}
+          className="w-full text-left px-4 py-3 border-b border-[var(--color-border)] hover:bg-red-900/40 text-red-300"
+        >Se déconnecter</button>
+      </div>
     </div>
   )
 }
