@@ -41,7 +41,7 @@ A 10-15 min curated session synthesising every training signal:
 
 ## SRS & drilling
 
-- **Exercises** — auto-extracted from your blunders, scheduled with an SM-2 lite algorithm (1d → 3d → 7d → 14d → 30d → 60d).
+- **Exercises** — auto-extracted from your blunders, scheduled with an SM-2 lite algorithm (1d → 3d → 7d → 14d → 30d → 60d). Each one carries a heuristic difficulty (`easy` / `medium` / `hard`) based on the engine PV length, presence of sacrifices, and whether the solution is a quiet move; filterable in the toolbar.
 - **Puzzle rush** — timed Woodpecker-style burndown over your exercises.
 - **Anti-blunder drill** — flash-card reflex test on positions you keep losing.
 - **Calculation depth trainer** — step-through a forced sequence one move at a time.

@@ -6,10 +6,13 @@ import {
   type Exercise,
   type ExerciseCategory,
   type MotifTag,
+  type Difficulty,
   CATEGORY_LABELS,
   CATEGORY_DESCRIPTIONS,
   CATEGORY_COLORS,
   MOTIF_LABELS,
+  DIFFICULTY_LABELS,
+  DIFFICULTY_COLORS,
   extractExercises,
 } from '../analysis/exercises'
 import { type ExerciseProgress, isDue } from '../storage/persist'
@@ -39,6 +42,7 @@ export default function ExercisesView({ analyses, progress, onAttempt, initialMo
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('due')
   const [motifFilter, setMotifFilter] = useState<MotifTag | 'all'>(initialMotif ?? 'all')
+  const [difficultyFilter, setDifficultyFilter] = useState<Difficulty | 'all'>('all')
   const [activeId, setActiveId] = useState<string | null>(null)
 
   // If the upstream changes `initialMotif` (e.g. user clicks another row in
@@ -57,11 +61,12 @@ export default function ExercisesView({ analyses, progress, onAttempt, initialMo
     let list = exercises
     if (categoryFilter !== 'all') list = list.filter(e => e.category === categoryFilter)
     if (motifFilter !== 'all') list = list.filter(e => e.motifs.includes(motifFilter))
+    if (difficultyFilter !== 'all') list = list.filter(e => e.difficulty === difficultyFilter)
     if (statusFilter === 'due') list = list.filter(e => isDue(progress[e.id]))
     else if (statusFilter === 'solved') list = list.filter(e => (progress[e.id]?.successes ?? 0) > 0)
     else if (statusFilter === 'unseen') list = list.filter(e => !progress[e.id])
     return list
-  }, [exercises, categoryFilter, motifFilter, statusFilter, progress])
+  }, [exercises, categoryFilter, motifFilter, difficultyFilter, statusFilter, progress])
 
   // Auto-pin the first filtered exercise to activeId on mount (and whenever
   // activeId is null) so the active exercise stays sticky even after it falls
@@ -162,6 +167,20 @@ export default function ExercisesView({ analyses, progress, onAttempt, initialMo
         <FilterPill active={categoryFilter === 'punishment'} onClick={() => setCategoryFilter('punishment')} count={counts.punishment} color={CATEGORY_COLORS.punishment}>{CATEGORY_LABELS.punishment}</FilterPill>
         <FilterPill active={categoryFilter === 'defense'} onClick={() => setCategoryFilter('defense')} count={counts.defense} color={CATEGORY_COLORS.defense}>{CATEGORY_LABELS.defense}</FilterPill>
       </div>
+      {/* Difficulty filter */}
+      <div className="flex gap-2 mb-2 flex-wrap text-xs">
+        <span className="text-neutral-500 self-center mr-1">Difficulté :</span>
+        <FilterPill active={difficultyFilter === 'all'} onClick={() => setDifficultyFilter('all')}>Toutes</FilterPill>
+        {(['easy', 'medium', 'hard'] as Difficulty[]).map(d => (
+          <FilterPill
+            key={d}
+            active={difficultyFilter === d}
+            onClick={() => setDifficultyFilter(d)}
+            color={DIFFICULTY_COLORS[d]}
+            count={exercises.filter(e => e.difficulty === d).length}
+          >{DIFFICULTY_LABELS[d]}</FilterPill>
+        ))}
+      </div>
       {/* Motif filter — only shown when a motif is actively filtered or via Stats deep-link */}
       {motifFilter !== 'all' && (
         <div className="flex gap-2 mb-4 flex-wrap items-center text-xs">
@@ -234,7 +253,7 @@ function FilterPill({
   children: React.ReactNode
   active: boolean
   onClick: () => void
-  count: number
+  count?: number
   color?: string
 }) {
   return (
@@ -531,6 +550,13 @@ function ExercisePractice({
                 style={{ backgroundColor: CATEGORY_COLORS[exercise.category] + '33', color: CATEGORY_COLORS[exercise.category] }}
               >
                 {CATEGORY_LABELS[exercise.category]}
+              </span>
+              <span
+                className="px-2 py-1 rounded text-xs font-medium"
+                style={{ backgroundColor: DIFFICULTY_COLORS[exercise.difficulty] + '33', color: DIFFICULTY_COLORS[exercise.difficulty] }}
+                title={`Difficulté ${DIFFICULTY_LABELS[exercise.difficulty]}`}
+              >
+                {DIFFICULTY_LABELS[exercise.difficulty]}
               </span>
               {(exercise.motifs ?? []).map(m => (
                 <span

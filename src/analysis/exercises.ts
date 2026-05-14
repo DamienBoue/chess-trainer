@@ -2,6 +2,7 @@ import type { Color, GameAnalysis, MoveAnalysis } from '../types'
 import { detectMotifs as detectMotifsImpl, MOTIF_LABELS as MOTIF_LABELS_FULL, type MotifTag as MotifTagFull } from './motifs'
 
 export type ExerciseCategory = 'missed' | 'punishment' | 'defense'
+export type Difficulty = 'easy' | 'medium' | 'hard'
 
 export type MotifTag = MotifTagFull
 
@@ -19,6 +20,7 @@ export interface Exercise {
   evalBeforeWhite: number
   evalAfterPlayedWhite: number
   motifs: MotifTag[]           // simple heuristics: mate / capture
+  difficulty: Difficulty       // heuristic complexity: short obvious tactic vs deep quiet move
   context: {
     gameUrl: string
     opponent: string
@@ -32,6 +34,32 @@ export interface Exercise {
 // User's "perspective" eval (positive = good for user)
 function userEval(scoreWhite: number, color: Color): number {
   return color === 'white' ? scoreWhite : -scoreWhite
+}
+
+/** Heuristic complexity of an exercise:
+ *  - obvious mate-in-1 / hanging capture / capture: 'easy'
+ *  - quiet move OR short forced tactic (2-3 plies of PV): 'medium'
+ *  - sacrifice OR deep PV (4+ plies) OR very large swing: 'hard'
+ *  Aim: beginners only see easy/medium, experts see all. */
+function gradeDifficulty(
+  bestSan: string,
+  bestLineSan: string | undefined,
+  motifs: MotifTag[],
+  cpSwing: number,
+): Difficulty {
+  const pvLen = bestLineSan ? bestLineSan.split(/\s+/).filter(Boolean).length : 1
+  const isCapture = /x/.test(bestSan)
+  const isQuiet = !isCapture && !bestSan.endsWith('#') && !bestSan.endsWith('+')
+  const isMate1 = bestSan.endsWith('#')
+  const hasSacrifice = motifs.includes('sacrifice')
+  const isHanging = motifs.includes('hanging-capture')
+
+  if (isMate1 || isHanging) return 'easy'
+  if (hasSacrifice) return 'hard'
+  if (pvLen >= 4) return 'hard'
+  if (cpSwing >= 800 && pvLen <= 2 && isCapture) return 'easy'
+  if (isQuiet && pvLen >= 2) return 'medium'
+  return 'medium'
 }
 
 // Build a stable, human-readable move label like "14." or "14..."
@@ -101,6 +129,7 @@ export function extractExercises(
           evalBeforeWhite: move.evalBefore,
           evalAfterPlayedWhite: move.evalAfter,
           motifs: detectMotifs(move),
+          difficulty: gradeDifficulty(move.bestMoveSan, move.bestLineSan, detectMotifs(move), move.cpLoss),
           context: ctx,
         })
         continue
@@ -128,6 +157,7 @@ export function extractExercises(
           evalBeforeWhite: move.evalBefore,
           evalAfterPlayedWhite: move.evalAfter,
           motifs: detectMotifs(move),
+          difficulty: gradeDifficulty(move.bestMoveSan, move.bestLineSan, detectMotifs(move), move.cpLoss),
           context: ctx,
         })
         continue
@@ -153,6 +183,7 @@ export function extractExercises(
           evalBeforeWhite: move.evalBefore,
           evalAfterPlayedWhite: move.evalAfter,
           motifs: detectMotifs(move),
+          difficulty: gradeDifficulty(move.bestMoveSan, move.bestLineSan, detectMotifs(move), move.cpLoss),
           context: ctx,
         })
         continue
@@ -175,6 +206,30 @@ export function extractExercises(
 // Now sourced from analysis/motifs.ts (richer detection).
 const detectMotifs = detectMotifsImpl
 export const MOTIF_LABELS = MOTIF_LABELS_FULL
+
+/** Which difficulties make sense to drill for a given bracket. We
+ *  intentionally never *hide* exercises by default — this is a soft
+ *  filter the UI can apply. */
+export const DIFFICULTIES_FOR_BRACKET: Record<string, Difficulty[]> = {
+  beginner:   ['easy'],
+  casual:     ['easy', 'medium'],
+  club:       ['easy', 'medium', 'hard'],
+  tournament: ['medium', 'hard'],
+  expert:     ['medium', 'hard'],
+  master:     ['hard'],
+}
+
+export const DIFFICULTY_LABELS: Record<Difficulty, string> = {
+  easy:   'Facile',
+  medium: 'Moyen',
+  hard:   'Difficile',
+}
+
+export const DIFFICULTY_COLORS: Record<Difficulty, string> = {
+  easy:   '#5fa052',
+  medium: '#7aa6ee',
+  hard:   '#d04a4a',
+}
 
 export const CATEGORY_LABELS: Record<ExerciseCategory, string> = {
   missed: 'Coup raté',

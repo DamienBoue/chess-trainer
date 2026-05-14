@@ -41,6 +41,7 @@ export function readSharedFromHash(): Exercise | null {
     evalBeforeWhite: 0,
     evalAfterPlayedWhite: 0,
     motifs: [],
+    difficulty: 'medium',
     context: {
       gameUrl: window.location.href,
       opponent: params.get('opp') ?? '?',
