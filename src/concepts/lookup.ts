@@ -58,3 +58,14 @@ export function conceptForMotif(motif: string): Concept | undefined {
   const id = MOTIF_TO_CONCEPT[motif]
   return id ? byId.get(id) : undefined
 }
+
+/** Picks a deterministic concept of the day from the catalogue. Same date
+ *  + same catalogue ⇒ same concept, so reloading doesn't reshuffle. */
+export function pickDailyConcept(dateStr: string): Concept {
+  let h = 0x811c9dc5
+  for (let i = 0; i < dateStr.length; i++) {
+    h ^= dateStr.charCodeAt(i)
+    h = Math.imul(h, 16777619) >>> 0
+  }
+  return CONCEPTS[h % CONCEPTS.length]
+}

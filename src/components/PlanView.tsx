@@ -9,10 +9,11 @@ import { aggregate } from '../analysis/aggregate'
 import { MOTIF_LABELS } from '../analysis/motifs'
 import type { MotifTag } from '../analysis/motifs'
 import { summariseDailyPlan } from '../coach/coach'
-import { conceptForMotif } from '../concepts/lookup'
+import { conceptForMotif, pickDailyConcept } from '../concepts/lookup'
 import ChecklistRow from './ChecklistRow'
 import LlmAskBox from './LlmAskBox'
 import ConceptChip from './ConceptChip'
+import { openConcept } from './ConceptModal'
 import RoadmapView from './RoadmapView'
 
 interface Props {
@@ -149,7 +150,31 @@ export default function PlanView({ analyses, progress, username, onNavigate }: P
           <p>Tu as fait toutes les étapes du jour. Reviens demain pour la suivante.</p>
         </div>
       )}
+
+      <DailyConceptCard today={today} />
       </>}
+    </div>
+  )
+}
+
+// One concept picked deterministically per day. Shown at the bottom of
+// the plan as a "tip" — discoverable, never blocking.
+function DailyConceptCard({ today }: { today: string }) {
+  const concept = useMemo(() => pickDailyConcept(today), [today])
+  return (
+    <div className="mt-5 bg-purple-500/5 border border-purple-500/20 rounded-md p-3.5">
+      <div className="flex items-baseline justify-between gap-2 mb-1.5 flex-wrap">
+        <span className="text-[10px] uppercase tracking-wider text-purple-300 font-medium">
+          📖 Concept du jour
+        </span>
+        <span className="text-[10px] text-neutral-500">{today}</span>
+      </div>
+      <h3 className="font-semibold text-sm">{concept.title}</h3>
+      <p className="text-xs text-neutral-400 mt-1 leading-relaxed">{concept.shortDef}</p>
+      <button
+        onClick={() => openConcept(concept.id)}
+        className="mt-2 text-xs px-2.5 py-1 rounded bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 border border-purple-500/30"
+      >Lire la fiche</button>
     </div>
   )
 }

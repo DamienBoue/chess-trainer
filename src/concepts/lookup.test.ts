@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   findConcept, conceptsByCategory, allConcepts, searchConcepts, conceptForMotif,
+  pickDailyConcept,
 } from './lookup'
 
 describe('findConcept', () => {
@@ -67,5 +68,24 @@ describe('conceptForMotif', () => {
 
   it('returns undefined for an unknown motif', () => {
     expect(conceptForMotif('capture')).toBeUndefined()
+  })
+})
+
+describe('pickDailyConcept', () => {
+  it('is deterministic for the same date', () => {
+    expect(pickDailyConcept('2026-05-14').id).toBe(pickDailyConcept('2026-05-14').id)
+  })
+
+  it('returns a real concept (not null/undefined)', () => {
+    const c = pickDailyConcept('2026-05-14')
+    expect(c.title.length).toBeGreaterThan(0)
+    expect(findConcept(c.id)).toBeTruthy()
+  })
+
+  it('covers different concepts across a week', () => {
+    const ids = ['2026-05-14', '2026-05-15', '2026-05-16', '2026-05-17',
+                 '2026-05-18', '2026-05-19', '2026-05-20']
+      .map(d => pickDailyConcept(d).id)
+    expect(new Set(ids).size).toBeGreaterThan(1)
   })
 })
