@@ -21,6 +21,7 @@ interface Props {
 
 const VIEW_ITEMS = [
   { view: 'home',       label: 'Accueil', section: 'Vues' },
+  { view: 'plan',       label: 'Plan du jour', section: 'Vues' },
   { view: 'games',      label: 'Parties', section: 'Vues' },
   { view: 'stats',      label: 'Stats', section: 'Vues' },
   { view: 'repertoire', label: 'Répertoire', section: 'Vues' },

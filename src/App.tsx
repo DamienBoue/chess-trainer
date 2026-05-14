@@ -17,6 +17,7 @@ import ExercisesView from './components/ExercisesView'
 import PuzzleRushView from './components/PuzzleRushView'
 import SharedExerciseView from './components/SharedExerciseView'
 import DailyView from './components/DailyView'
+import PlanView from './components/PlanView'
 import CompareView from './components/CompareView'
 import RepertoireView from './components/RepertoireView'
 import LibraryView from './components/LibraryView'
@@ -52,7 +53,7 @@ export interface BatchState {
   failed: number
 }
 
-type View = 'home' | 'games' | 'analysis' | 'stats' | 'exercises' | 'rush' | 'daily' | 'compare' | 'repertoire' | 'library' | 'book' | 'scouting' | 'play' | 'blunder' | 'calc' | 'players' | 'settings'
+type View = 'home' | 'games' | 'analysis' | 'stats' | 'exercises' | 'rush' | 'daily' | 'plan' | 'compare' | 'repertoire' | 'library' | 'book' | 'scouting' | 'play' | 'blunder' | 'calc' | 'players' | 'settings'
 
 export default function App() {
   const [view, setView] = useState<View>('home')
@@ -276,6 +277,9 @@ export default function App() {
         <nav className={`${username ? 'hidden sm:flex' : 'flex'} ml-auto items-center gap-1 text-sm flex-wrap`}>
           {username && (
             <>
+              <NavBtn active={view === 'plan'} onClick={() => setView('plan')} disabled={filteredAnalyses.length === 0}>
+                Plan du jour
+              </NavBtn>
               <NavBtn active={view === 'games'} onClick={() => setView('games')}>Parties</NavBtn>
               <NavBtn active={view === 'daily'} onClick={() => setView('daily')} disabled={exerciseCount === 0}>
                 {dailySolvedToday ? '✓ ' : ''}Quotidien{dailyStreak > 0 ? ` 🔥${dailyStreak}` : ''}
@@ -480,6 +484,13 @@ export default function App() {
         {view === 'daily' && (
           <DailyView exercises={exercises} onGoToGames={() => setView('games')} />
         )}
+        {view === 'plan' && (
+          <PlanView
+            analyses={filteredAnalyses}
+            progress={progress}
+            onNavigate={target => setView(target as View)}
+          />
+        )}
         {view === 'compare' && (
           <CompareView username={username} games={games} />
         )}
@@ -592,6 +603,7 @@ function MobileNavSheet({
         </div>
         <div className="text-xs text-neutral-500 px-4 pt-3 uppercase tracking-wider">Données</div>
         {item('home', 'Accueil')}
+        {item('plan', 'Plan du jour', counts.analyses === 0)}
         {item('games', 'Parties')}
         {item('daily', 'Quotidien', counts.exercises === 0)}
         {item('stats', `Stats (${counts.analyses})`, counts.analyses === 0)}

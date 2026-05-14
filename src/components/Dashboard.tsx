@@ -5,7 +5,9 @@ import { extractExercises } from '../analysis/exercises'
 import { buildRepertoire, enumerateDrillCards } from '../analysis/repertoire'
 import { findRecurringMistakes } from '../analysis/recurringMistakes'
 import { aggregate } from '../analysis/aggregate'
+import { buildPlan, totalMinutes } from '../analysis/plan'
 import { loadDaily, todayString } from '../storage/daily'
+import { loadPlanState } from '../storage/plan'
 import Tooltip from './Tooltip'
 
 interface Props {
@@ -13,7 +15,7 @@ interface Props {
   analyses: GameAnalysis[]
   progress: Record<string, ExerciseProgress>
   onNavigate: (view:
-    | 'games' | 'daily' | 'exercises' | 'stats' | 'repertoire'
+    | 'games' | 'daily' | 'plan' | 'exercises' | 'stats' | 'repertoire'
     | 'library' | 'play' | 'scouting' | 'blunder' | 'home') => void
 }
 
@@ -38,6 +40,18 @@ export default function Dashboard({ username, analyses, progress, onNavigate }: 
   const today = todayString()
   const dailyDone = dailyState?.date === today && dailyState.solved
   const dailyStreak = dailyState?.streak ?? 0
+
+  const plan = useMemo(
+    () => buildPlan(analyses, progress, repProgress, { dailyDone: !!dailyDone }),
+    [analyses, progress, repProgress, dailyDone],
+  )
+  const planState = useMemo(() => loadPlanState(today), [today])
+  const planDoneCount = useMemo(() => {
+    const doneSet = new Set(planState.done)
+    if (dailyDone) doneSet.add('daily')
+    return plan.filter(p => doneSet.has(p.id)).length
+  }, [plan, planState, dailyDone])
+  const planMinutes = totalMinutes(plan)
 
   const totalGames = analyses.length
 
@@ -69,6 +83,18 @@ export default function Dashboard({ username, analyses, progress, onNavigate }: 
       </div>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <DashCard
+          accent="#7fd8c4"
+          title={plan.length === 0 ? '✓ Rien au programme' : plan.length === planDoneCount ? '✓ Plan du jour terminé' : 'Plan du jour'}
+          metric={plan.length === 0 ? '—' : `${planDoneCount}/${plan.length}`}
+          subtitle={plan.length === 0
+            ? 'Tu es à jour partout. Reviens demain.'
+            : `${plan.length} étape${plan.length > 1 ? 's' : ''} pour ≈ ${planMinutes} min — synthèse SRS, répertoire et erreurs récurrentes.`}
+          cta={plan.length === planDoneCount ? 'Revoir' : 'Démarrer'}
+          onClick={() => onNavigate('plan')}
+          disabled={plan.length === 0}
+        />
+
         <DashCard
           accent={dailyDone ? '#5fa052' : '#ef9a3a'}
           title={dailyDone ? '✓ Quotidien fait' : 'Quotidien'}
