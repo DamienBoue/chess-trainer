@@ -1,4 +1,5 @@
 import type { Exercise } from '../analysis/exercises'
+import { loadJson, saveJson } from './json'
 
 const KEY = 'chess.daily.v1'
 
@@ -25,14 +26,11 @@ function yesterdayOf(today: string): string {
 }
 
 export function loadDaily(): DailyState | null {
-  try {
-    const raw = localStorage.getItem(KEY)
-    return raw ? JSON.parse(raw) as DailyState : null
-  } catch { return null }
+  return loadJson<DailyState | null>(KEY, null)
 }
 
 export function saveDaily(s: DailyState): void {
-  try { localStorage.setItem(KEY, JSON.stringify(s)) } catch { /* noop */ }
+  saveJson(KEY, s)
 }
 
 // Pick a deterministic puzzle for a given date out of the available exercises.

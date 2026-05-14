@@ -3,6 +3,7 @@
 // roadmap focus, recommendations.
 
 import type { GameAnalysis } from '../types'
+import { loadJson, saveJson } from '../storage/json'
 
 const ELO_KEY = 'chess.elo.v1'
 
@@ -31,21 +32,11 @@ export interface EloPreference {
 }
 
 export function loadEloPreference(): EloPreference {
-  try {
-    const raw = localStorage.getItem(ELO_KEY)
-    if (!raw) return { declared: null }
-    return JSON.parse(raw) as EloPreference
-  } catch {
-    return { declared: null }
-  }
+  return loadJson<EloPreference>(ELO_KEY, { declared: null })
 }
 
 export function saveEloPreference(pref: EloPreference): void {
-  try {
-    localStorage.setItem(ELO_KEY, JSON.stringify(pref))
-  } catch (e) {
-    console.warn('[skill] save failed:', e)
-  }
+  saveJson(ELO_KEY, pref)
 }
 
 /** Median Elo across the most recent N analyzed games' user ratings.

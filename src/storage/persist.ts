@@ -2,6 +2,7 @@
 // and ../storage/analyses.ts). Re-exported here so existing import paths
 // keep working.
 
+import { loadJson, saveJson } from './json'
 export { loadGames, saveGames, clearGames } from './games'
 export { loadAnalyses, saveAnalyses, clearAnalyses } from './analyses'
 
@@ -20,22 +21,11 @@ export interface ExerciseProgress {
 }
 
 export function loadProgress(): Record<string, ExerciseProgress> {
-  try {
-    const raw = localStorage.getItem(PROGRESS_KEY)
-    if (!raw) return {}
-    return JSON.parse(raw) as Record<string, ExerciseProgress>
-  } catch (e) {
-    console.warn('[storage] failed to load progress:', e)
-    return {}
-  }
+  return loadJson(PROGRESS_KEY, {})
 }
 
 export function saveProgress(progress: Record<string, ExerciseProgress>): void {
-  try {
-    localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress))
-  } catch (e) {
-    console.warn('[storage] failed to save progress:', e)
-  }
+  saveJson(PROGRESS_KEY, progress)
 }
 
 const DAY_MS = 86400_000
@@ -98,22 +88,11 @@ export function isDue(progress: ExerciseProgress | undefined, now: number = Date
 const REPERTOIRE_PROGRESS_KEY = 'chess.repertoire.progress'
 
 export function loadRepertoireProgress(): Record<string, ExerciseProgress> {
-  try {
-    const raw = localStorage.getItem(REPERTOIRE_PROGRESS_KEY)
-    if (!raw) return {}
-    return JSON.parse(raw) as Record<string, ExerciseProgress>
-  } catch (e) {
-    console.warn('[storage] failed to load repertoire progress:', e)
-    return {}
-  }
+  return loadJson(REPERTOIRE_PROGRESS_KEY, {})
 }
 
 export function saveRepertoireProgress(progress: Record<string, ExerciseProgress>): void {
-  try {
-    localStorage.setItem(REPERTOIRE_PROGRESS_KEY, JSON.stringify(progress))
-  } catch (e) {
-    console.warn('[storage] failed to save repertoire progress:', e)
-  }
+  saveJson(REPERTOIRE_PROGRESS_KEY, progress)
 }
 
 // Group/derive helpers

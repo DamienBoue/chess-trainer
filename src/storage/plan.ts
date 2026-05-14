@@ -2,6 +2,8 @@
 // Plan item ids are stable for a given (date, data) pair so we can resume
 // progress across reloads.
 
+import { loadJson, saveJson } from './json'
+
 const KEY = 'chess.plan.v1'
 
 export interface PlanState {
@@ -10,24 +12,14 @@ export interface PlanState {
 }
 
 export function loadPlanState(today: string): PlanState {
-  try {
-    const raw = localStorage.getItem(KEY)
-    if (!raw) return { date: today, done: [] }
-    const parsed = JSON.parse(raw) as PlanState
-    // Reset for a new day.
-    if (parsed.date !== today) return { date: today, done: [] }
-    return parsed
-  } catch {
-    return { date: today, done: [] }
-  }
+  const parsed = loadJson<PlanState>(KEY, { date: today, done: [] })
+  // Reset for a new day.
+  if (parsed.date !== today) return { date: today, done: [] }
+  return parsed
 }
 
 export function savePlanState(state: PlanState): void {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(state))
-  } catch (e) {
-    console.warn('[plan] save failed:', e)
-  }
+  saveJson(KEY, state)
 }
 
 export function markPlanItemDone(today: string, id: string): PlanState {

@@ -7,6 +7,7 @@
 // pawn structures + prophylaxis at the top.
 
 import type { SkillBracket } from './elo'
+import { loadJson, saveJson } from '../storage/json'
 
 export type ModuleArea = 'tactics' | 'endgame' | 'opening' | 'middlegame' | 'mindset' | 'calculation'
 
@@ -70,21 +71,11 @@ export interface ModuleProgress {
 const PROGRESS_KEY = 'chess.roadmap.v1'
 
 export function loadModuleProgress(): ModuleProgress {
-  try {
-    const raw = localStorage.getItem(PROGRESS_KEY)
-    if (!raw) return { completed: [] }
-    return JSON.parse(raw) as ModuleProgress
-  } catch {
-    return { completed: [] }
-  }
+  return loadJson<ModuleProgress>(PROGRESS_KEY, { completed: [] })
 }
 
 export function saveModuleProgress(p: ModuleProgress): void {
-  try {
-    localStorage.setItem(PROGRESS_KEY, JSON.stringify(p))
-  } catch (e) {
-    console.warn('[roadmap] save failed:', e)
-  }
+  saveJson(PROGRESS_KEY, p)
 }
 
 export function toggleModuleDone(id: string): ModuleProgress {
