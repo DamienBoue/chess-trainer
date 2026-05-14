@@ -12,7 +12,7 @@ import { summariseDailyPlan } from '../coach/coach'
 import { conceptForMotif } from '../concepts/lookup'
 import ChecklistRow from './ChecklistRow'
 import LlmAskBox from './LlmAskBox'
-import { openConcept } from './ConceptModal'
+import ConceptChip from './ConceptChip'
 import RoadmapView from './RoadmapView'
 
 interface Props {
@@ -262,17 +262,10 @@ function PlanRow({
       <div className="flex items-baseline gap-2 flex-wrap">
         <span className={`text-xs font-medium ${accent}`}>{KIND_LABELS[item.kind]}</span>
         <span className="text-xs text-neutral-500">≈ {item.estMinutes} min</span>
-        {(item.conceptId || (item.motif && conceptForMotif(item.motif))) && (
-          <button
-            onClick={e => {
-              e.stopPropagation()
-              const id = item.conceptId ?? (item.motif ? conceptForMotif(item.motif)?.id : undefined)
-              if (id) openConcept(id)
-            }}
-            className="text-[10px] px-1.5 py-0.5 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-300"
-            title="Voir la fiche concept"
-          >📖 Lire</button>
-        )}
+        {(() => {
+          const id = item.conceptId ?? (item.motif ? conceptForMotif(item.motif)?.id : undefined)
+          return id ? <ConceptChip id={id} /> : null
+        })()}
       </div>
       <h3 className={`font-semibold ${done ? 'line-through text-neutral-500' : ''}`}>{item.title}</h3>
       <p className="text-xs text-neutral-400 mt-0.5">{item.subtitle}</p>

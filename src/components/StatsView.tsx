@@ -5,7 +5,7 @@ import { CLASSIFICATION_COLORS, CLASSIFICATION_LABELS } from '../analysis/classi
 import { extractExercises } from '../analysis/exercises'
 import { computeMotifRadar, type MotifStat } from '../analysis/motifRadar'
 import { conceptForMotif } from '../concepts/lookup'
-import { openConcept } from './ConceptModal'
+import ConceptChip from './ConceptChip'
 import { findRecurringMistakes, type RecurringMistake } from '../analysis/recurringMistakes'
 import type { MotifTag } from '../analysis/motifs'
 import ProgressCharts from './ProgressCharts'
@@ -547,11 +547,7 @@ function MotifRow({
         </span>
       </Tooltip>
       {conceptForMotif(stat.motif) && (
-        <button
-          onClick={() => openConcept(conceptForMotif(stat.motif)!.id)}
-          className="text-xs px-1.5 py-0.5 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-300"
-          title="Voir la fiche concept"
-        >📖</button>
+        <ConceptChip id={conceptForMotif(stat.motif)!.id} iconOnly />
       )}
       {onDrill && stat.missed > 0 && (
         <button
