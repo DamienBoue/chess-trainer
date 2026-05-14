@@ -206,8 +206,15 @@ function BrowseMode({ book, progress, onProgressChange, onBack, onStartRush }: B
     // STILL be correct when the tablebase says it preserves the position's
     // theoretical value. Only consulted on ≤7-piece positions (where
     // tableData was populated).
+    //
+    // Exception: in DRAWN positions, ALL non-losing rook/king moves count
+    // as "optimal" because they all keep the draw. That's too permissive
+    // for didactic exercises (e.g. "rook behind passed pawn" — Rc1, Rb1,
+    // Re1 are all drawn but only one teaches the lesson). So we require
+    // an exact match against the curated move in drawn positions.
     let tableAccepted = false
-    if (!matchesCurated && tableData) {
+    const isDrawnPosition = tableData?.category === 'draw'
+    if (!matchesCurated && tableData && !isDrawnPosition) {
       const tbMove = tableData.moves.find(m =>
         sanMatches(m.san, mv.san) || m.uci === mv.from + mv.to + (mv.promotion ?? ''),
       )
@@ -236,7 +243,7 @@ function BrowseMode({ book, progress, onProgressChange, onBack, onStartRush }: B
       // applies (opponent's next reply wouldn't fit). Mark the exercise
       // solved immediately on this 1-ply demonstration.
       setStatus('solved')
-      setFeedback(`✓ ${mv.san} — coup optimal alternatif (validé par tablebase).`)
+      setFeedback(`✓ ${mv.san} fonctionne aussi (tablebase). La leçon proposait ${expected} — compare avec la continuation.`)
       playSuccess()
       void persistOutcome(cleanRunRef.current ? 'solved' : 'wrong')
       return true
