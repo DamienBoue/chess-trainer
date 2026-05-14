@@ -30,6 +30,8 @@ A 10-15 min curated session synthesising every training signal:
 
 **Adaptive ordering**: items are reranked based on your skill bracket — beginners get tactics-heavy priority, experts get opening prep priority. Completion state persists per-day. Deep-links to the relevant view.
 
+Plan also has a second tab **Mon niveau** with the Elo declaration + roadmap modules (see "Adaptive level" below). The page header carries the bracket badge, the streak indicator, and a logout link.
+
 ## Game analysis
 
 - **Batch analysis** — analyse all unanalyzed games sequentially with progress + cancel.
@@ -58,6 +60,8 @@ A 10-15 min curated session synthesising every training signal:
 - **Lichess explorer overlay** — see masters / community / your own moves in the same panel.
 
 ## Statistics
+
+Grouped into 3 tabs (Aperçu / Faiblesses / Ouvertures) so the user lands on a focused view.
 
 - **Aggregate stats** — accuracy, win/loss/draw, by color and by opening.
 - **Tendance récente** — 4 cards (cpLoss, blunders/game, win rate, games/week) comparing the latest active week to the previous 4. Dead-zone of ±5%.
