@@ -38,8 +38,10 @@ export function findRecurringMistakes(analyses: GameAnalysis[]): {
   byOpening: RecurringMistake[]
 } {
   // Bucket every user blunder/mistake by both keys.
+  // Opening clusters also keep a sample FEN so the explorer has something
+  // concrete to display — picks the most-recent occurrence at flush time.
   const exactBuckets = new Map<string, RecurringMistake['occurrences'][number][] & { _san: string; _best?: string; _fen: string }>()
-  const openingBuckets = new Map<string, RecurringMistake['occurrences'][number][] & { _san: string; _best?: string; _opening: string }>()
+  const openingBuckets = new Map<string, RecurringMistake['occurrences'][number][] & { _san: string; _best?: string; _opening: string; _sampleFen?: string; _sampleEndTime?: number }>()
 
   for (const game of analyses) {
     const userIsWhite = game.userColor === 'white'
@@ -69,14 +71,19 @@ export function findRecurringMistakes(analyses: GameAnalysis[]): {
         exactBuckets.set(ek, arr)
       }
       arr.push(occ)
-      // Opening + SAN bucket
+      // Opening + SAN bucket — also remember the most-recent FEN sample so
+      // the panel can open something in the explorer.
       const ok = `${parent}||${move.san}`
       let oarr = openingBuckets.get(ok)
       if (!oarr) {
         oarr = Object.assign([] as RecurringMistake['occurrences'][number][], {
           _san: move.san, _best: move.bestMoveSan, _opening: parent,
+          _sampleFen: move.fenBefore, _sampleEndTime: game.endTime,
         })
         openingBuckets.set(ok, oarr)
+      } else if (!oarr._sampleEndTime || game.endTime > oarr._sampleEndTime) {
+        oarr._sampleFen = move.fenBefore
+        oarr._sampleEndTime = game.endTime
       }
       oarr.push(occ)
     }
@@ -92,11 +99,11 @@ export function findRecurringMistakes(analyses: GameAnalysis[]): {
       const distinctGames = new Set(arr.map(o => o.gameUrl)).size
       if (distinctGames < 2) continue
       const occurrences = [...arr].sort((a, b) => b.endTime - a.endTime)
-      const m = arr as unknown as { _san: string; _best?: string; _fen?: string; _opening?: string }
+      const m = arr as unknown as { _san: string; _best?: string; _fen?: string; _sampleFen?: string; _opening?: string }
       out.push({
         kind,
         id: kind + ':' + key,
-        positionKey: m._fen ?? '',
+        positionKey: m._fen ?? m._sampleFen ?? '',
         sanPlayed: m._san,
         bestSan: m._best,
         parentOpening: m._opening,

@@ -29,6 +29,13 @@ export default function PositionExplorer({
   fen, onClose, playedSan, bestSan, title,
 }: PositionExplorerProps) {
   const initial = useMemo(() => fen, [fen])
+  // The initial side-to-move drives the board orientation for the entire
+  // session. Reading it from `position` directly would flip the board after
+  // every ply — confusing, since the user wants to keep their POV.
+  const initialOrientation = useMemo<'white' | 'black'>(
+    () => (initial.split(' ')[1] === 'b' ? 'black' : 'white'),
+    [initial],
+  )
   const chess = useRef<Chess>(new Chess(initial))
   const [position, setPosition] = useState(initial)
   const [moveLog, setMoveLog] = useState<string[]>([])
@@ -50,6 +57,9 @@ export default function PositionExplorer({
   }, [onClose])
 
   const sideToMove = position.split(' ')[1] === 'b' ? 'black' : 'white'
+  const [orientation, setOrientation] = useState<'white' | 'black'>(initialOrientation)
+  // Reset orientation when the explorer opens on a new position.
+  useEffect(() => { setOrientation(initialOrientation) }, [initialOrientation])
 
   function onPieceDrop({ sourceSquare, targetSquare, piece }: {
     sourceSquare: string; targetSquare: string | null; piece: { pieceType: string }
@@ -99,15 +109,20 @@ export default function PositionExplorer({
         <div className="grid md:grid-cols-[1fr_220px] gap-4 p-4">
           <TrainingBoard
             position={position}
-            orientation={sideToMove}
+            orientation={orientation}
             allowDragging={true}
             onPieceDrop={onPieceDrop}
             maxWidth={520}
           />
 
           <aside className="space-y-3 text-sm">
-            <div className="text-xs text-neutral-500">
-              Trait aux {sideToMove === 'white' ? 'Blancs' : 'Noirs'}
+            <div className="text-xs text-neutral-500 flex items-center justify-between gap-2">
+              <span>Trait aux {sideToMove === 'white' ? 'Blancs' : 'Noirs'}</span>
+              <button
+                onClick={() => setOrientation(o => o === 'white' ? 'black' : 'white')}
+                className="px-2 py-0.5 rounded bg-neutral-800 hover:bg-neutral-700 text-xs"
+                title="Retourner l'échiquier"
+              >⇅ Flip</button>
             </div>
 
             {(playedSan || bestSan) && (
