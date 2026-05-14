@@ -107,8 +107,9 @@ A 10-15 min curated session synthesising every training signal:
 ## Data management
 
 - **IndexedDB-backed** — games, analyses, books, PGN profiles, exercise progress (per book).
-- **localStorage** — small state (settings, filters, SRS progress, plan state).
+- **localStorage** — small state (settings, filters, SRS progress, plan state, notes, roadmap, LLM config, Elo).
 - **Export / import JSON** — full state dump and restore (or merge) via Settings.
+- **Export PGN annoté** — from AnalysisView, downloads the game with NAG glyphs (`?`, `??`, `!?`) + engine-best comments. Compatible with Lichess study upload, ChessBase, Scid.
 - **Lazy migration** — older localStorage keys are promoted to IDB on first read.
 
 ## Tech / hosting
@@ -134,7 +135,6 @@ A 10-15 min curated session synthesising every training signal:
 
 ## Planned (next loops)
 
-- Annotated PGN export.
 - Reverse-color drill (play the same position from the other side).
 - Phase-specific deep dive (which opening eats your endgames?).
 - LLM-driven plan summary / weekly recap email-style.

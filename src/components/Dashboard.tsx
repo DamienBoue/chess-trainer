@@ -9,6 +9,7 @@ import { buildPlan, totalMinutes } from '../analysis/plan'
 import { loadDaily, todayString } from '../storage/daily'
 import { loadPlanState } from '../storage/plan'
 import { bracketForElo, effectiveElo, loadEloPreference } from '../skill/elo'
+import { loadModuleProgress, modulesForBracket } from '../skill/roadmap'
 import Tooltip from './Tooltip'
 
 interface Props {
@@ -46,6 +47,12 @@ export default function Dashboard({ username, analyses, progress, onNavigate }: 
   const eloPref = useMemo(() => loadEloPreference(), [])
   const elo = effectiveElo(eloPref, analyses)
   const bracket = bracketForElo(elo)
+  const bracketModules = useMemo(() => modulesForBracket(bracket), [bracket])
+  const roadmapProgress = useMemo(() => loadModuleProgress(), [])
+  const roadmapDone = useMemo(
+    () => bracketModules.filter(m => roadmapProgress.completed.includes(m.id)).length,
+    [bracketModules, roadmapProgress],
+  )
 
   const plan = useMemo(
     () => buildPlan(analyses, progress, repProgress, { dailyDone: !!dailyDone, bracket }),
@@ -163,6 +170,17 @@ export default function Dashboard({ username, analyses, progress, onNavigate }: 
           subtitle="Radar des motifs, ouvertures jouées, erreurs récurrentes — tout en une page."
           cta="Voir Stats"
           onClick={() => onNavigate('stats')}
+        />
+
+        <DashCard
+          accent="#7fd8c4"
+          title={`Roadmap · ${bracket.label}`}
+          metric={`${roadmapDone}/${bracketModules.length}`}
+          subtitle={roadmapDone === bracketModules.length && bracketModules.length > 0
+            ? 'Tous les modules de ton palier sont validés — passe au suivant.'
+            : `${bracketModules.length - roadmapDone} module${bracketModules.length - roadmapDone > 1 ? 's' : ''} à valider pour finir ton palier.`}
+          cta="Voir la roadmap"
+          onClick={() => onNavigate('roadmap')}
         />
 
         <DashCard

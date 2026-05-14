@@ -9,6 +9,7 @@ import { generateGameSummary } from '../analysis/summary'
 import { buildRepertoire } from '../analysis/repertoire'
 import { fetchExplorer, type ExplorerResponse } from '../api/lichess'
 import { explainBlunder, llmAvailable } from '../llm/coach'
+import { exportAnnotatedPgn } from '../analysis/pgnExport'
 import EvalBar from './EvalBar'
 import EvalGraph from './EvalGraph'
 import PositionNote from './PositionNote'
@@ -152,7 +153,23 @@ export default function AnalysisView({
 
   return (
     <div className="p-4 lg:p-6 max-w-7xl mx-auto">
-      <button onClick={onBack} className="text-neutral-400 hover:text-white mb-4 text-sm">← Retour aux parties</button>
+      <div className="flex items-center justify-between mb-4">
+        <button onClick={onBack} className="text-neutral-400 hover:text-white text-sm">← Retour aux parties</button>
+        <button
+          onClick={() => {
+            const pgn = exportAnnotatedPgn(analysis)
+            const blob = new Blob([pgn], { type: 'application/x-chess-pgn' })
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = `analysis-vs-${analysis.opponent}-${new Date(analysis.endTime * 1000).toISOString().slice(0, 10)}.pgn`
+            document.body.appendChild(a); a.click(); a.remove()
+            setTimeout(() => URL.revokeObjectURL(url), 1000)
+          }}
+          className="text-xs px-2.5 py-1 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-200"
+          title="Exporter en PGN avec NAGs + commentaires moteur — compatible Lichess study"
+        >📤 Export PGN annoté</button>
+      </div>
 
       <div className="grid lg:grid-cols-[auto_1fr] gap-6">
         <div className="flex gap-2 items-start">
