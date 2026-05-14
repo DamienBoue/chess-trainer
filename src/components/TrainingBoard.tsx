@@ -1,5 +1,7 @@
 import { Chessboard } from 'react-chessboard'
+import { useEffect, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
+import { getBoardColors } from '../storage/settings'
 
 // react-chessboard doesn't re-export its Arrow type, so we restate the
 // shape locally. Keep it minimal — we just pass these through.
@@ -61,6 +63,15 @@ export default function TrainingBoard({
     orientation === 'w' ? 'white' :
     orientation === 'b' ? 'black' :
     orientation
+
+  // Reactive board colours — re-read when the user changes the theme.
+  const [colors, setColors] = useState(() => getBoardColors())
+  useEffect(() => {
+    function onChange() { setColors(getBoardColors()) }
+    window.addEventListener('settings-changed', onChange)
+    return () => window.removeEventListener('settings-changed', onChange)
+  }, [])
+
   return (
     <div
       className="relative aspect-square mx-auto w-full"
@@ -74,8 +85,8 @@ export default function TrainingBoard({
           animationDurationInMs,
           squareStyles,
           arrows,
-          darkSquareStyle: { backgroundColor: '#769656' },
-          lightSquareStyle: { backgroundColor: '#eeeed2' },
+          darkSquareStyle: { backgroundColor: colors.dark },
+          lightSquareStyle: { backgroundColor: colors.light },
           onPieceDrop,
           onSquareClick,
           id,

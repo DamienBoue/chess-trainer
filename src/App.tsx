@@ -3,6 +3,9 @@ import type { ChessComGame, GameAnalysis } from './types'
 import { StockfishEngine } from './engine/stockfish'
 import Home from './components/Home'
 import Dashboard from './components/Dashboard'
+import SettingsView from './components/SettingsView'
+import { ToastHost, toast } from './components/Toast'
+import { getEngineDepth } from './storage/settings'
 import GamesList from './components/GamesList'
 import AnalysisView from './components/AnalysisView'
 import StatsView from './components/StatsView'
@@ -45,7 +48,7 @@ export interface BatchState {
   failed: number
 }
 
-type View = 'home' | 'games' | 'analysis' | 'stats' | 'exercises' | 'rush' | 'daily' | 'compare' | 'repertoire' | 'library' | 'book' | 'scouting' | 'play' | 'blunder' | 'calc' | 'players'
+type View = 'home' | 'games' | 'analysis' | 'stats' | 'exercises' | 'rush' | 'daily' | 'compare' | 'repertoire' | 'library' | 'book' | 'scouting' | 'play' | 'blunder' | 'calc' | 'players' | 'settings'
 
 export default function App() {
   const [view, setView] = useState<View>('home')
@@ -112,6 +115,21 @@ export default function App() {
   const dailySolvedToday = dailyState?.date === today && dailyState.solved
   const dailyStreak = dailyState?.streak ?? 0
 
+  function purgeAnalyses() {
+    if (!username) return
+    setAnalyses({})
+    localStorage.removeItem(`chess.analyses.${username}`)
+  }
+
+  function resetProgress() {
+    setProgress({})
+    localStorage.removeItem('chess.exercise.progress')
+    localStorage.removeItem('chess.repertoire.progress')
+    localStorage.removeItem('chess.daily')
+    localStorage.removeItem('woodpecker.progress')
+    localStorage.removeItem('woodpecker.rush.lastN')
+  }
+
   function handleLogout() {
     setUsername('')
     localStorage.removeItem('chess.username')
@@ -169,7 +187,7 @@ export default function App() {
       setBatch({ total: toAnalyze.length, done, currentGameUrl: game.url, currentMove: null, failed })
       try {
         const result = await analyzeGame(engineRef.current, game, username, {
-          depth: 12,
+          depth: getEngineDepth(),
           movetimeMs: 600,
           signal: controller.signal,
           onProgress: (p) => {
@@ -187,6 +205,11 @@ export default function App() {
     }
     batchAbortRef.current = null
     setBatch(null)
+    if (!controller.signal.aborted) {
+      const ok = done - failed
+      if (failed === 0) toast.success(`${ok} partie${ok > 1 ? 's' : ''} analysée${ok > 1 ? 's' : ''}`)
+      else toast.info(`${ok} analysée${ok > 1 ? 's' : ''}, ${failed} échec${failed > 1 ? 's' : ''}`)
+    }
   }
 
   function handleCancelBatch() {
@@ -290,6 +313,21 @@ export default function App() {
               />
               <NavBtn active={view === 'play'} onClick={() => setView('play')}>Jouer</NavBtn>
               <span className="mx-1 h-5 w-px bg-neutral-700/60" aria-hidden="true" />
+              <button
+                onClick={() => setView('settings')}
+                className={`p-1.5 rounded-md transition-colors ${
+                  view === 'settings'
+                    ? 'bg-[var(--color-accent)] text-white'
+                    : 'text-neutral-300 hover:bg-neutral-800'
+                }`}
+                title="Préférences"
+                aria-label="Préférences"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="3"/>
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                </svg>
+              </button>
               <NavBtn active={view === 'home'} onClick={() => setView('home')}>@{username}</NavBtn>
             </>
           )}
@@ -418,6 +456,13 @@ export default function App() {
         {view === 'players' && (
           <PlayersView />
         )}
+        {view === 'settings' && (
+          <SettingsView
+            username={username}
+            onPurgeAnalyses={purgeAnalyses}
+            onResetProgress={resetProgress}
+          />
+        )}
         {view === 'book' && activeBookId && (
           <BookView
             bookId={activeBookId}
@@ -425,6 +470,7 @@ export default function App() {
           />
         )}
       </main>
+      <ToastHost />
     </div>
   )
 }

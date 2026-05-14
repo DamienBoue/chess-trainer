@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { Book } from '../library/types'
 import { listBooks, deleteBook, getProgress, saveBook } from '../library/storage'
 import { importBookFromFile, migrateLegacyWoodpeckerProgress, validateBookJson } from '../library/import'
+import { toast } from './Toast'
 
 interface Props {
   onOpenBook: (bookId: string) => void
@@ -42,10 +43,12 @@ export default function LibraryView({ onOpenBook }: Props) {
     setBusy(true)
     setError(null)
     try {
-      for (const file of Array.from(files)) {
+      const arr = Array.from(files)
+      for (const file of arr) {
         await importBookFromFile(file)
       }
       await refresh()
+      toast.success(`${arr.length} livre${arr.length > 1 ? 's' : ''} importé${arr.length > 1 ? 's' : ''}`)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
@@ -70,8 +73,10 @@ export default function LibraryView({ onOpenBook }: Props) {
       const book = validateBookJson(raw)
       await saveBook(book)
       await refresh()
+      toast.success(`Pack "${label}" installé`)
     } catch (e) {
       setError(`Échec du chargement de ${label} : ${e instanceof Error ? e.message : e}`)
+      toast.error(`Pack "${label}" : ${e instanceof Error ? e.message : 'erreur'}`)
     } finally {
       setBusy(false)
     }
