@@ -60,6 +60,46 @@ describe('useFocusOnOpen', () => {
     expect(document.activeElement).toBe(screen.getByTestId('trigger'))
   })
 
+  it('Tab from the last element wraps back to the first', async () => {
+    function ModalThree() {
+      const ref = useFocusOnOpen<HTMLDivElement>(true)
+      return (
+        <div ref={ref} role="dialog">
+          <button data-testid="a">A</button>
+          <button data-testid="b">B</button>
+          <button data-testid="c">C</button>
+        </div>
+      )
+    }
+    render(<ModalThree />)
+    await act(async () => {
+      await new Promise(resolve => requestAnimationFrame(() => resolve(null)))
+    })
+    screen.getByTestId('c').focus()
+    fireEvent.keyDown(document, { key: 'Tab' })
+    expect(document.activeElement).toBe(screen.getByTestId('a'))
+  })
+
+  it('Shift+Tab from the first element wraps back to the last', async () => {
+    function ModalThree() {
+      const ref = useFocusOnOpen<HTMLDivElement>(true)
+      return (
+        <div ref={ref} role="dialog">
+          <button data-testid="a">A</button>
+          <button data-testid="b">B</button>
+          <button data-testid="c">C</button>
+        </div>
+      )
+    }
+    render(<ModalThree />)
+    await act(async () => {
+      await new Promise(resolve => requestAnimationFrame(() => resolve(null)))
+    })
+    screen.getByTestId('a').focus()
+    fireEvent.keyDown(document, { key: 'Tab', shiftKey: true })
+    expect(document.activeElement).toBe(screen.getByTestId('c'))
+  })
+
   it('falls back to the container itself when nothing focusable is inside', async () => {
     function Empty() {
       const ref = useFocusOnOpen<HTMLDivElement>(true)
