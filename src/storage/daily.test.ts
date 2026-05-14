@@ -3,18 +3,8 @@ import {
   todayString, pickDaily, bumpStreak, decayStreakIfMissed, type DailyState,
 } from './daily'
 import type { Exercise } from '../analysis/exercises'
+import { mockLocalStorage } from '../test-utils/mockLocalStorage'
 
-function mockLocalStorage() {
-  const store = new Map<string, string>()
-  return {
-    getItem: (k: string) => store.has(k) ? store.get(k)! : null,
-    setItem: (k: string, v: string) => { store.set(k, v) },
-    removeItem: (k: string) => { store.delete(k) },
-    clear: () => store.clear(),
-    key: (i: number) => Array.from(store.keys())[i] ?? null,
-    get length() { return store.size },
-  } as Storage
-}
 
 describe('todayString', () => {
   const fixed = new Date('2026-05-14T12:00:00Z').getTime()

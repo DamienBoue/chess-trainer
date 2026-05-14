@@ -140,6 +140,20 @@ Grouped into 3 tabs (Aperçu / Faiblesses / Ouvertures) so the user lands on a f
 - **Plan cadrage** — on the Plan du jour, a "✨ Demander à l'IA un cadrage" button asks the coach to frame today's session: one priority axis (justified for the player's bracket) + one mini-rule of attitude.
 - **Revue de partie** — on AnalysisView, a "✨ Revue complète" button asks for a 4-6 sentence coach review of the whole game (phase where you suffered, critical moment, one concrete training axis for next time).
 
+## Concepts library
+
+- **40 fiches** de concepts d'échecs (6 catégories : Tactique, Finale, Structure, Ouverture, Stratégie, Mental).
+- Chaque fiche : définition courte + détaillée, liens externes curés (Wikipedia FR, Lichess practice), positions à explorer (FEN), renvois croisés.
+- **ConceptModal** : event-bus pattern (`openConcept(id)`) ouvrable depuis n'importe quelle vue.
+- Surfacés via "📖" sur le motif radar, sur les modules roadmap (12 wired), sur les items du plan, plus une vue **Concepts** dédiée (recherche + filtre).
+
+## Opening Lab
+
+- Vue qui prend une ouverture habituelle et **compare ply à ply** ce que tu joues vs ce que jouent les maîtres (Lichess Masters explorer).
+- Pour chaque coup de ta ligne la plus jouée : card "Toi" (count/total + W-L-D) + card "Masters" (top 5 avec barres W-D-L).
+- Flag automatique "⚠ déviation théorique" quand ton coup est hors du top-3 masters.
+- Accessible via le header de RepertoireView + command palette.
+
 ## Planned (next loops)
 
 - Reverse-color drill (play the same position from the other side).

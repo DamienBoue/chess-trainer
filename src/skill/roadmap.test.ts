@@ -9,18 +9,8 @@ import {
 } from './roadmap'
 import { BRACKETS } from './elo'
 import { findConcept } from '../concepts/lookup'
+import { mockLocalStorage } from '../test-utils/mockLocalStorage'
 
-function mockLocalStorage() {
-  const store = new Map<string, string>()
-  return {
-    getItem: (k: string) => store.has(k) ? store.get(k)! : null,
-    setItem: (k: string, v: string) => { store.set(k, v) },
-    removeItem: (k: string) => { store.delete(k) },
-    clear: () => store.clear(),
-    key: (i: number) => Array.from(store.keys())[i] ?? null,
-    get length() { return store.size },
-  } as Storage
-}
 
 const VALID_SURFACES = new Set([
   'exercises', 'blunder', 'calc', 'repertoire', 'library', 'play', 'stats',

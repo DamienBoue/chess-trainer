@@ -1,17 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { loadNotes, getNote, setNote, listNotesWithFen } from './notes'
+import { mockLocalStorage } from '../test-utils/mockLocalStorage'
 
-function mockLocalStorage() {
-  const store = new Map<string, string>()
-  return {
-    getItem: (k: string) => store.has(k) ? store.get(k)! : null,
-    setItem: (k: string, v: string) => { store.set(k, v) },
-    removeItem: (k: string) => { store.delete(k) },
-    clear: () => store.clear(),
-    key: (i: number) => Array.from(store.keys())[i] ?? null,
-    get length() { return store.size },
-  } as Storage
-}
 
 const FEN_A = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1'
 // Same position, different move counters → must share key:
