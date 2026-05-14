@@ -7,6 +7,7 @@ import {
   inferEloFromGames,
   loadEloPreference,
   saveEloPreference,
+  suggestBracketChange,
   type SkillBracket,
 } from '../skill/elo'
 import {
@@ -30,6 +31,7 @@ export default function RoadmapView({ analyses, onNavigate }: Props) {
   const elo = effectiveElo(pref, analyses)
   const bracket = bracketForElo(elo)
   const modules = modulesForBracket(bracket)
+  const suggestion = useMemo(() => suggestBracketChange(pref, analyses), [pref, analyses])
 
   function updateDeclared(value: string) {
     const n = parseInt(value, 10)
@@ -83,6 +85,22 @@ export default function RoadmapView({ analyses, onNavigate }: Props) {
           <span className="font-medium" style={{ color: BRACKET_COLORS[bracket.id] }}>{bracket.label}</span>
           {' — '}{bracket.description}
         </p>
+
+        {suggestion && (
+          <div className={`mt-2 p-3 rounded border text-sm ${
+            suggestion.kind === 'promote'
+              ? 'bg-green-500/10 border-green-500/40 text-green-200'
+              : 'bg-amber-500/10 border-amber-500/40 text-amber-200'
+          }`}>
+            {suggestion.kind === 'promote'
+              ? `📈 Tes parties récentes pointent vers ${suggestion.inferred} (palier ${suggestion.nextBracket.label}). Mettre à jour ton Elo déclaré ?`
+              : `📉 Tes parties récentes pointent vers ${suggestion.inferred} (palier ${suggestion.nextBracket.label}). Période difficile ? Tu peux revoir ton Elo à la baisse.`}
+            <button
+              onClick={() => updateDeclared(String(suggestion.inferred))}
+              className="ml-2 text-xs px-2 py-0.5 rounded bg-neutral-900/60 hover:bg-neutral-900 underline"
+            >Appliquer {suggestion.inferred}</button>
+          </div>
+        )}
       </section>
 
       <section className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-4">

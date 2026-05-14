@@ -83,11 +83,13 @@ A 10-15 min curated session synthesising every training signal:
 
 - **Stockfish bot** — full game vs the engine at adjustable Elo (UCI_LimitStrength 1320–3190). Export PGN at the end.
 
-## Adaptive level (Loop 1+)
+## Adaptive level
 
-- **Elo declaration** — user states their current chess.com / FIDE rating; or it's pulled from the most recent analyzed game header.
-- **Skill bracket** — `< 1000` / `1000-1400` / `1400-1800` / `1800-2200` / `2200+`. Each bracket gets a different recommended focus.
-- **Roadmap module** — for each bracket, a checklist of topics to master (basic tactics → endgame fundamentals → pawn structures → calculation → prophylaxis).
+- **Elo declaration** — user states their current chess.com / FIDE rating; or it's pulled from the median user rating of recent analyzed games.
+- **Skill bracket** — `< 1000` / `1000-1400` / `1400-1800` / `1800-2100` / `2100-2300` / `2300+`. Each bracket gets a different recommended focus.
+- **Roadmap module** — for each bracket, a checklist of priority topics (tactics → endgame fundamentals → pawn structures → calculation → prophylaxis), each with a deep-link to the relevant tool.
+- **Bracket suggestion** — when declared Elo and the median inferred Elo disagree by ≥ 100 points across brackets, the Roadmap view surfaces a one-click "Mettre à jour" suggestion (promotion or demotion).
+- **Adaptive plan** — buildPlan reranks items based on the active bracket (beginners: tactics-heavy; experts: opening-prep-heavy).
 
 ## UX & polish
 
@@ -132,6 +134,7 @@ A 10-15 min curated session synthesising every training signal:
 - **Direct browser calls** — uses `anthropic-dangerous-direct-browser-access` and OpenAI's CORS-enabled chat endpoint; no proxy.
 - **"Expliquer ce coup"** — in AnalysisView's detail panel, on every blunder or mistake. The prompt includes FEN, played move, classification, cpLoss, engine best, and engine PV. The coach answers in 3-5 short sentences naming the motif.
 - **Plan cadrage** — on the Plan du jour, a "✨ Demander à l'IA un cadrage" button asks the coach to frame today's session: one priority axis (justified for the player's bracket) + one mini-rule of attitude.
+- **Revue de partie** — on AnalysisView, a "✨ Revue complète" button asks for a 4-6 sentence coach review of the whole game (phase where you suffered, critical moment, one concrete training axis for next time).
 
 ## Planned (next loops)
 

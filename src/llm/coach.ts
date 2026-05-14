@@ -46,6 +46,45 @@ export async function explainBlunder(
   return complete(cfg, SYSTEM_COACH, prompt, { maxTokens: 500, signal: opts.signal })
 }
 
+/** Coach review of an entire analysed game — phase where the user
+ *  bled, critical turning points, one concrete recommendation. */
+export async function reviewGame(
+  analysis: GameAnalysis,
+  opts: { signal?: AbortSignal } = {},
+): Promise<string> {
+  const cfg = loadLlmConfig()
+  const userIsWhite = analysis.userColor === 'white'
+  const blunders = analysis.moves
+    .filter(m => (m.ply % 2 === 1) === userIsWhite)
+    .filter(m => m.classification === 'blunder' || m.classification === 'mistake')
+    .sort((a, b) => b.cpLoss - a.cpLoss)
+    .slice(0, 3)
+  const blunderLines = blunders.map(m =>
+    `- coup ${Math.ceil(m.ply / 2)}${m.ply % 2 === 1 ? '.' : '...'} ${m.san} (${m.classification}, -${m.cpLoss}cp). Engine voulait ${m.bestMoveSan}${m.bestLineSan ? ' (' + m.bestLineSan + ')' : ''}.`,
+  ).join('\n')
+
+  const opening = analysis.opening ? `Ouverture : ${analysis.opening}.` : ''
+  const totalMoves = analysis.moves.length
+  const userBlunders = analysis.moves.filter(m => (m.ply % 2 === 1) === userIsWhite && m.classification === 'blunder').length
+  const userMistakes = analysis.moves.filter(m => (m.ply % 2 === 1) === userIsWhite && m.classification === 'mistake').length
+
+  const prompt = [
+    `Partie analysée : tu joues les ${userIsWhite ? 'Blancs' : 'Noirs'} contre ${analysis.opponent}${analysis.opponentRating ? ` (${analysis.opponentRating})` : ''}.`,
+    opening,
+    `Résultat : ${analysis.result}. ${totalMoves} demi-coups joués. ${userBlunders} gaffes + ${userMistakes} erreurs côté joueur.`,
+    '',
+    blunders.length > 0 ? `Erreurs principales (depuis Stockfish) :\n${blunderLines}` : 'Aucune grosse erreur — partie propre.',
+    '',
+    `Rédige une revue de partie en 4-6 phrases courtes :`,
+    `1. La phase où le joueur a le plus souffert (et pourquoi).`,
+    `2. Le moment charnière (un seul, choisi parmi les erreurs ci-dessus).`,
+    `3. UNE recommandation concrète d'entraînement pour la prochaine fois.`,
+    `Pas de flatterie ni de remplissage.`,
+  ].filter(Boolean).join('\n')
+
+  return complete(cfg, SYSTEM_COACH, prompt, { maxTokens: 600, signal: opts.signal })
+}
+
 /** A 2-3 sentence "today's focus" framing for the daily plan. */
 export async function summariseDailyPlan(
   items: PlanItem[],

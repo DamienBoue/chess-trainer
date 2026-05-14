@@ -63,3 +63,28 @@ export function bracketForElo(elo: number | null): SkillBracket {
   if (elo == null) return BRACKETS[1] // default to casual when unknown
   return BRACKETS.find(b => elo >= b.min && elo <= b.max) ?? BRACKETS[BRACKETS.length - 1]
 }
+
+/** Suggest a bracket change when the declared Elo and the inferred Elo
+ *  (from recent games) disagree by more than 100 points — likely the
+ *  user has moved up (or down) since they last declared.
+ *
+ *  Returns null when nothing significant to suggest. */
+export function suggestBracketChange(
+  pref: EloPreference,
+  analyses: GameAnalysis[],
+): { kind: 'promote' | 'demote'; declared: number; inferred: number; nextBracket: SkillBracket } | null {
+  if (pref.declared == null) return null      // user hasn't declared, nothing to compare
+  const inferred = inferEloFromGames(analyses)
+  if (inferred == null) return null
+  const diff = inferred - pref.declared
+  if (Math.abs(diff) < 100) return null
+  const currentBracket = bracketForElo(pref.declared)
+  const inferredBracket = bracketForElo(inferred)
+  if (currentBracket.id === inferredBracket.id) return null
+  return {
+    kind: diff > 0 ? 'promote' : 'demote',
+    declared: pref.declared,
+    inferred,
+    nextBracket: inferredBracket,
+  }
+}

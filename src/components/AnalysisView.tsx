@@ -8,7 +8,7 @@ import { CLASSIFICATION_COLORS, CLASSIFICATION_LABELS } from '../analysis/classi
 import { generateGameSummary } from '../analysis/summary'
 import { buildRepertoire } from '../analysis/repertoire'
 import { fetchExplorer, type ExplorerResponse } from '../api/lichess'
-import { explainBlunder } from '../llm/coach'
+import { explainBlunder, reviewGame } from '../llm/coach'
 import LlmAskBox from './LlmAskBox'
 import { exportAnnotatedPgn } from '../analysis/pgnExport'
 import EvalBar from './EvalBar'
@@ -203,6 +203,14 @@ export default function AnalysisView({
           <div className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-4">
             <h3 className="font-semibold mb-2">Résumé</h3>
             <p className="text-sm text-neutral-300 leading-relaxed">{generateGameSummary(analysis, repertoireRoots)}</p>
+            <div className="mt-3 pt-3 border-t border-[var(--color-border)]">
+              <LlmAskBox
+                ctaLabel="✨ Revue complète de la partie (IA)"
+                hint="L'IA pointe la phase où tu as souffert, le moment charnière, et un axe d'entraînement."
+                resetKey={analysis.url}
+                run={signal => reviewGame(analysis, { signal })}
+              />
+            </div>
           </div>
 
           <div className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-4">
