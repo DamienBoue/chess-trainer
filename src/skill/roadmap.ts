@@ -59,7 +59,7 @@ export const MODULES_BY_BRACKET: Record<SkillBracket['id'], RoadmapModule[]> = {
   master: [
     { id: 'mas-novelty',        area: 'opening',    title: 'Trouver des nouveautés théoriques (TN)', why: 'L\'avantage théorique se gagne sur des détails inconnus.', surface: 'repertoire' },
     { id: 'mas-prophylaxis-pro',area: 'middlegame', title: 'Prophylaxie avancée à la Karpov', why: 'Anticiper plusieurs idées adverses sur un même coup.', surface: 'stats' },
-    { id: 'mas-tournament',     area: 'mindset',    title: 'Gestion psychologique de tournoi', why: 'À ce niveau le facteur humain pèse autant que la théorie.' },
+    { id: 'mas-tournament',     area: 'mindset',    title: 'Gestion psychologique de tournoi', why: 'À ce niveau le facteur humain pèse autant que la théorie.', studyHint: 'Lire « The Inner Game of Chess » (Soltis) ou « Pump Up Your Rating » (Smith). Tiens un journal d\'erreurs en tournoi (fatigue, temps, blunders post-pause) sur 5 événements. Coche quand tu peux identifier 3 patterns spécifiques à toi.' },
   ],
 }
 
