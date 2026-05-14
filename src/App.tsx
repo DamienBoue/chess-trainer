@@ -32,6 +32,7 @@ const CalcDepthView = lazy(() => import('./components/CalcDepthView'))
 const PlayersView = lazy(() => import('./components/PlayersView'))
 const SettingsView = lazy(() => import('./components/SettingsView'))
 const ConceptsView = lazy(() => import('./components/ConceptsView'))
+const OpeningLabView = lazy(() => import('./components/OpeningLabView'))
 import {
   GlobalFilters,
   applyGlobalFilters,
@@ -57,7 +58,7 @@ export interface BatchState {
   failed: number
 }
 
-type View = 'home' | 'games' | 'analysis' | 'stats' | 'exercises' | 'rush' | 'daily' | 'roadmap' | 'compare' | 'repertoire' | 'library' | 'book' | 'scouting' | 'play' | 'blunder' | 'calc' | 'players' | 'settings' | 'concepts'
+type View = 'home' | 'games' | 'analysis' | 'stats' | 'exercises' | 'rush' | 'daily' | 'roadmap' | 'compare' | 'repertoire' | 'library' | 'book' | 'scouting' | 'play' | 'blunder' | 'calc' | 'players' | 'settings' | 'concepts' | 'openingLab'
 
 export default function App() {
   const [view, setView] = useState<View>('home')
@@ -503,6 +504,9 @@ export default function App() {
         {view === 'concepts' && (
           <ConceptsView />
         )}
+        {view === 'openingLab' && (
+          <OpeningLabView analyses={filteredAnalyses} onBack={() => setView('repertoire')} />
+        )}
         {view === 'roadmap' && (
           <RoadmapView
             analyses={filteredAnalyses}
@@ -513,7 +517,11 @@ export default function App() {
           <CompareView username={username} games={games} />
         )}
         {view === 'repertoire' && (
-          <RepertoireView analyses={filteredAnalyses} onGoToGames={() => setView('games')} />
+          <RepertoireView
+            analyses={filteredAnalyses}
+            onGoToGames={() => setView('games')}
+            onOpenLab={() => setView('openingLab')}
+          />
         )}
         {view === 'library' && (
           <LibraryView onOpenBook={id => { setActiveBookId(id); setView('book') }} />

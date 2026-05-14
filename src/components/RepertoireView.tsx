@@ -17,11 +17,15 @@ import {
 import EmptyState from './EmptyState'
 import { tryUserMove } from '../utils/move'
 
-interface Props { analyses: GameAnalysis[]; onGoToGames?: () => void }
+interface Props {
+  analyses: GameAnalysis[]
+  onGoToGames?: () => void
+  onOpenLab?: () => void
+}
 
 type Tab = 'lines' | 'critiques' | 'trainer' | 'srs' | 'explorer'
 
-export default function RepertoireView({ analyses, onGoToGames }: Props) {
+export default function RepertoireView({ analyses, onGoToGames, onOpenLab }: Props) {
   const roots = useMemo(() => buildRepertoire(analyses), [analyses])
   const critiques = useMemo(() => critiqueRepertoire(roots), [roots])
   const [tab, setTab] = useState<Tab>('lines')
@@ -42,7 +46,16 @@ export default function RepertoireView({ analyses, onGoToGames }: Props) {
     <div className="p-6 max-w-6xl mx-auto">
       <div className="flex items-baseline justify-between mb-2 flex-wrap gap-3">
         <div>
-          <h2 className="text-2xl font-semibold">Répertoire</h2>
+          <h2 className="text-2xl font-semibold flex items-center gap-2 flex-wrap">
+            Répertoire
+            {onOpenLab && (
+              <button
+                onClick={onOpenLab}
+                className="text-xs px-2 py-0.5 rounded bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 border border-purple-500/30"
+                title="Comparer tes lignes aux masters"
+              >🔬 Opening Lab</button>
+            )}
+          </h2>
           <p className="text-sm text-neutral-400">
             Tes lignes principales par ouverture, construites à partir des parties analysées.
           </p>
