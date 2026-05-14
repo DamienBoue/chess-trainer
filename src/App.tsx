@@ -30,6 +30,7 @@ const BlunderDrillView = lazy(() => import('./components/BlunderDrillView'))
 const CalcDepthView = lazy(() => import('./components/CalcDepthView'))
 const PlayersView = lazy(() => import('./components/PlayersView'))
 const SettingsView = lazy(() => import('./components/SettingsView'))
+const RoadmapView = lazy(() => import('./components/RoadmapView'))
 import {
   GlobalFilters,
   applyGlobalFilters,
@@ -56,7 +57,7 @@ export interface BatchState {
   failed: number
 }
 
-type View = 'home' | 'games' | 'analysis' | 'stats' | 'exercises' | 'rush' | 'daily' | 'plan' | 'compare' | 'repertoire' | 'library' | 'book' | 'scouting' | 'play' | 'blunder' | 'calc' | 'players' | 'settings'
+type View = 'home' | 'games' | 'analysis' | 'stats' | 'exercises' | 'rush' | 'daily' | 'plan' | 'roadmap' | 'compare' | 'repertoire' | 'library' | 'book' | 'scouting' | 'play' | 'blunder' | 'calc' | 'players' | 'settings'
 
 export default function App() {
   const [view, setView] = useState<View>('home')
@@ -283,6 +284,9 @@ export default function App() {
               <NavBtn active={view === 'plan'} onClick={() => setView('plan')} disabled={filteredAnalyses.length === 0}>
                 Plan du jour
               </NavBtn>
+              <NavBtn active={view === 'roadmap'} onClick={() => setView('roadmap')}>
+                Roadmap
+              </NavBtn>
               <NavBtn active={view === 'games'} onClick={() => setView('games')}>Parties</NavBtn>
               <NavBtn active={view === 'daily'} onClick={() => setView('daily')} disabled={exerciseCount === 0}>
                 {dailySolvedToday ? '✓ ' : ''}Quotidien{dailyStreak > 0 ? ` 🔥${dailyStreak}` : ''}
@@ -495,6 +499,12 @@ export default function App() {
             onNavigate={target => setView(target as View)}
           />
         )}
+        {view === 'roadmap' && (
+          <RoadmapView
+            analyses={filteredAnalyses}
+            onNavigate={target => setView(target as View)}
+          />
+        )}
         {view === 'compare' && (
           <CompareView username={username} games={games} />
         )}
@@ -609,6 +619,7 @@ function MobileNavSheet({
         <div className="text-xs text-neutral-500 px-4 pt-3 uppercase tracking-wider">Données</div>
         {item('home', 'Accueil')}
         {item('plan', 'Plan du jour', counts.analyses === 0)}
+        {item('roadmap', 'Roadmap')}
         {item('games', 'Parties')}
         {item('daily', 'Quotidien', counts.exercises === 0)}
         {item('stats', `Stats (${counts.analyses})`, counts.analyses === 0)}

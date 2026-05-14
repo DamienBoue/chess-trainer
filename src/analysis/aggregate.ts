@@ -21,6 +21,25 @@ export interface PhaseMistakes {
   endgame: number
 }
 
+export type Phase = keyof PhaseMistakes
+
+export interface PhaseStat {
+  userMoves: number
+  userCpLossSum: number
+  avgCpLoss: number          // userCpLossSum / userMoves
+  blunders: number
+  mistakes: number
+  inaccuracies: number
+}
+
+export type PhaseBreakdown = Record<Phase, PhaseStat>
+
+export const PHASE_LABELS: Record<Phase, string> = {
+  opening: 'Ouverture',
+  middlegame: 'Milieu',
+  endgame: 'Finale',
+}
+
 export interface AggregateStats {
   gamesAnalyzed: number
   totalMoves: number
@@ -30,6 +49,7 @@ export interface AggregateStats {
   blundersByPhase: PhaseMistakes
   mistakesByPhase: PhaseMistakes
   inaccuraciesByPhase: PhaseMistakes
+  phases: PhaseBreakdown
   openings: OpeningStat[]              // flat (legacy)
   openingGroups: OpeningGroup[]         // grouped by parent
   resultsByColor: { white: { w: number; l: number; d: number }; black: { w: number; l: number; d: number } }
@@ -51,6 +71,11 @@ export function aggregate(analyses: GameAnalysis[]): AggregateStats {
     blundersByPhase: { opening: 0, middlegame: 0, endgame: 0 },
     mistakesByPhase: { opening: 0, middlegame: 0, endgame: 0 },
     inaccuraciesByPhase: { opening: 0, middlegame: 0, endgame: 0 },
+    phases: {
+      opening:    { userMoves: 0, userCpLossSum: 0, avgCpLoss: 0, blunders: 0, mistakes: 0, inaccuracies: 0 },
+      middlegame: { userMoves: 0, userCpLossSum: 0, avgCpLoss: 0, blunders: 0, mistakes: 0, inaccuracies: 0 },
+      endgame:    { userMoves: 0, userCpLossSum: 0, avgCpLoss: 0, blunders: 0, mistakes: 0, inaccuracies: 0 },
+    },
     openings: [],
     openingGroups: [],
     resultsByColor: { white: { w: 0, l: 0, d: 0 }, black: { w: 0, l: 0, d: 0 } },
@@ -81,9 +106,12 @@ export function aggregate(analyses: GameAnalysis[]): AggregateStats {
         userMoves++
         userCpLossSum += mv.cpLoss
         const phase = classifyPhase(mv.ply, totalPlies)
-        if (mv.classification === 'blunder') stats.blundersByPhase[phase]++
-        else if (mv.classification === 'mistake') stats.mistakesByPhase[phase]++
-        else if (mv.classification === 'inaccuracy') stats.inaccuraciesByPhase[phase]++
+        const ph = stats.phases[phase]
+        ph.userMoves++
+        ph.userCpLossSum += mv.cpLoss
+        if (mv.classification === 'blunder')          { stats.blundersByPhase[phase]++;     ph.blunders++ }
+        else if (mv.classification === 'mistake')     { stats.mistakesByPhase[phase]++;     ph.mistakes++ }
+        else if (mv.classification === 'inaccuracy')  { stats.inaccuraciesByPhase[phase]++; ph.inaccuracies++ }
       } else {
         oppMoves++
         oppCpLossSum += mv.cpLoss
@@ -136,6 +164,9 @@ export function aggregate(analyses: GameAnalysis[]): AggregateStats {
 
   stats.avgCpLossUser = userMoves ? userCpLossSum / userMoves : 0
   stats.avgCpLossOpponent = oppMoves ? oppCpLossSum / oppMoves : 0
+  for (const ph of Object.values(stats.phases)) {
+    ph.avgCpLoss = ph.userMoves ? ph.userCpLossSum / ph.userMoves : 0
+  }
   stats.openings = Array.from(openings.values()).sort((a, b) => b.played - a.played)
   stats.openingGroups = Array.from(groups.values())
     .map(g => ({

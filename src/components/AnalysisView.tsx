@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Chess } from 'chess.js'
 import TrainingBoard from './TrainingBoard'
 import type { ChessComGame, GameAnalysis, MoveAnalysis } from '../types'
 import { StockfishEngine } from '../engine/stockfish'
@@ -35,6 +36,12 @@ export default function AnalysisView({
   const [error, setError] = useState<string | null>(null)
   const [currentPly, setCurrentPly] = useState(0) // 0 = start position
   const [flipped, setFlipped] = useState(false)
+  // When non-null, the board shows the engine's PV starting from the
+  // current ply's fenBefore — pvStep is how many half-moves into the PV.
+  const [pvStep, setPvStep] = useState<number | null>(null)
+
+  // Reset PV preview whenever the user navigates to a different ply.
+  useEffect(() => { setPvStep(null) }, [currentPly])
 
   useEffect(() => {
     if (existingAnalysis) {
@@ -64,17 +71,29 @@ export default function AnalysisView({
   }, [game.url])
 
   // Determine current FEN to display
+  const currentMove: MoveAnalysis | null =
+    analysis && currentPly > 0 ? analysis.moves[currentPly - 1] ?? null : null
+  const pvSans = useMemo(
+    () => currentMove?.bestLineSan ? currentMove.bestLineSan.split(/\s+/).filter(Boolean) : [],
+    [currentMove],
+  )
   const currentFen = useMemo(() => {
     if (!analysis || analysis.moves.length === 0) {
       return 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
     }
+    // PV preview: start from current move's fenBefore and replay N PV moves.
+    if (pvStep !== null && currentMove) {
+      const c = new Chess(currentMove.fenBefore)
+      for (let i = 0; i < pvStep && i < pvSans.length; i++) {
+        try { c.move(pvSans[i]) } catch { break }
+      }
+      return c.fen()
+    }
     if (currentPly === 0) return analysis.moves[0].fenBefore
     const idx = Math.min(currentPly - 1, analysis.moves.length - 1)
     return analysis.moves[idx].fenAfter
-  }, [analysis, currentPly])
+  }, [analysis, currentPly, pvStep, currentMove, pvSans])
 
-  const currentMove: MoveAnalysis | null =
-    analysis && currentPly > 0 ? analysis.moves[currentPly - 1] ?? null : null
   const currentEvalWhite =
     currentMove ? currentMove.evalAfter : (analysis?.moves[0]?.evalBefore ?? 0)
 
@@ -216,12 +235,32 @@ export default function AnalysisView({
                 {currentMove.bestMoveSan && currentMove.bestMoveSan !== currentMove.san && (
                   <div className="text-neutral-400">
                     Meilleur : <span className="font-mono text-neutral-200">{currentMove.bestMoveSan}</span>
-                    {currentMove.bestLineSan && (
-                      <span className="text-xs text-neutral-500 ml-2">({currentMove.bestLineSan})</span>
-                    )}
                   </div>
                 )}
               </div>
+
+              {pvSans.length > 0 && currentMove.bestMoveSan && currentMove.bestMoveSan !== currentMove.san && (
+                <div className="mt-3 pt-3 border-t border-[var(--color-border)]">
+                  <div className="flex items-baseline justify-between mb-1.5">
+                    <span className="text-xs uppercase tracking-wider text-neutral-500">Ligne du moteur</span>
+                    {pvStep !== null && (
+                      <button
+                        onClick={() => setPvStep(null)}
+                        className="text-xs text-neutral-400 hover:text-white underline"
+                      >← Retour à la partie</button>
+                    )}
+                  </div>
+                  <PvLine
+                    sans={pvSans}
+                    currentMoveStartsWhite={currentMove.ply % 2 === 1}
+                    activeStep={pvStep}
+                    onStep={setPvStep}
+                  />
+                  <p className="text-[11px] text-neutral-500 mt-1.5">
+                    Clique un coup pour voir la position correspondante. {pvStep !== null && '(Aperçu — pas la vraie partie.)'}
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
@@ -236,6 +275,51 @@ export default function AnalysisView({
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+// Clickable principal-variation line. Each chip steps the board to the
+// position after that PV move. White's plies look like "1. e4", black's
+// like "1...c5" — matches the conventional notation readers expect.
+function PvLine({
+  sans, currentMoveStartsWhite, activeStep, onStep,
+}: {
+  sans: string[]
+  currentMoveStartsWhite: boolean
+  activeStep: number | null
+  onStep: (step: number | null) => void
+}) {
+  // The PV runs from the current move's fenBefore. If the side to move at
+  // that point is white, PV[0] is a white move; otherwise it's black's.
+  return (
+    <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-1 text-sm font-mono">
+      {sans.map((san, i) => {
+        const step = i + 1
+        const isWhitePly = currentMoveStartsWhite ? (i % 2 === 0) : (i % 2 === 1)
+        const fullMoveNum = currentMoveStartsWhite
+          ? Math.floor(i / 2) + 1 + (i > 0 && i % 2 === 0 ? 0 : 0)
+          : Math.floor((i + 1) / 2) + 1
+        const showNumber = isWhitePly || i === 0
+        const active = activeStep === step
+        return (
+          <span key={i} className="inline-flex items-baseline">
+            {showNumber && (
+              <span className="text-neutral-500 mr-0.5">
+                {fullMoveNum}{isWhitePly ? '.' : '…'}
+              </span>
+            )}
+            <button
+              onClick={() => onStep(active ? null : step)}
+              className={`px-1.5 py-0.5 rounded transition-colors ${
+                active
+                  ? 'bg-[var(--color-accent)] text-white'
+                  : 'text-neutral-200 hover:bg-neutral-800'
+              }`}
+            >{san}</button>
+          </span>
+        )
+      })}
     </div>
   )
 }

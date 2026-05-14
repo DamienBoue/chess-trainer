@@ -8,6 +8,7 @@ import { aggregate } from '../analysis/aggregate'
 import { buildPlan, totalMinutes } from '../analysis/plan'
 import { loadDaily, todayString } from '../storage/daily'
 import { loadPlanState } from '../storage/plan'
+import { bracketForElo, effectiveElo, loadEloPreference } from '../skill/elo'
 import Tooltip from './Tooltip'
 
 interface Props {
@@ -15,7 +16,7 @@ interface Props {
   analyses: GameAnalysis[]
   progress: Record<string, ExerciseProgress>
   onNavigate: (view:
-    | 'games' | 'daily' | 'plan' | 'exercises' | 'stats' | 'repertoire'
+    | 'games' | 'daily' | 'plan' | 'roadmap' | 'exercises' | 'stats' | 'repertoire'
     | 'library' | 'play' | 'scouting' | 'blunder' | 'home') => void
 }
 
@@ -54,6 +55,9 @@ export default function Dashboard({ username, analyses, progress, onNavigate }: 
   const planMinutes = totalMinutes(plan)
 
   const totalGames = analyses.length
+  const eloPref = useMemo(() => loadEloPreference(), [])
+  const elo = effectiveElo(eloPref, analyses)
+  const bracket = bracketForElo(elo)
 
   if (totalGames === 0) {
     return (
@@ -69,7 +73,16 @@ export default function Dashboard({ username, analyses, progress, onNavigate }: 
     <div className="p-6 max-w-6xl mx-auto space-y-5">
       <div className="flex items-baseline justify-between flex-wrap gap-3">
         <div>
-          <h2 className="text-2xl font-semibold">Bonjour @{username}</h2>
+          <h2 className="text-2xl font-semibold flex items-center gap-2 flex-wrap">
+            Bonjour @{username}
+            <button
+              onClick={() => onNavigate('roadmap')}
+              className="text-[11px] px-2 py-0.5 rounded bg-neutral-800 hover:bg-neutral-700 font-normal uppercase tracking-wider"
+              title={`Niveau ${bracket.label} — ouvrir la roadmap`}
+            >
+              {bracket.label}{elo != null && <span className="ml-1 text-neutral-400">{elo}</span>}
+            </button>
+          </h2>
           <p className="text-sm text-neutral-400">
             {totalGames} parties analysées · précision moyenne {stats.avgCpLossUser.toFixed(0)} cp / coup
           </p>
