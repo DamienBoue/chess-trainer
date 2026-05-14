@@ -1,0 +1,616 @@
+
+<!doctype html>
+<html lang="en">
+
+<head>
+    <title>Code coverage report for analysis/motifs.ts</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="../prettify.css" />
+    <link rel="stylesheet" href="../base.css" />
+    <link rel="shortcut icon" type="image/x-icon" href="../favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style type='text/css'>
+        .coverage-summary .sorter {
+            background-image: url(../sort-arrow-sprite.png);
+        }
+    </style>
+</head>
+    
+<body>
+<div class='wrapper'>
+    <div class='pad1'>
+        <h1><a href="../index.html">All files</a> / <a href="index.html">analysis</a> motifs.ts</h1>
+        <div class='clearfix'>
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">88.52% </span>
+                <span class="quiet">Statements</span>
+                <span class='fraction'>108/122</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">78.21% </span>
+                <span class="quiet">Branches</span>
+                <span class='fraction'>79/101</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">100% </span>
+                <span class="quiet">Functions</span>
+                <span class='fraction'>6/6</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">100% </span>
+                <span class="quiet">Lines</span>
+                <span class='fraction'>91/91</span>
+            </div>
+        
+            
+        </div>
+        <p class="quiet">
+            Press <em>n</em> or <em>j</em> to go to the next uncovered block, <em>b</em>, <em>p</em> or <em>k</em> for the previous block.
+        </p>
+        <template id="filterTemplate">
+            <div class="quiet">
+                Filter:
+                <input type="search" id="fileSearch">
+            </div>
+        </template>
+    </div>
+    <div class='status-line high'></div>
+    <pre><table class="coverage">
+<tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
+<a name='L2'></a><a href='#L2'>2</a>
+<a name='L3'></a><a href='#L3'>3</a>
+<a name='L4'></a><a href='#L4'>4</a>
+<a name='L5'></a><a href='#L5'>5</a>
+<a name='L6'></a><a href='#L6'>6</a>
+<a name='L7'></a><a href='#L7'>7</a>
+<a name='L8'></a><a href='#L8'>8</a>
+<a name='L9'></a><a href='#L9'>9</a>
+<a name='L10'></a><a href='#L10'>10</a>
+<a name='L11'></a><a href='#L11'>11</a>
+<a name='L12'></a><a href='#L12'>12</a>
+<a name='L13'></a><a href='#L13'>13</a>
+<a name='L14'></a><a href='#L14'>14</a>
+<a name='L15'></a><a href='#L15'>15</a>
+<a name='L16'></a><a href='#L16'>16</a>
+<a name='L17'></a><a href='#L17'>17</a>
+<a name='L18'></a><a href='#L18'>18</a>
+<a name='L19'></a><a href='#L19'>19</a>
+<a name='L20'></a><a href='#L20'>20</a>
+<a name='L21'></a><a href='#L21'>21</a>
+<a name='L22'></a><a href='#L22'>22</a>
+<a name='L23'></a><a href='#L23'>23</a>
+<a name='L24'></a><a href='#L24'>24</a>
+<a name='L25'></a><a href='#L25'>25</a>
+<a name='L26'></a><a href='#L26'>26</a>
+<a name='L27'></a><a href='#L27'>27</a>
+<a name='L28'></a><a href='#L28'>28</a>
+<a name='L29'></a><a href='#L29'>29</a>
+<a name='L30'></a><a href='#L30'>30</a>
+<a name='L31'></a><a href='#L31'>31</a>
+<a name='L32'></a><a href='#L32'>32</a>
+<a name='L33'></a><a href='#L33'>33</a>
+<a name='L34'></a><a href='#L34'>34</a>
+<a name='L35'></a><a href='#L35'>35</a>
+<a name='L36'></a><a href='#L36'>36</a>
+<a name='L37'></a><a href='#L37'>37</a>
+<a name='L38'></a><a href='#L38'>38</a>
+<a name='L39'></a><a href='#L39'>39</a>
+<a name='L40'></a><a href='#L40'>40</a>
+<a name='L41'></a><a href='#L41'>41</a>
+<a name='L42'></a><a href='#L42'>42</a>
+<a name='L43'></a><a href='#L43'>43</a>
+<a name='L44'></a><a href='#L44'>44</a>
+<a name='L45'></a><a href='#L45'>45</a>
+<a name='L46'></a><a href='#L46'>46</a>
+<a name='L47'></a><a href='#L47'>47</a>
+<a name='L48'></a><a href='#L48'>48</a>
+<a name='L49'></a><a href='#L49'>49</a>
+<a name='L50'></a><a href='#L50'>50</a>
+<a name='L51'></a><a href='#L51'>51</a>
+<a name='L52'></a><a href='#L52'>52</a>
+<a name='L53'></a><a href='#L53'>53</a>
+<a name='L54'></a><a href='#L54'>54</a>
+<a name='L55'></a><a href='#L55'>55</a>
+<a name='L56'></a><a href='#L56'>56</a>
+<a name='L57'></a><a href='#L57'>57</a>
+<a name='L58'></a><a href='#L58'>58</a>
+<a name='L59'></a><a href='#L59'>59</a>
+<a name='L60'></a><a href='#L60'>60</a>
+<a name='L61'></a><a href='#L61'>61</a>
+<a name='L62'></a><a href='#L62'>62</a>
+<a name='L63'></a><a href='#L63'>63</a>
+<a name='L64'></a><a href='#L64'>64</a>
+<a name='L65'></a><a href='#L65'>65</a>
+<a name='L66'></a><a href='#L66'>66</a>
+<a name='L67'></a><a href='#L67'>67</a>
+<a name='L68'></a><a href='#L68'>68</a>
+<a name='L69'></a><a href='#L69'>69</a>
+<a name='L70'></a><a href='#L70'>70</a>
+<a name='L71'></a><a href='#L71'>71</a>
+<a name='L72'></a><a href='#L72'>72</a>
+<a name='L73'></a><a href='#L73'>73</a>
+<a name='L74'></a><a href='#L74'>74</a>
+<a name='L75'></a><a href='#L75'>75</a>
+<a name='L76'></a><a href='#L76'>76</a>
+<a name='L77'></a><a href='#L77'>77</a>
+<a name='L78'></a><a href='#L78'>78</a>
+<a name='L79'></a><a href='#L79'>79</a>
+<a name='L80'></a><a href='#L80'>80</a>
+<a name='L81'></a><a href='#L81'>81</a>
+<a name='L82'></a><a href='#L82'>82</a>
+<a name='L83'></a><a href='#L83'>83</a>
+<a name='L84'></a><a href='#L84'>84</a>
+<a name='L85'></a><a href='#L85'>85</a>
+<a name='L86'></a><a href='#L86'>86</a>
+<a name='L87'></a><a href='#L87'>87</a>
+<a name='L88'></a><a href='#L88'>88</a>
+<a name='L89'></a><a href='#L89'>89</a>
+<a name='L90'></a><a href='#L90'>90</a>
+<a name='L91'></a><a href='#L91'>91</a>
+<a name='L92'></a><a href='#L92'>92</a>
+<a name='L93'></a><a href='#L93'>93</a>
+<a name='L94'></a><a href='#L94'>94</a>
+<a name='L95'></a><a href='#L95'>95</a>
+<a name='L96'></a><a href='#L96'>96</a>
+<a name='L97'></a><a href='#L97'>97</a>
+<a name='L98'></a><a href='#L98'>98</a>
+<a name='L99'></a><a href='#L99'>99</a>
+<a name='L100'></a><a href='#L100'>100</a>
+<a name='L101'></a><a href='#L101'>101</a>
+<a name='L102'></a><a href='#L102'>102</a>
+<a name='L103'></a><a href='#L103'>103</a>
+<a name='L104'></a><a href='#L104'>104</a>
+<a name='L105'></a><a href='#L105'>105</a>
+<a name='L106'></a><a href='#L106'>106</a>
+<a name='L107'></a><a href='#L107'>107</a>
+<a name='L108'></a><a href='#L108'>108</a>
+<a name='L109'></a><a href='#L109'>109</a>
+<a name='L110'></a><a href='#L110'>110</a>
+<a name='L111'></a><a href='#L111'>111</a>
+<a name='L112'></a><a href='#L112'>112</a>
+<a name='L113'></a><a href='#L113'>113</a>
+<a name='L114'></a><a href='#L114'>114</a>
+<a name='L115'></a><a href='#L115'>115</a>
+<a name='L116'></a><a href='#L116'>116</a>
+<a name='L117'></a><a href='#L117'>117</a>
+<a name='L118'></a><a href='#L118'>118</a>
+<a name='L119'></a><a href='#L119'>119</a>
+<a name='L120'></a><a href='#L120'>120</a>
+<a name='L121'></a><a href='#L121'>121</a>
+<a name='L122'></a><a href='#L122'>122</a>
+<a name='L123'></a><a href='#L123'>123</a>
+<a name='L124'></a><a href='#L124'>124</a>
+<a name='L125'></a><a href='#L125'>125</a>
+<a name='L126'></a><a href='#L126'>126</a>
+<a name='L127'></a><a href='#L127'>127</a>
+<a name='L128'></a><a href='#L128'>128</a>
+<a name='L129'></a><a href='#L129'>129</a>
+<a name='L130'></a><a href='#L130'>130</a>
+<a name='L131'></a><a href='#L131'>131</a>
+<a name='L132'></a><a href='#L132'>132</a>
+<a name='L133'></a><a href='#L133'>133</a>
+<a name='L134'></a><a href='#L134'>134</a>
+<a name='L135'></a><a href='#L135'>135</a>
+<a name='L136'></a><a href='#L136'>136</a>
+<a name='L137'></a><a href='#L137'>137</a>
+<a name='L138'></a><a href='#L138'>138</a>
+<a name='L139'></a><a href='#L139'>139</a>
+<a name='L140'></a><a href='#L140'>140</a>
+<a name='L141'></a><a href='#L141'>141</a>
+<a name='L142'></a><a href='#L142'>142</a>
+<a name='L143'></a><a href='#L143'>143</a>
+<a name='L144'></a><a href='#L144'>144</a>
+<a name='L145'></a><a href='#L145'>145</a>
+<a name='L146'></a><a href='#L146'>146</a>
+<a name='L147'></a><a href='#L147'>147</a>
+<a name='L148'></a><a href='#L148'>148</a>
+<a name='L149'></a><a href='#L149'>149</a>
+<a name='L150'></a><a href='#L150'>150</a>
+<a name='L151'></a><a href='#L151'>151</a>
+<a name='L152'></a><a href='#L152'>152</a>
+<a name='L153'></a><a href='#L153'>153</a>
+<a name='L154'></a><a href='#L154'>154</a>
+<a name='L155'></a><a href='#L155'>155</a>
+<a name='L156'></a><a href='#L156'>156</a>
+<a name='L157'></a><a href='#L157'>157</a>
+<a name='L158'></a><a href='#L158'>158</a>
+<a name='L159'></a><a href='#L159'>159</a>
+<a name='L160'></a><a href='#L160'>160</a>
+<a name='L161'></a><a href='#L161'>161</a>
+<a name='L162'></a><a href='#L162'>162</a>
+<a name='L163'></a><a href='#L163'>163</a>
+<a name='L164'></a><a href='#L164'>164</a>
+<a name='L165'></a><a href='#L165'>165</a>
+<a name='L166'></a><a href='#L166'>166</a>
+<a name='L167'></a><a href='#L167'>167</a>
+<a name='L168'></a><a href='#L168'>168</a>
+<a name='L169'></a><a href='#L169'>169</a>
+<a name='L170'></a><a href='#L170'>170</a>
+<a name='L171'></a><a href='#L171'>171</a>
+<a name='L172'></a><a href='#L172'>172</a>
+<a name='L173'></a><a href='#L173'>173</a>
+<a name='L174'></a><a href='#L174'>174</a>
+<a name='L175'></a><a href='#L175'>175</a>
+<a name='L176'></a><a href='#L176'>176</a>
+<a name='L177'></a><a href='#L177'>177</a>
+<a name='L178'></a><a href='#L178'>178</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">384x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">640x</span>
+<span class="cline-any cline-yes">630x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">88x</span>
+<span class="cline-any cline-yes">88x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">80x</span>
+<span class="cline-any cline-yes">640x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">122x</span>
+<span class="cline-any cline-yes">122x</span>
+<span class="cline-any cline-yes">122x</span>
+<span class="cline-any cline-yes">122x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">976x</span>
+<span class="cline-any cline-yes">7808x</span>
+<span class="cline-any cline-yes">1706x</span>
+<span class="cline-any cline-yes">602x</span>
+<span class="cline-any cline-yes">602x</span>
+<span class="cline-any cline-yes">602x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">113x</span>
+<span class="cline-any cline-yes">113x</span>
+<span class="cline-any cline-yes">113x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">113x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">113x</span>
+<span class="cline-any cline-yes">113x</span>
+<span class="cline-any cline-yes">113x</span>
+<span class="cline-any cline-yes">113x</span>
+<span class="cline-any cline-yes">111x</span>
+<span class="cline-any cline-yes">111x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">113x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">113x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { Chess } from 'chess.js'
+import type { Square, Color, PieceSymbol } from 'chess.js'
+import type { MoveAnalysis } from '../types'
+&nbsp;
+export type MotifTag =
+  | 'mate-found' | 'mate-missed'
+  | 'fork' | 'fork-royal'
+  | 'pin'
+  | 'hanging-capture'
+  | 'sacrifice'
+  | 'capture'
+&nbsp;
+export const MOTIF_LABELS: Record&lt;MotifTag, string&gt; = {
+  'mate-found': 'Mat trouvé',
+  'mate-missed': 'Mat raté',
+  'fork': 'Fourchette',
+  'fork-royal': 'Fourchette royale',
+  'pin': 'Clouage',
+  'hanging-capture': 'Pièce en prise',
+  'sacrifice': 'Sacrifice',
+  'capture': 'Capture',
+}
+&nbsp;
+const VALUE: Record&lt;PieceSymbol, number&gt; = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 100 }
+&nbsp;
+const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
+const ALL_SQUARES: Square[] = []
+for (let r = 1; r &lt;= 8; r++) for (const f of FILES) ALL_SQUARES.push(`${f}${r}` as Square)
+&nbsp;
+// Squares attacked by the piece sitting on `from` in the given chess instance.
+function attacksFrom(chess: Chess, from: Square): Square[] {
+  const piece = chess.get(from)
+  <span class="missing-if-branch" title="if path not taken" >I</span>if (!piece) <span class="cstat-no" title="statement not covered" >return []</span>
+  const out: Square[] = []
+  for (const s of ALL_SQUARES) {
+    if (s === from) continue
+    if (chess.attackers(s, piece.color).includes(from)) out.push(s)
+  }
+  return out
+}
+&nbsp;
+// Detect a fork: the moving piece, after the move, attacks ≥2 enemy pieces of
+// equal-or-greater value (king counts and is flagged separately as 'royal').
+function detectFork(chess: Chess, mover: Color, dest: Square): MotifTag | null {
+  const piece = chess.get(dest)
+  <span class="missing-if-branch" title="if path not taken" >I</span>if (!piece) <span class="cstat-no" title="statement not covered" >return null</span>
+  const myValue = VALUE[piece.type]
+  const enemyColor: Color = mover === 'w' ? 'b' : <span class="branch-1 cbranch-no" title="branch not covered" >'w'</span>
+  const targets = attacksFrom(chess, dest)
+  let kingHit = false
+  let valuableHits = 0
+  for (const t of targets) {
+    const p = chess.get(t)
+    if (!p || p.color !== enemyColor) continue
+    if (p.type === 'k') { kingHit = true; valuableHits++ }
+    else if (VALUE[p.type] &gt;= myValue) valuableHits++
+  }
+  if (valuableHits &gt;= 2) return kingHit ? 'fork-royal' : <span class="branch-1 cbranch-no" title="branch not covered" >'fork'</span>
+  return null
+}
+&nbsp;
+// Detect a hanging piece capture: the move captures an enemy piece that was
+// not adequately defended (more attackers than defenders OR no defender).
+function detectHangingCapture(beforeFen: string, dest: Square, mover: Color): MotifTag | null {
+  const before = new Chess(beforeFen)
+  const captured = before.get(dest)
+  <span class="missing-if-branch" title="if path not taken" >I</span>if (!captured) <span class="cstat-no" title="statement not covered" >return null</span>
+  const enemyColor: Color = mover === 'w' ? 'b' : <span class="branch-1 cbranch-no" title="branch not covered" >'w'</span>
+  <span class="missing-if-branch" title="if path not taken" >I</span>if (captured.color !== enemyColor) <span class="cstat-no" title="statement not covered" >return null</span>
+  const defenders = before.attackers(dest, enemyColor).length
+  const attackers = before.attackers(dest, mover).length
+  // Truly hanging: no defenders, but we still gain something.
+  <span class="missing-if-branch" title="if path not taken" >I</span>if (defenders === 0) <span class="cstat-no" title="statement not covered" >return 'hanging-capture'</span>
+  // Or: attackers &gt; defenders in a way that wins material (under-defended).
+  <span class="missing-if-branch" title="if path not taken" >I</span>if (attackers &gt; defenders &amp;&amp; <span class="branch-1 cbranch-no" title="branch not covered" >VALUE[captured.type] &gt;= 2) <span class="cstat-no" title="statement not covered" >r</span>eturn 'hanging-capture'</span>
+  return null
+}
+&nbsp;
+// Detect a pin against a more valuable piece behind the target.
+// We test "remove this enemy piece — does a more valuable piece behind it
+// become attacked by us?". This catches absolute pins and skewer-like patterns.
+function detectPin(beforeFen: string, mover: Color): MotifTag | null {
+  const before = new Chess(beforeFen)
+  const enemyColor: Color = mover === 'w' ? 'b' : <span class="branch-1 cbranch-no" title="branch not covered" >'w'</span>
+  const board = before.board()
+  for (const row of board) {
+    for (const cell of row) {
+      if (!cell || cell.color !== enemyColor) continue
+      // Try removing the enemy piece and see if a more valuable enemy piece
+      // becomes attacked through that line.
+      const fen = before.fen()
+      const test = new Chess(fen)
+      test.remove(cell.square)
+      const myValue = VALUE[cell.type]
+      // Look for a more valuable enemy piece newly attacked
+      for (const r2 of test.board()) for (const c2 of r2) {
+        if (!c2 || c2.color !== enemyColor) continue
+        if (VALUE[c2.type] &lt;= myValue) continue
+        const wasAttacked = before.isAttacked(c2.square, mover)
+        const nowAttacked = test.isAttacked(c2.square, mover)
+        <span class="missing-if-branch" title="if path not taken" >I</span>if (!wasAttacked &amp;&amp; nowAttacked) <span class="cstat-no" title="statement not covered" >return 'pin'</span>
+      }
+    }
+  }
+  return null
+}
+&nbsp;
+// Detect a sacrifice: best move is a capture but on a square where we lose
+// material in the immediate exchange — yet the engine considers the position
+// favourable afterwards (positive eval-after for the mover).
+function detectSacrifice(
+  beforeFen: string, dest: Square, mover: Color,
+  evalAfterMover: number,
+): MotifTag | null {
+  const before = new Chess(beforeFen)
+  const target = before.get(dest)
+  if (!target) return null
+  // Get the moving piece by reading the fenBefore square the move came from is
+  // unknown here; approximate via attackers on dest of mover's color.
+  const myAttackers = before.attackers(dest, mover)
+  <span class="missing-if-branch" title="if path not taken" >I</span>if (myAttackers.length === 0) <span class="cstat-no" title="statement not covered" >return null</span>
+  const attackerSq = myAttackers[0]
+  const attacker = before.get(attackerSq)
+  <span class="missing-if-branch" title="if path not taken" >I</span>if (!attacker) <span class="cstat-no" title="statement not covered" >return null</span>
+  const defenders = before.attackers(dest, mover === 'w' ? 'b' : <span class="branch-1 cbranch-no" title="branch not covered" >'w').</span>length
+  // We capture worth = target value, then we get recaptured if defenders &gt; 0.
+  if (defenders &gt; 0 &amp;&amp; VALUE[attacker.type] &gt; VALUE[target.type]) {
+    // We're giving up more material than we capture in the immediate exchange.
+    <span class="missing-if-branch" title="if path not taken" >I</span>if (evalAfterMover &gt;= 100) <span class="cstat-no" title="statement not covered" >return 'sacrifice'</span>
+  }
+  return null
+}
+&nbsp;
+export function detectMotifs(move: MoveAnalysis): MotifTag[] {
+  const tags: MotifTag[] = []
+  const best = move.bestMoveSan ?? ''
+  const line = move.bestLineSan ?? ''
+&nbsp;
+  // Mate
+  if (best.endsWith('#') || /[#]/.test(line)) {
+    if (move.classification === 'mistake' || move.classification === 'blunder') tags.push('mate-missed')
+    else tags.push('mate-found')
+  }
+&nbsp;
+  // For positional motifs we need to play the best move on the position.
+  try {
+    const before = new Chess(move.fenBefore)
+    const stm = before.turn()
+    <span class="missing-if-branch" title="if path not taken" >I</span>if (!move.bestMoveSan) <span class="cstat-no" title="statement not covered" >return tags</span>
+    const mv = before.move(move.bestMoveSan)
+    if (mv) {
+      const dest = mv.to as Square
+      const fork = detectFork(before, stm, dest)
+      if (fork) tags.push(fork)
+&nbsp;
+      // Re-derive flags for the immediate move
+      if (mv.flags.includes('c') || mv.flags.includes('e')) {
+        const hanging = detectHangingCapture(move.fenBefore, dest, stm)
+        <span class="missing-if-branch" title="if path not taken" >I</span>if (hanging &amp;&amp; <span class="branch-1 cbranch-no" title="branch not covered" >!tags.includes('hanging-capture'))</span> <span class="cstat-no" title="statement not covered" >tags.push(hanging)</span>
+      }
+&nbsp;
+      const evalAfterMover = stm === 'w' ? move.evalAfter : <span class="branch-1 cbranch-no" title="branch not covered" >-move.evalAfter</span>
+      const sac = detectSacrifice(move.fenBefore, dest, stm, evalAfterMover)
+      <span class="missing-if-branch" title="if path not taken" >I</span>if (sac) <span class="cstat-no" title="statement not covered" >tags.push(sac)</span>
+&nbsp;
+      const pin = detectPin(move.fenBefore, stm)
+      <span class="missing-if-branch" title="if path not taken" >I</span>if (pin) <span class="cstat-no" title="statement not covered" >tags.push(pin)</span>
+    }
+  } catch { /* noop */ }
+&nbsp;
+  // Generic capture marker (kept for back-compat) only if no richer tag covered it.
+  if (best.includes('x') &amp;&amp; !tags.includes('hanging-capture') &amp;&amp; !tags.includes('sacrifice')) {
+    tags.push('capture')
+  }
+&nbsp;
+  return tags
+}
+&nbsp;</pre></td></tr></table></pre>
+
+                <div class='push'></div><!-- for sticky footer -->
+            </div><!-- /wrapper -->
+            <div class='footer quiet pad2 space-top1 center small'>
+                Code coverage generated by
+                <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
+                at 2026-05-14T13:40:06.208Z
+            </div>
+        <script src="../prettify.js"></script>
+        <script>
+            window.onload = function () {
+                prettyPrint();
+            };
+        </script>
+        <script src="../sorter.js"></script>
+        <script src="../block-navigation.js"></script>
+    </body>
+</html>
+    

@@ -2,8 +2,24 @@
 // have caught the regressions where a module had a `surface: 'book'`
 // (stale-state route) or no actionable target at all.
 
-import { describe, expect, it } from 'vitest'
-import { MODULES_BY_BRACKET } from './roadmap'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  MODULES_BY_BRACKET, modulesForBracket,
+  loadModuleProgress, saveModuleProgress, toggleModuleDone,
+} from './roadmap'
+import { BRACKETS } from './elo'
+
+function mockLocalStorage() {
+  const store = new Map<string, string>()
+  return {
+    getItem: (k: string) => store.has(k) ? store.get(k)! : null,
+    setItem: (k: string, v: string) => { store.set(k, v) },
+    removeItem: (k: string) => { store.delete(k) },
+    clear: () => store.clear(),
+    key: (i: number) => Array.from(store.keys())[i] ?? null,
+    get length() { return store.size },
+  } as Storage
+}
 
 const VALID_SURFACES = new Set([
   'exercises', 'blunder', 'calc', 'repertoire', 'library', 'play', 'stats',
@@ -47,5 +63,31 @@ describe('roadmap modules', () => {
       expect(m.title.trim().length, `module ${m.id} has empty title`).toBeGreaterThan(0)
       expect(m.why.trim().length, `module ${m.id} has empty why`).toBeGreaterThan(0)
     }
+  })
+
+  it('modulesForBracket returns the correct set for each bracket id', () => {
+    for (const b of BRACKETS) {
+      const mods = modulesForBracket(b)
+      expect(mods).toBe(MODULES_BY_BRACKET[b.id])
+    }
+  })
+})
+
+describe('module progress storage', () => {
+  beforeEach(() => { vi.stubGlobal('localStorage', mockLocalStorage()) })
+
+  it('starts with no completed modules', () => {
+    expect(loadModuleProgress().completed).toEqual([])
+  })
+
+  it('roundtrips saved progress', () => {
+    saveModuleProgress({ completed: ['m1', 'm2'] })
+    expect(loadModuleProgress().completed).toEqual(['m1', 'm2'])
+  })
+
+  it('toggleModuleDone adds a missing id and removes a present one', () => {
+    expect(toggleModuleDone('m1').completed).toEqual(['m1'])
+    expect(toggleModuleDone('m2').completed).toEqual(['m1', 'm2'])
+    expect(toggleModuleDone('m1').completed).toEqual(['m2'])
   })
 })
