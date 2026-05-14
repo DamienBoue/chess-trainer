@@ -285,12 +285,13 @@ export default function App() {
                 Répertoire
               </NavBtn>
               <NavGroup
-                label="Entraînement"
+                label="Étudier"
                 active={view === 'exercises' || view === 'rush' || view === 'blunder' || view === 'calc' || view === 'library' || view === 'book'}
                 items={[
                   {
                     key: 'exercises',
                     label: `Exercices${dueCount > 0 ? ` (${dueCount} dus${exerciseCount !== dueCount ? `/${exerciseCount}` : ''})` : exerciseCount > 0 ? ` (${exerciseCount})` : ''}`,
+                    description: 'Tes propres blunders en SRS — révise à ton rythme.',
                     onClick: () => setView('exercises'),
                     disabled: exerciseCount === 0,
                     active: view === 'exercises',
@@ -298,20 +299,23 @@ export default function App() {
                   {
                     key: 'rush',
                     label: 'Puzzle Rush',
+                    description: 'Burndown chronométré sur tes exercices.',
                     onClick: () => setView('rush'),
                     disabled: exerciseCount < 5,
                     active: view === 'rush',
                   },
                   {
                     key: 'blunder',
-                    label: 'Blunder reflex',
+                    label: 'Réflexe anti-gaffe',
+                    description: 'Flashcards rapides : repère la menace en 5 sec.',
                     onClick: () => setView('blunder'),
                     disabled: exerciseCount < 3,
                     active: view === 'blunder',
                   },
                   {
                     key: 'calc',
-                    label: 'Calcul (séquence)',
+                    label: 'Calcul de séquence',
+                    description: 'Mate-in-N et tactiques forcées sans bouger les pièces.',
                     onClick: () => setView('calc'),
                     disabled: exerciseCount < 3,
                     active: view === 'calc',
@@ -320,6 +324,7 @@ export default function App() {
                   {
                     key: 'library',
                     label: 'Bibliothèque (livres)',
+                    description: 'Livres importés + leurs positions clés en SRS.',
                     onClick: () => { setActiveBookId(null); setView('library') },
                     active: view === 'library' || view === 'book',
                   },
@@ -331,19 +336,22 @@ export default function App() {
                 items={[
                   {
                     key: 'compare',
-                    label: 'Comparer (ami chess.com)',
+                    label: 'Comparer un ami',
+                    description: 'Forces / faiblesses croisées avec un autre joueur chess.com.',
                     onClick: () => setView('compare'),
                     active: view === 'compare',
                   },
                   {
                     key: 'scouting',
-                    label: 'Scouting (chess.com)',
+                    label: 'Scouter un adversaire',
+                    description: 'Rapport sur un joueur chess.com avant ta prochaine partie.',
                     onClick: () => setView('scouting'),
                     active: view === 'scouting',
                   },
                   {
                     key: 'players',
                     label: 'Joueurs PGN (FIDE / OTB)',
+                    description: 'Importe des PGN pour étudier des joueurs hors chess.com.',
                     onClick: () => setView('players'),
                     active: view === 'players',
                   },
@@ -694,6 +702,7 @@ function NavBtn({ children, active, onClick, disabled }: { children: React.React
 interface NavMenuItem {
   key: string
   label?: string
+  description?: string
   onClick?: () => void
   disabled?: boolean
   active?: boolean
@@ -749,13 +758,18 @@ function NavGroup({ label, active, items }: { label: string; active: boolean; it
                 role="menuitem"
                 disabled={item.disabled}
                 onClick={() => { setOpen(false); item.onClick?.() }}
-                className={`w-full text-left px-3 py-1.5 text-sm transition-colors ${
+                className={`w-full text-left px-3 py-2 text-sm transition-colors ${
                   item.active
                     ? 'bg-[var(--color-accent)] text-white'
                     : 'text-neutral-300 hover:bg-neutral-800 disabled:opacity-40 disabled:hover:bg-transparent'
                 }`}
               >
-                {item.label}
+                <div className="font-medium">{item.label}</div>
+                {item.description && (
+                  <div className={`text-[11px] mt-0.5 ${item.active ? 'text-white/80' : 'text-neutral-500'}`}>
+                    {item.description}
+                  </div>
+                )}
               </button>
             )
           })}
