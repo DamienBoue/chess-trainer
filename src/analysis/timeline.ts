@@ -10,6 +10,9 @@ export interface WeekStats {
   cpLossSum: number       // sum of user cpLoss across all moves in the week
   userMoves: number
   avgUserCpLoss: number
+  blunders: number        // user moves classified as blunder
+  mistakes: number        // …as mistake
+  inaccuracies: number    // …as inaccuracy
   rating: number | null   // last known user rating during the week
 }
 
@@ -39,6 +42,7 @@ export function buildTimeline(analyses: GameAnalysis[]): WeekStats[] {
         label: shortLabel(ws),
         games: 0, wins: 0, losses: 0, draws: 0,
         cpLossSum: 0, userMoves: 0, avgUserCpLoss: 0,
+        blunders: 0, mistakes: 0, inaccuracies: 0,
         rating: null,
       })
     }
@@ -55,6 +59,9 @@ export function buildTimeline(analyses: GameAnalysis[]): WeekStats[] {
       if (moverIsWhite === userIsWhite) {
         b.cpLossSum += mv.cpLoss
         b.userMoves++
+        if (mv.classification === 'blunder') b.blunders++
+        else if (mv.classification === 'mistake') b.mistakes++
+        else if (mv.classification === 'inaccuracy') b.inaccuracies++
       }
     }
   }
