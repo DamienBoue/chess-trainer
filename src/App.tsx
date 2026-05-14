@@ -7,6 +7,7 @@ import SettingsView from './components/SettingsView'
 import { ToastHost, toast } from './components/Toast'
 import KeyboardShortcutsModal, { openShortcutsHelp } from './components/KeyboardShortcutsModal'
 import Onboarding from './components/Onboarding'
+import CommandPalette, { type CommandTarget } from './components/CommandPalette'
 import { getEngineDepth } from './storage/settings'
 import GamesList from './components/GamesList'
 import AnalysisView from './components/AnalysisView'
@@ -495,6 +496,24 @@ export default function App() {
       <ToastHost />
       <KeyboardShortcutsModal />
       <Onboarding />
+      {username && (
+        <CommandPalette
+          username={username}
+          analyses={allAnalyses}
+          games={games}
+          onNavigate={(t: CommandTarget) => {
+            if (t.kind === 'view') {
+              setView(t.view as View)
+            } else if (t.kind === 'game') {
+              setActiveGameUrl(t.gameUrl)
+              setView('analysis')
+            } else if (t.kind === 'book') {
+              setActiveBookId(t.bookId)
+              setView('book')
+            }
+          }}
+        />
+      )}
       {mobileMenuOpen && username && (
         <MobileNavSheet
           username={username}

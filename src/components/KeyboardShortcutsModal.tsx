@@ -13,6 +13,7 @@ const SECTIONS: Array<{ title: string; shortcuts: Shortcut[] }> = [
     title: 'Global',
     shortcuts: [
       { keys: ['?'], label: 'Ouvrir cette aide' },
+      { keys: ['⌘', 'K'], label: 'Recherche rapide (vues / parties / livres)' },
       { keys: ['Esc'], label: 'Fermer une modale / annuler' },
     ],
   },
