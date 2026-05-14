@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ChessComGame, GameAnalysis } from './types'
 import { StockfishEngine } from './engine/stockfish'
 import Home from './components/Home'
+import Dashboard from './components/Dashboard'
 import GamesList from './components/GamesList'
 import AnalysisView from './components/AnalysisView'
 import StatsView from './components/StatsView'
@@ -110,6 +111,14 @@ export default function App() {
   const today = todayString()
   const dailySolvedToday = dailyState?.date === today && dailyState.solved
   const dailyStreak = dailyState?.streak ?? 0
+
+  function handleLogout() {
+    setUsername('')
+    localStorage.removeItem('chess.username')
+    setGames([])
+    setAnalyses({})
+    setView('home')
+  }
 
   function handleSubmitUsername(u: string, fetched: ChessComGame[]) {
     setUsername(u)
@@ -281,7 +290,7 @@ export default function App() {
               />
               <NavBtn active={view === 'play'} onClick={() => setView('play')}>Jouer</NavBtn>
               <span className="mx-1 h-5 w-px bg-neutral-700/60" aria-hidden="true" />
-              <NavBtn onClick={() => { setView('home') }}>@{username}</NavBtn>
+              <NavBtn active={view === 'home'} onClick={() => setView('home')}>@{username}</NavBtn>
             </>
           )}
           <a
@@ -321,7 +330,19 @@ export default function App() {
 
       <main className="flex-1 overflow-auto">
         {view === 'home' && (
-          <Home initialUsername={username} onSubmit={handleSubmitUsername} />
+          username ? (
+            <Dashboard
+              username={username}
+              analyses={filteredAnalyses}
+              progress={progress}
+              onNavigate={v => {
+                if (v === 'home') handleLogout()
+                else setView(v as View)
+              }}
+            />
+          ) : (
+            <Home initialUsername={username} onSubmit={handleSubmitUsername} />
+          )
         )}
         {view === 'games' && (
           <GamesList
