@@ -223,7 +223,7 @@
       "n": 14,
       "chapter": "Pions passés",
       "page": null,
-      "fen": "8/p1p1p3/8/8/8/8/PPP5/8 w - - 0 1",
+      "fen": "6k1/p1p1p3/8/8/8/8/PPP3K1/8 w - - 0 1",
       "side": "w",
       "firstMoveSan": "b4",
       "moves": [
@@ -291,19 +291,8 @@
       "solutionProse": "Pat défensif (sacrifice pour le pat) — Quand on est en perdition matérielle, viser le pat par sacrifice forcé est une ressource sous-estimée. Ici les Noirs promeuvent en h1=Q : si Blanc joue Kxh1, pat ! Toujours regarder les options de promotion mineure (T/F/C) si la dame perd."
     },
     {
-      "id": "eg-018",
-      "n": 18,
-      "chapter": "Motifs spéciaux",
-      "page": null,
-      "fen": "6k1/6p1/8/8/8/8/8/3q3K w - - 0 1",
-      "side": "w",
-      "firstMoveSan": null,
-      "moves": [],
-      "solutionProse": "Échec perpétuel comme nulle de salut — Position à chercher quand on a la dame en moins : trouver une suite d'échecs qui force la répétition. Ici les Noirs gagnent banalement, mais la prise de pat / perpétuel est un thème à intégrer en défense."
-    },
-    {
       "id": "eg-019",
-      "n": 19,
+      "n": 18,
       "chapter": "Cavaliers",
       "page": null,
       "fen": "8/8/8/8/8/8/n4kPK/8 w - - 0 1",
@@ -319,20 +308,20 @@
     },
     {
       "id": "eg-020",
-      "n": 20,
+      "n": 19,
       "chapter": "Tours",
       "page": null,
-      "fen": "8/3k4/8/8/8/8/r3P1K1/3R4 w - - 0 1",
+      "fen": "8/4k3/8/8/8/8/r3P1K1/3R4 w - - 0 1",
       "side": "w",
-      "firstMoveSan": "Kg3+",
+      "firstMoveSan": "Kg3",
       "moves": [
-        "Kg3+"
+        "Kg3"
       ],
       "solutionProse": "Tour derrière le pion passé (règle de Tarrasch) — Règle de Tarrasch : la tour DOIT être derrière son pion passé. Ici les Blancs ont la tour devant (sur d1) — mauvais ! Le pion e2 est même cloué par la tour noire ; il faut d'abord déplacer le roi puis basculer la tour derrière le pion avant de pousser."
     },
     {
       "id": "eg-021",
-      "n": 21,
+      "n": 20,
       "chapter": "Études",
       "page": null,
       "fen": "7K/8/k1P5/7p/8/8/8/8 w - - 0 1",

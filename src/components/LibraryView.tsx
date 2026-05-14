@@ -113,7 +113,7 @@ export default function LibraryView({ onOpenBook }: Props) {
               className="px-3 py-1.5 text-sm rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-200 font-medium"
               title="Positions classiques de finale avec explications"
             >
-              ♛ Pack Finales (21)
+              ♛ Pack Finales (20)
             </button>
           )}
           <label className="px-3 py-1.5 text-sm rounded bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] text-white font-medium cursor-pointer">

@@ -1,7 +1,34 @@
 // Book import + migration helpers.
 
+import { Chess } from 'chess.js'
 import type { Book, BookExercise } from './types'
 import { saveBook, listBooks, saveProgress, getProgress } from './storage'
+
+// An exercise is "legal" iff:
+//   - chess.js can parse the FEN
+//   - the side NOT to move isn't in check (otherwise the previous move
+//     was illegal and we have an impossible starting position)
+//   - the firstMoveSan, if given, is actually a legal move
+function isLegalExercise(fen: string, firstMoveSan: string | undefined): boolean {
+  try {
+    const c = new Chess(fen)
+    // Swap the side-to-move and ask chess.js if THAT king is attacked.
+    const parts = fen.split(' ')
+    parts[1] = parts[1] === 'w' ? 'b' : 'w'
+    try {
+      const swapped = new Chess(parts.join(' '))
+      if (swapped.inCheck()) return false
+    } catch { /* swapped position is malformed — original is suspect too */ return false }
+    if (firstMoveSan) {
+      const t = new Chess(fen)
+      try { t.move(firstMoveSan) } catch { return false }
+    }
+    void c
+    return true
+  } catch {
+    return false
+  }
+}
 
 // Validate that an arbitrary parsed JSON looks like a Book before saving.
 // Throws with a user-friendly message if not.
@@ -15,16 +42,23 @@ export function validateBookJson(raw: unknown): Book {
     throw new Error('Le fichier ne contient aucun exercice (clé "exercises" manquante ou vide).')
   }
   const validated: BookExercise[] = []
+  const skipped: Array<{ id: string; reason: string }> = []
   for (const e of exercises as Record<string, unknown>[]) {
     if (typeof e.fen !== 'string' || !e.fen.includes(' ')) continue
     const moves = Array.isArray(e.moves) ? e.moves.filter(m => typeof m === 'string') as string[] : []
+    const firstMoveSan = typeof e.firstMoveSan === 'string' ? e.firstMoveSan : moves[0]
+    const exId = typeof e.id === 'string' ? e.id : `ex-${(e.n as number | undefined) ?? validated.length + 1}`
+    if (!isLegalExercise(e.fen, firstMoveSan)) {
+      skipped.push({ id: exId, reason: 'position illégale ou coup invalide' })
+      continue
+    }
     validated.push({
-      id: typeof e.id === 'string' ? e.id : `ex-${(e.n as number | undefined) ?? validated.length + 1}`,
+      id: exId,
       n: typeof e.n === 'number' ? e.n : validated.length + 1,
       fen: e.fen,
       side: (e.fen.split(' ')[1] === 'b' ? 'b' : 'w'),
       moves,
-      firstMoveSan: typeof e.firstMoveSan === 'string' ? e.firstMoveSan : moves[0],
+      firstMoveSan,
       chapter: typeof e.chapter === 'string' ? e.chapter : undefined,
       page: typeof e.page === 'number' ? e.page : undefined,
       solutionProse: typeof e.solutionProse === 'string'
@@ -34,8 +68,11 @@ export function validateBookJson(raw: unknown): Book {
           : undefined,
     })
   }
+  if (skipped.length > 0) {
+    console.warn('[library] skipped illegal exercises during import:', skipped)
+  }
   if (validated.length === 0) {
-    throw new Error('Aucun exercice exploitable trouvé (FEN manquante sur toutes les entrées).')
+    throw new Error('Aucun exercice exploitable trouvé (FEN invalides ou positions illégales).')
   }
   const title = typeof obj.title === 'string' && obj.title ? obj.title : 'Livre sans titre'
   const id = typeof obj.id === 'string' && obj.id ? obj.id : slugify(title)
