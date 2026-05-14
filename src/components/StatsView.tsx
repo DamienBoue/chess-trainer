@@ -4,6 +4,8 @@ import { aggregate, deriveInsights, PHASE_LABELS, type AggregateStats, type Phas
 import { CLASSIFICATION_COLORS, CLASSIFICATION_LABELS } from '../analysis/classify'
 import { extractExercises } from '../analysis/exercises'
 import { computeMotifRadar, type MotifStat } from '../analysis/motifRadar'
+import { conceptForMotif } from '../concepts/lookup'
+import { openConcept } from './ConceptModal'
 import { findRecurringMistakes, type RecurringMistake } from '../analysis/recurringMistakes'
 import type { MotifTag } from '../analysis/motifs'
 import ProgressCharts from './ProgressCharts'
@@ -610,6 +612,13 @@ function MotifRow({
           {stat.missed}M / {stat.found}T
         </span>
       </Tooltip>
+      {conceptForMotif(stat.motif) && (
+        <button
+          onClick={() => openConcept(conceptForMotif(stat.motif)!.id)}
+          className="text-xs px-1.5 py-0.5 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-300"
+          title="Voir la fiche concept"
+        >📖</button>
+      )}
       {onDrill && stat.missed > 0 && (
         <button
           onClick={() => onDrill(stat.motif)}

@@ -31,6 +31,7 @@ const VIEW_ITEMS = [
   { view: 'blunder',    label: 'Blunder reflex', section: 'Vues' },
   { view: 'calc',       label: 'Calcul (séquence)', section: 'Vues' },
   { view: 'library',    label: 'Bibliothèque', section: 'Vues' },
+  { view: 'concepts',   label: 'Concepts (fork, IQP, Lucena…)', section: 'Vues' },
   { view: 'compare',    label: 'Comparer (chess.com)', section: 'Vues' },
   { view: 'scouting',   label: 'Scouting (chess.com)', section: 'Vues' },
   { view: 'players',    label: 'Joueurs PGN (FIDE)', section: 'Vues' },

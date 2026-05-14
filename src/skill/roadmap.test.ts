@@ -8,6 +8,7 @@ import {
   loadModuleProgress, saveModuleProgress, toggleModuleDone,
 } from './roadmap'
 import { BRACKETS } from './elo'
+import { findConcept } from '../concepts/lookup'
 
 function mockLocalStorage() {
   const store = new Map<string, string>()
@@ -62,6 +63,14 @@ describe('roadmap modules', () => {
     for (const m of all) {
       expect(m.title.trim().length, `module ${m.id} has empty title`).toBeGreaterThan(0)
       expect(m.why.trim().length, `module ${m.id} has empty why`).toBeGreaterThan(0)
+    }
+  })
+
+  it('every conceptId (when set) points to a real concept in the catalog', () => {
+    for (const m of all) {
+      if (m.conceptId) {
+        expect(findConcept(m.conceptId), `module ${m.id}: unknown conceptId '${m.conceptId}'`).toBeTruthy()
+      }
     }
   })
 

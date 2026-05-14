@@ -5,6 +5,7 @@ import Home from './components/Home'
 import { ToastHost, toast } from './components/Toast'
 import KeyboardShortcutsModal, { openShortcutsHelp } from './components/KeyboardShortcutsModal'
 import Onboarding from './components/Onboarding'
+import ConceptModal from './components/ConceptModal'
 import CommandPalette, { type CommandTarget } from './components/CommandPalette'
 import Breadcrumbs from './components/Breadcrumbs'
 import { getEngineDepth } from './storage/settings'
@@ -30,6 +31,7 @@ const BlunderDrillView = lazy(() => import('./components/BlunderDrillView'))
 const CalcDepthView = lazy(() => import('./components/CalcDepthView'))
 const PlayersView = lazy(() => import('./components/PlayersView'))
 const SettingsView = lazy(() => import('./components/SettingsView'))
+const ConceptsView = lazy(() => import('./components/ConceptsView'))
 import {
   GlobalFilters,
   applyGlobalFilters,
@@ -55,7 +57,7 @@ export interface BatchState {
   failed: number
 }
 
-type View = 'home' | 'games' | 'analysis' | 'stats' | 'exercises' | 'rush' | 'daily' | 'roadmap' | 'compare' | 'repertoire' | 'library' | 'book' | 'scouting' | 'play' | 'blunder' | 'calc' | 'players' | 'settings'
+type View = 'home' | 'games' | 'analysis' | 'stats' | 'exercises' | 'rush' | 'daily' | 'roadmap' | 'compare' | 'repertoire' | 'library' | 'book' | 'scouting' | 'play' | 'blunder' | 'calc' | 'players' | 'settings' | 'concepts'
 
 export default function App() {
   const [view, setView] = useState<View>('home')
@@ -327,6 +329,13 @@ export default function App() {
                     onClick: () => { setActiveBookId(null); setView('library') },
                     active: view === 'library' || view === 'book',
                   },
+                  {
+                    key: 'concepts',
+                    label: 'Concepts (théorie)',
+                    description: 'Fiches courtes sur fork, IQP, Lucena… avec liens externes.',
+                    onClick: () => setView('concepts'),
+                    active: view === 'concepts',
+                  },
                 ]}
               />
               <NavGroup
@@ -491,6 +500,9 @@ export default function App() {
         {view === 'daily' && (
           <DailyView exercises={exercises} onGoToGames={() => setView('games')} />
         )}
+        {view === 'concepts' && (
+          <ConceptsView />
+        )}
         {view === 'roadmap' && (
           <RoadmapView
             analyses={filteredAnalyses}
@@ -539,6 +551,7 @@ export default function App() {
       <ToastHost />
       <KeyboardShortcutsModal />
       <Onboarding />
+      <ConceptModal />
       {username && (
         <CommandPalette
           username={username}
@@ -619,6 +632,7 @@ function MobileNavSheet({
         {item('blunder', 'Blunder reflex', counts.exercises < 3)}
         {item('calc', 'Calcul', counts.exercises < 3)}
         {item('library', 'Bibliothèque')}
+        {item('concepts', 'Concepts')}
         <div className="text-xs text-neutral-500 px-4 pt-3 uppercase tracking-wider">Adversaires</div>
         {item('compare', 'Comparer')}
         {item('scouting', 'Scouting')}

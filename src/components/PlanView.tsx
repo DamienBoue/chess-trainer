@@ -9,8 +9,10 @@ import { aggregate } from '../analysis/aggregate'
 import { MOTIF_LABELS } from '../analysis/motifs'
 import type { MotifTag } from '../analysis/motifs'
 import { summariseDailyPlan } from '../llm/coach'
+import { conceptForMotif } from '../concepts/lookup'
 import ChecklistRow from './ChecklistRow'
 import LlmAskBox from './LlmAskBox'
+import { openConcept } from './ConceptModal'
 import RoadmapView from './RoadmapView'
 
 interface Props {
@@ -260,6 +262,13 @@ function PlanRow({
       <div className="flex items-baseline gap-2 flex-wrap">
         <span className={`text-xs font-medium ${accent}`}>{KIND_LABELS[item.kind]}</span>
         <span className="text-xs text-neutral-500">≈ {item.estMinutes} min</span>
+        {item.motif && conceptForMotif(item.motif) && (
+          <button
+            onClick={e => { e.stopPropagation(); openConcept(conceptForMotif(item.motif!)!.id) }}
+            className="text-[10px] px-1.5 py-0.5 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-300"
+            title="Voir la fiche concept"
+          >📖 Lire</button>
+        )}
       </div>
       <h3 className={`font-semibold ${done ? 'line-through text-neutral-500' : ''}`}>{item.title}</h3>
       <p className="text-xs text-neutral-400 mt-0.5">{item.subtitle}</p>

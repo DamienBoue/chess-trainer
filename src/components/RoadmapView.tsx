@@ -18,6 +18,7 @@ import {
   type RoadmapModule,
 } from '../skill/roadmap'
 import ChecklistRow from './ChecklistRow'
+import { openConcept } from './ConceptModal'
 
 interface Props {
   analyses: GameAnalysis[]
@@ -221,6 +222,13 @@ function ModuleRow({
     <ChecklistRow done={done} onToggle={onToggle} action={action}>
       <div className="flex items-baseline gap-2 flex-wrap">
         <span className={`text-[10px] uppercase tracking-wider ${AREA_COLORS[mod.area]}`}>{AREA_LABELS[mod.area]}</span>
+        {mod.conceptId && (
+          <button
+            onClick={(e) => { e.stopPropagation(); openConcept(mod.conceptId!) }}
+            className="text-[10px] px-1.5 py-0.5 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-300"
+            title="Voir la fiche concept"
+          >📖 Lire</button>
+        )}
       </div>
       <h4 className={`font-medium ${done ? 'line-through text-neutral-500' : ''}`}>{mod.title}</h4>
       <p className="text-xs text-neutral-400 mt-0.5">{mod.why}</p>
