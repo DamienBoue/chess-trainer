@@ -1,8 +1,14 @@
 import { defineConfig } from 'vitest/config'
+import react from '@vitejs/plugin-react'
 
 export default defineConfig({
+  plugins: [react()],
   test: {
     include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
+    // jsdom lets .test.tsx files render React components via Testing
+    // Library. Pure .test.ts files don't touch the DOM, so the small
+    // setup cost is negligible.
+    environment: 'jsdom',
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],
