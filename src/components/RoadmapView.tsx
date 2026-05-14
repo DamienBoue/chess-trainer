@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { GameAnalysis } from '../types'
 import {
   BRACKETS,
@@ -33,8 +33,20 @@ export default function RoadmapView({ analyses, onNavigate, embedded = false }: 
   const inferred = useMemo(() => inferEloFromGames(analyses), [analyses])
   const elo = effectiveElo(pref, analyses)
   const bracket = bracketForElo(elo)
-  const modules = modulesForBracket(bracket)
+  // Which bracket's modules are currently displayed. Defaults to the
+  // user's real bracket but the ladder lets them browse other levels.
+  const [viewBracketId, setViewBracketId] = useState<SkillBracket['id']>(bracket.id)
+  const viewBracket = BRACKETS.find(b => b.id === viewBracketId) ?? bracket
+  const isPreview = viewBracket.id !== bracket.id
+  const modules = modulesForBracket(viewBracket)
   const suggestion = useMemo(() => suggestBracketChange(pref, analyses), [pref, analyses])
+
+  // Keep viewBracket in sync when the real bracket changes (e.g. user
+  // updates declared Elo) unless they're actively previewing another.
+  useEffect(() => {
+    if (!isPreview) setViewBracketId(bracket.id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bracket.id])
 
   function updateDeclared(value: string) {
     const n = parseInt(value, 10)
@@ -49,6 +61,10 @@ export default function RoadmapView({ analyses, onNavigate, embedded = false }: 
 
   const completed = new Set(progress.completed)
   const completedCount = modules.filter(m => completed.has(m.id)).length
+
+  function selectBracket(id: SkillBracket['id']) {
+    setViewBracketId(id)
+  }
 
   return (
     <div className={embedded ? 'space-y-5' : 'p-4 lg:p-6 max-w-3xl mx-auto space-y-5'}>
@@ -85,10 +101,14 @@ export default function RoadmapView({ analyses, onNavigate, embedded = false }: 
             <span className="text-xs text-neutral-500">Auto-détecté depuis tes parties analysées : {inferred}</span>
           )}
         </div>
-        <BracketLadder activeBracket={bracket} />
+        <BracketLadder
+          activeBracket={bracket}
+          viewBracket={viewBracket}
+          onSelect={selectBracket}
+        />
         <p className="text-sm text-neutral-300">
-          <span className="font-medium" style={{ color: BRACKET_COLORS[bracket.id] }}>{bracket.label}</span>
-          {' — '}{bracket.description}
+          <span className="font-medium" style={{ color: BRACKET_COLORS[viewBracket.id] }}>{viewBracket.label}</span>
+          {' — '}{viewBracket.description}
         </p>
 
         {suggestion && (
@@ -109,8 +129,19 @@ export default function RoadmapView({ analyses, onNavigate, embedded = false }: 
       </section>
 
       <section className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-4">
-        <div className="flex items-baseline justify-between mb-3">
-          <h3 className="font-semibold">Modules · {bracket.label}</h3>
+        <div className="flex items-baseline justify-between mb-3 flex-wrap gap-2">
+          <div className="flex items-baseline gap-2 flex-wrap">
+            <h3 className="font-semibold">Modules · {viewBracket.label}</h3>
+            {isPreview && (
+              <>
+                <span className="text-[11px] uppercase tracking-wider text-amber-300">Aperçu</span>
+                <button
+                  onClick={() => selectBracket(bracket.id)}
+                  className="text-xs text-neutral-400 hover:text-white underline"
+                >← Revenir à ton palier ({bracket.label})</button>
+              </>
+            )}
+          </div>
           <span className="text-sm font-mono">{completedCount}/{modules.length}</span>
         </div>
         <div className="h-1.5 bg-neutral-800 rounded-full overflow-hidden mb-4">
@@ -133,7 +164,7 @@ export default function RoadmapView({ analyses, onNavigate, embedded = false }: 
         </div>
       </section>
 
-      {bracket.id !== 'master' && (
+      {!isPreview && bracket.id !== 'master' && (
         <div className="text-xs text-neutral-500 text-center">
           Quand tu auras coché tous les modules de ce palier, monte ton Elo déclaré → la roadmap se reconfigure.
         </div>
@@ -142,23 +173,34 @@ export default function RoadmapView({ analyses, onNavigate, embedded = false }: 
   )
 }
 
-function BracketLadder({ activeBracket }: { activeBracket: SkillBracket }) {
+function BracketLadder({
+  activeBracket, viewBracket, onSelect,
+}: {
+  activeBracket: SkillBracket
+  viewBracket: SkillBracket
+  onSelect: (id: SkillBracket['id']) => void
+}) {
   return (
     <div className="flex gap-1 flex-wrap text-[10px] font-mono">
-      {BRACKETS.map(b => (
-        <span
-          key={b.id}
-          className={`px-2 py-0.5 rounded ${
-            b.id === activeBracket.id
-              ? 'text-white'
-              : 'text-neutral-500 bg-neutral-900'
-          }`}
-          style={b.id === activeBracket.id ? { backgroundColor: BRACKET_COLORS[b.id] } : undefined}
-          title={`${b.min}-${b.max}`}
-        >
-          {b.label}
-        </span>
-      ))}
+      {BRACKETS.map(b => {
+        const isViewing = b.id === viewBracket.id
+        const isReal = b.id === activeBracket.id
+        return (
+          <button
+            key={b.id}
+            onClick={() => onSelect(b.id)}
+            className={`px-2 py-0.5 rounded transition-colors ${
+              isViewing
+                ? 'text-white'
+                : 'text-neutral-400 bg-neutral-900 hover:bg-neutral-800 hover:text-neutral-200'
+            } ${isReal && !isViewing ? 'ring-1 ring-neutral-500' : ''}`}
+            style={isViewing ? { backgroundColor: BRACKET_COLORS[b.id] } : undefined}
+            title={`${b.label} · ${b.min}-${b.max}${isReal ? ' (ton palier)' : ''} — cliquer pour voir les modules`}
+          >
+            {b.label}
+          </button>
+        )
+      })}
     </div>
   )
 }
