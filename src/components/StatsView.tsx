@@ -13,6 +13,7 @@ import TrainingBoard from './TrainingBoard'
 import EmptyState from './EmptyState'
 import Tooltip from './Tooltip'
 import PositionExplorer from './PositionExplorer'
+import { daysAgo } from '../utils/format'
 
 interface Props {
   analyses: GameAnalysis[]
@@ -452,10 +453,6 @@ function RecurringRow({
       </div>
     </li>
   )
-}
-
-function daysAgo(endTimeSec: number): number {
-  return Math.max(0, Math.floor((Date.now() / 1000 - endTimeSec) / 86400))
 }
 
 function MotifRow({

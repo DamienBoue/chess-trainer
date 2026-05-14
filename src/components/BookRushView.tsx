@@ -3,7 +3,8 @@ import { Chess } from 'chess.js'
 import TrainingBoard from './TrainingBoard'
 import type { Book, BookExercise, BookProgress } from '../library/types'
 import { recordOutcome, setLastReached } from '../library/storage'
-import { playSuccess, playWrong, playMove, playCapture } from '../audio/sounds'
+import { playSuccess, playWrong, playForMove } from '../audio/sounds'
+import { cleanSan, sanMatches } from '../utils/move'
 
 type Mode = 'idle' | 'running' | 'finished'
 
@@ -33,16 +34,6 @@ interface Props {
   progress: BookProgress
   onProgressChange: (p: BookProgress) => void
   onExit: () => void
-}
-
-function cleanSan(san: string): string {
-  return san.replace(/[!?]+$/, '')
-}
-
-function sanMatches(played: string, expected: string): boolean {
-  const a = cleanSan(played).replace(/[+#]$/, '')
-  const b = cleanSan(expected).replace(/[+#]$/, '')
-  return a === b
 }
 
 export default function BookRushView({ book, progress, onProgressChange, onExit }: Props) {
@@ -386,7 +377,7 @@ function RushBoard({
         try { bm = preview2.move(cleanSan(expectedSan)) } catch { /* noop */ }
         setPosition(preview2.fen())
         setFeedback(f => f && { ...f, showingBest: true })
-        if (bm) (bm.flags || '').includes('c') ? playCapture() : playMove()
+        if (bm) playForMove(bm.flags)
       }, WRONG_HOLD_MS)
 
       setTimeout(() => onResult(false), WRONG_HOLD_MS + WRONG_BEST_HOLD_MS)

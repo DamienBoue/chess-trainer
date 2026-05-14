@@ -15,7 +15,7 @@ import {
 import { type ExerciseProgress, isDue } from '../storage/persist'
 import { exportExercisesToPgn, downloadPgn } from '../analysis/lichess'
 import EvalBar from './EvalBar'
-import { playMove, playCapture, playSuccess, playWrong } from '../audio/sounds'
+import { playForMove, playSuccess, playWrong } from '../audio/sounds'
 import { exerciseToShareUrl } from '../api/share'
 import { evaluateMultiPV, topGapCp } from '../engine/multipv'
 import EmptyState from './EmptyState'
@@ -366,7 +366,7 @@ function ExercisePractice({
       setPosition(chess.fen())
       setHighlight({ type: 'correct', from: mv.from, to: mv.to })
       setShowBadge(false)
-      ;(mv.flags || '').includes('c') ? playCapture() : playMove()
+      playForMove(mv.flags)
       const next = linePly + 1
       setLinePly(next)
       if (next >= lineSans.length && status === 'progress') setStatus('completed')
@@ -389,7 +389,7 @@ function ExercisePractice({
       setHighlight({ type: 'correct', from, to })
       setShowBadge(true)
       if (linePly === 0) playSuccess()
-      else (attempt.flags || '').includes('c') ? playCapture() : playMove()
+      else playForMove(attempt.flags)
       // The badge fades quickly so the engine's reply is not hidden behind it.
       window.setTimeout(() => setShowBadge(false), 700)
 

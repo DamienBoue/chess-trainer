@@ -3,7 +3,8 @@ import { Chess } from 'chess.js'
 import TrainingBoard from './TrainingBoard'
 import type { Book, BookExercise, BookProgress, ExerciseOutcome } from '../library/types'
 import { getBook, getProgress, recordOutcome } from '../library/storage'
-import { playMove, playCapture, playSuccess, playWrong } from '../audio/sounds'
+import { playForMove, playSuccess, playWrong } from '../audio/sounds'
+import { tryUserMove, cleanSan, sanMatches } from '../utils/move'
 import {
   fetchTablebase, type TableResponse, type TableCategory,
   tableCategoryLabel, classifyTableMove,
@@ -16,16 +17,6 @@ type Status = 'pending' | 'wrong' | 'in-progress' | 'solved' | 'revealed'
 interface Props {
   bookId: string
   onBack: () => void
-}
-
-function cleanSan(san: string): string {
-  return san.replace(/[!?]+$/, '')
-}
-
-function sanMatches(played: string, expected: string): boolean {
-  const a = cleanSan(played).replace(/[+#]$/, '')
-  const b = cleanSan(expected).replace(/[+#]$/, '')
-  return a === b
 }
 
 export default function BookView({ bookId, onBack }: Props) {
@@ -179,7 +170,7 @@ function BrowseMode({ book, progress, onProgressChange, onBack, onStartRush }: B
         if (mv) {
           setPosition(c.fen())
           setPlayedMoves(prev => [...prev, mv.san])
-          if (mv.captured) playCapture(); else playMove()
+          playForMove(mv.flags)
         }
       } catch {
         setFeedback("La suite annoncée par le livre n'est pas applicable ici.")
@@ -205,12 +196,7 @@ function BrowseMode({ book, progress, onProgressChange, onBack, onStartRush }: B
     if (userIdx >= active.moves.length) return false
     if (userIdx % 2 !== 0) return false
 
-    const promotion = piece.pieceType.endsWith('P') &&
-      (targetSquare[1] === '1' || targetSquare[1] === '8') ? 'q' : undefined
-    let mv
-    try {
-      mv = c.move({ from: sourceSquare, to: targetSquare, promotion })
-    } catch { return false }
+    const mv = tryUserMove(c, { sourceSquare, targetSquare, piece })
     if (!mv) return false
 
     const expected = active.moves[userIdx]
@@ -243,7 +229,7 @@ function BrowseMode({ book, progress, onProgressChange, onBack, onStartRush }: B
 
     setPosition(c.fen())
     setPlayedMoves(prev => [...prev, mv.san])
-    if (mv.captured) playCapture(); else playMove()
+    playForMove(mv.flags)
 
     if (tableAccepted && !matchesCurated) {
       // User found a different-but-optimal idea. The curated line no longer
@@ -294,7 +280,7 @@ function BrowseMode({ book, progress, onProgressChange, onBack, onStartRush }: B
         if (mv) {
           setPosition(c.fen())
           setPlayedMoves(prev => [...prev, mv.san])
-          if (mv.captured) playCapture(); else playMove()
+          playForMove(mv.flags)
         }
       } catch {
         setFeedback(`Solution : ${active.moves.slice(playedMoves.length).join(' ')} (non rejouable)`)

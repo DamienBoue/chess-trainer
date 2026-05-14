@@ -13,6 +13,7 @@ import {
   type ExerciseProgress,
 } from '../storage/persist'
 import EmptyState from './EmptyState'
+import { tryUserMove } from '../utils/move'
 
 interface Props { analyses: GameAnalysis[]; onGoToGames?: () => void }
 
@@ -506,11 +507,9 @@ function SrsPanel({ roots }: { roots: RepertoireRoot[] }) {
   function onPieceDrop({ sourceSquare, targetSquare, piece }: {
     sourceSquare: string; targetSquare: string | null; piece: { pieceType: string }
   }): boolean {
-    if (!current || !targetSquare || status === 'correct') return false
+    if (!current || status === 'correct') return false
     const c = new Chess(position)
-    const promotion = piece.pieceType.endsWith('P') && (targetSquare[1] === '1' || targetSquare[1] === '8') ? 'q' : undefined
-    let mv
-    try { mv = c.move({ from: sourceSquare, to: targetSquare, promotion }) } catch { return false }
+    const mv = tryUserMove(c, { sourceSquare, targetSquare, piece })
     if (!mv) return false
     if (mv.san.replace(/[+#]$/, '') === current.expectedSan.replace(/[+#]$/, '')) {
       setPosition(c.fen())

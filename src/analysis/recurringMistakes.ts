@@ -10,6 +10,7 @@
 
 import type { GameAnalysis } from '../types'
 import { getParentOpening } from './openings'
+import { positionKey } from '../utils/move'
 
 export interface RecurringMistake {
   kind: 'exact-position' | 'same-opening'
@@ -28,11 +29,6 @@ export interface RecurringMistake {
   }>
   totalCpLost: number
   parentOpening?: string      // populated only for 'same-opening' clusters
-}
-
-function positionKey(fenBefore: string): string {
-  // Drop halfmove + fullmove counters so the key is purely positional.
-  return fenBefore.split(' ').slice(0, 4).join(' ')
 }
 
 const MIN_CP_LOSS = 100   // ignore tiny errors

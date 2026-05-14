@@ -10,6 +10,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Chess } from 'chess.js'
 import TrainingBoard from './TrainingBoard'
 import { playForMove } from '../audio/sounds'
+import { tryUserMove } from '../utils/move'
 
 export interface PositionExplorerProps {
   /** Position to open at. Must include side to move. */
@@ -53,14 +54,9 @@ export default function PositionExplorer({
   function onPieceDrop({ sourceSquare, targetSquare, piece }: {
     sourceSquare: string; targetSquare: string | null; piece: { pieceType: string }
   }): boolean {
-    if (!targetSquare) return false
-    const c = chess.current
-    const promotion = piece.pieceType.endsWith('P') &&
-      (targetSquare[1] === '1' || targetSquare[1] === '8') ? 'q' : undefined
-    let mv
-    try { mv = c.move({ from: sourceSquare, to: targetSquare, promotion }) } catch { return false }
+    const mv = tryUserMove(chess.current, { sourceSquare, targetSquare, piece })
     if (!mv) return false
-    setPosition(c.fen())
+    setPosition(chess.current.fen())
     setMoveLog(log => [...log, mv.san])
     playForMove(mv.flags)
     return true

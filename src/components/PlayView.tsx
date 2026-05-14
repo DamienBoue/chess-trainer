@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Chess } from 'chess.js'
 import TrainingBoard from './TrainingBoard'
 import type { StockfishEngine } from '../engine/stockfish'
-import { playMove, playCapture, playSuccess } from '../audio/sounds'
+import { playForMove, playSuccess } from '../audio/sounds'
+import { tryUserMove } from '../utils/move'
 
 interface Props {
   engine: StockfishEngine
@@ -97,7 +98,7 @@ export default function PlayView({ engine }: Props) {
       setGame(c)
       setPosition(c.fen())
       setPgn(prev => [...prev, mv.san])
-      if (mv.captured) playCapture(); else playMove()
+      playForMove(mv.flags)
       const term = checkTermination(c)
       if (term) {
         setOutcome(term)
@@ -114,22 +115,16 @@ export default function PlayView({ engine }: Props) {
     sourceSquare: string; targetSquare: string | null; piece: { pieceType: string }
   }): boolean {
     if (outcome || thinking) return false
-    if (!targetSquare) return false
     if (game.turn() !== userColor[0]) return false
 
-    const promotion = piece.pieceType.endsWith('P') &&
-      (targetSquare[1] === '1' || targetSquare[1] === '8') ? 'q' : undefined
-    let mv
-    try {
-      mv = game.move({ from: sourceSquare, to: targetSquare, promotion })
-    } catch { return false }
+    const mv = tryUserMove(game, { sourceSquare, targetSquare, piece })
     if (!mv) return false
 
     const c = new Chess(game.fen())
     setGame(c)
     setPosition(c.fen())
     setPgn(prev => [...prev, mv.san])
-    if (mv.captured) playCapture(); else playMove()
+    playForMove(mv.flags)
     const term = checkTermination(c)
     if (term) {
       setOutcome(term)
