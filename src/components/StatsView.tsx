@@ -12,6 +12,7 @@ import StudyRecommendations from './StudyRecommendations'
 import TrainingBoard from './TrainingBoard'
 import EmptyState from './EmptyState'
 import Tooltip from './Tooltip'
+import PositionExplorer from './PositionExplorer'
 
 interface Props {
   analyses: GameAnalysis[]
@@ -342,21 +343,19 @@ function RecurringMistakesPanel({
   exact: RecurringMistake[]
   byOpening: RecurringMistake[]
 }) {
-  // De-dup: an exact-position cluster usually shows up in the
-  // same-opening list too. Drop the same-opening entries that share an
-  // (opening, san) signature with an exact entry.
   const exactSig = new Set(
     exact.map(e => `${e.occurrences[0]?.opening}||${e.sanPlayed}`),
   )
   const openingOnly = byOpening.filter(
     o => !exactSig.has(`${o.parentOpening}||${o.sanPlayed}`),
   )
+  const [opened, setOpened] = useState<RecurringMistake | null>(null)
   return (
     <div className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-4 space-y-4">
       <div className="flex items-baseline justify-between flex-wrap gap-2">
         <h3 className="font-semibold">Tes erreurs récurrentes</h3>
         <span className="text-xs text-neutral-500">
-          Coups où tu retombes dans le même piège
+          Clique pour ouvrir la position
         </span>
       </div>
 
@@ -366,7 +365,9 @@ function RecurringMistakesPanel({
             Même position, même mauvais coup
           </h4>
           <ul className="space-y-3">
-            {exact.slice(0, 5).map(m => <RecurringRow key={m.id} m={m} showBoard />)}
+            {exact.slice(0, 5).map(m => (
+              <RecurringRow key={m.id} m={m} showBoard onOpen={() => setOpened(m)} />
+            ))}
           </ul>
         </div>
       )}
@@ -377,19 +378,43 @@ function RecurringMistakesPanel({
             Même mauvais coup dans la même ouverture ({openingOnly.length})
           </summary>
           <ul className="space-y-2 mt-2">
-            {openingOnly.slice(0, 10).map(m => <RecurringRow key={m.id} m={m} />)}
+            {openingOnly.slice(0, 10).map(m => (
+              <RecurringRow key={m.id} m={m} onOpen={() => setOpened(m)} />
+            ))}
           </ul>
         </details>
+      )}
+
+      {opened && opened.positionKey && (
+        <PositionExplorer
+          fen={opened.positionKey + (opened.positionKey.split(' ').length < 4 ? ' - - 0 1' : '')}
+          onClose={() => setOpened(null)}
+          playedSan={opened.sanPlayed}
+          bestSan={opened.bestSan}
+          title={`${opened.sanPlayed} × ${opened.occurrences.length} · ${opened.parentOpening ?? ''}`}
+        />
       )}
     </div>
   )
 }
 
-function RecurringRow({ m, showBoard }: { m: RecurringMistake; showBoard?: boolean }) {
+function RecurringRow({
+  m, showBoard, onOpen,
+}: {
+  m: RecurringMistake
+  showBoard?: boolean
+  onOpen?: () => void
+}) {
+  const clickable = !!onOpen && !!m.positionKey
   return (
-    <li className="bg-neutral-900/50 border border-[var(--color-border)] rounded p-3 flex gap-3 items-start">
+    <li
+      onClick={onOpen}
+      className={`bg-neutral-900/50 border border-[var(--color-border)] rounded p-3 flex gap-3 items-start ${
+        clickable ? 'cursor-pointer hover:border-[var(--color-accent)]/60 transition-colors' : ''
+      }`}
+    >
       {showBoard && m.positionKey && (
-        <div className="shrink-0 w-32">
+        <div className="shrink-0 w-32 pointer-events-none">
           <TrainingBoard
             position={m.positionKey}
             orientation="white"
