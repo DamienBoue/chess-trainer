@@ -64,150 +64,212 @@ export default function StatsView({ analyses, onDrillMotif, onGoToGames }: Props
     : onlyColor === 'white' ? 'parties avec les Blancs' : 'parties avec les Noirs'
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
+    <div className="p-6 max-w-5xl mx-auto space-y-5">
       <h2 className="text-2xl font-semibold">Bilan ({stats.gamesAnalyzed} {titleSuffix})</h2>
 
       {stats.gamesAnalyzed === 0 && (
         <p className="text-neutral-400 text-sm">Aucune partie ne correspond aux filtres actuels.</p>
       )}
 
-      {trend && <TrendPanel trend={trend} />}
-
-      <ProgressCharts analyses={analyses} />
-      <StudyRecommendations analyses={analyses} />
-      <BlunderHeatmap analyses={analyses} />
-
-      {motifRadar.length > 0 && (
-        <MotifRadarPanel radar={motifRadar} onDrill={onDrillMotif} />
-      )}
-
-      {(recurring.exact.length > 0 || recurring.byOpening.length > 0) && (
-        <RecurringMistakesPanel exact={recurring.exact} byOpening={recurring.byOpening} />
-      )}
-
-      {strengths.length > 0 && (
-        <div className="bg-green-500/5 border border-green-500/30 rounded-md p-4">
-          <h3 className="font-semibold mb-3 text-green-200">✓ Tes points forts</h3>
-          <ul className="space-y-1.5 text-sm">
-            {strengths.map((s, idx) => (
-              <li key={idx} className="flex items-start gap-2">
-                <span className="mt-1 w-2 h-2 rounded-full bg-green-400 shrink-0" />
-                <span className="text-neutral-200">{s.text}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {insights.length > 0 && (
-        <div className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-4">
-          <h3 className="font-semibold mb-3">Points clés</h3>
-          <ul className="space-y-2 text-sm">
-            {insights.map((i, idx) => (
-              <li key={idx} className="flex items-start gap-2">
-                <span
-                  className={`mt-1 w-2 h-2 rounded-full flex-shrink-0 ${
-                    i.kind === 'strength' ? 'bg-green-500'
-                    : i.kind === 'weakness' ? 'bg-red-500'
-                    : 'bg-neutral-500'
-                  }`}
-                />
-                <span>{i.text}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      <div className="grid md:grid-cols-2 gap-4">
-        <div className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-4">
-          <h3 className="font-semibold mb-3">Distribution de tes coups</h3>
-          <div className="space-y-2">
-            {classOrder.map(c => {
-              const n = stats.byClass[c]
-              const pct = stats.totalMoves ? (n / stats.totalMoves) * 100 : 0
-              return (
-                <div key={c} className="text-sm">
-                  <div className="flex justify-between text-xs text-neutral-400 mb-1">
-                    <span>{CLASSIFICATION_LABELS[c]}</span>
-                    <span>{n} · {pct.toFixed(1)}%</span>
-                  </div>
-                  <div className="w-full bg-neutral-900 rounded h-2 overflow-hidden">
-                    <div
-                      className="h-full"
-                      style={{ width: `${pct}%`, backgroundColor: CLASSIFICATION_COLORS[c] }}
-                    />
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-
-        <PhaseBreakdownPanel stats={stats} totalUserMistakes={totalUserMistakes} />
-
-
-        <div className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-4">
-          <h3 className="font-semibold mb-1">Précision moyenne</h3>
-          <p className="text-xs text-neutral-500 mb-3">
-            Combien de "petits-pions" tu perds en moyenne par coup vs le meilleur coup de Stockfish (1 cp = 0.01 pion).
-          </p>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <div className="text-3xl font-bold text-green-400">{stats.avgCpLossUser.toFixed(0)}<span className="text-sm font-normal text-neutral-500 ml-1">cp</span></div>
-              <div className="text-xs text-neutral-500">Toi</div>
-            </div>
-            <div>
-              <div className="text-3xl font-bold text-neutral-300">{stats.avgCpLossOpponent.toFixed(0)}<span className="text-sm font-normal text-neutral-500 ml-1">cp</span></div>
-              <div className="text-xs text-neutral-500">Adversaires</div>
-            </div>
-          </div>
-          <p className="text-xs text-neutral-500 mt-3 leading-relaxed">
-            Plus c'est bas, mieux c'est.<br />
-            <span className="text-green-400">~20-30</span> niveau maître ·{' '}
-            <span className="text-neutral-300">30-60</span> joueur solide ·{' '}
-            <span className="text-orange-400">60-100</span> joueur club ·{' '}
-            <span className="text-red-400">100+</span> à améliorer
-          </p>
-        </div>
-
-        <div className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-4">
-          <h3 className="font-semibold mb-3">
-            {onlyColor === null ? 'Résultats par couleur' : 'Résultats'}
-          </h3>
-          <div className="space-y-2">
-            {(onlyColor === null ? (['white', 'black'] as const) : [onlyColor]).map(color => {
-              const r = stats.resultsByColor[color]
-              const total = r.w + r.l + r.d
-              return (
-                <div key={color} className="text-sm">
-                  <div className="flex justify-between mb-1">
-                    <span>{color === 'white' ? 'Blancs' : 'Noirs'}</span>
-                    <span className="text-neutral-500">{r.w}V / {r.l}D / {r.d}N</span>
-                  </div>
-                  {total > 0 && (
-                    <div className="flex h-2 rounded overflow-hidden bg-neutral-900">
-                      <div className="bg-green-500" style={{ width: `${(r.w / total) * 100}%` }} />
-                      <div className="bg-neutral-500" style={{ width: `${(r.d / total) * 100}%` }} />
-                      <div className="bg-red-500" style={{ width: `${(r.l / total) * 100}%` }} />
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-4">
-        <h3 className="font-semibold mb-3">Ouvertures jouées</h3>
-        {stats.openingGroups.length === 0 ? (
-          <p className="text-sm text-neutral-500">Pas encore de données.</p>
-        ) : (
-          <OpeningTable groups={stats.openingGroups} />
-        )}
-      </div>
+      <StatsTabs
+        analyses={analyses}
+        stats={stats}
+        trend={trend}
+        strengths={strengths}
+        insights={insights}
+        motifRadar={motifRadar}
+        recurring={recurring}
+        onDrillMotif={onDrillMotif}
+        onlyColor={onlyColor}
+        classOrder={classOrder}
+        totalUserMistakes={totalUserMistakes}
+      />
     </div>
+  )
+}
+
+type StatsTab = 'overview' | 'weaknesses' | 'openings'
+
+function StatsTabs(props: {
+  analyses: GameAnalysis[]
+  stats: AggregateStats
+  trend: Trend | null
+  strengths: ReturnType<typeof buildStrengths>
+  insights: ReturnType<typeof deriveInsights>
+  motifRadar: MotifStat[]
+  recurring: ReturnType<typeof findRecurringMistakes>
+  onDrillMotif?: (m: MotifTag) => void
+  onlyColor: 'white' | 'black' | null
+  classOrder: (keyof AggregateStats['byClass'])[]
+  totalUserMistakes: number
+}) {
+  const [tab, setTab] = useState<StatsTab>('overview')
+  const {
+    analyses, stats, trend, strengths, insights, motifRadar, recurring,
+    onDrillMotif, onlyColor, classOrder, totalUserMistakes,
+  } = props
+
+  return (
+    <div>
+      <div className="flex gap-1 border-b border-[var(--color-border)] mb-4 text-sm">
+        <TabBtn active={tab === 'overview'} onClick={() => setTab('overview')}>Aperçu</TabBtn>
+        <TabBtn active={tab === 'weaknesses'} onClick={() => setTab('weaknesses')}>Faiblesses</TabBtn>
+        <TabBtn active={tab === 'openings'} onClick={() => setTab('openings')}>Ouvertures</TabBtn>
+      </div>
+
+      {tab === 'overview' && (
+        <div className="space-y-5">
+          {strengths.length > 0 && (
+            <div className="bg-green-500/5 border border-green-500/30 rounded-md p-4">
+              <h3 className="font-semibold mb-3 text-green-200">✓ Tes points forts</h3>
+              <ul className="space-y-1.5 text-sm">
+                {strengths.map((s, idx) => (
+                  <li key={idx} className="flex items-start gap-2">
+                    <span className="mt-1 w-2 h-2 rounded-full bg-green-400 shrink-0" />
+                    <span className="text-neutral-200">{s.text}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {insights.length > 0 && (
+            <div className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-4">
+              <h3 className="font-semibold mb-3">Points clés</h3>
+              <ul className="space-y-2 text-sm">
+                {insights.map((i, idx) => (
+                  <li key={idx} className="flex items-start gap-2">
+                    <span
+                      className={`mt-1 w-2 h-2 rounded-full flex-shrink-0 ${
+                        i.kind === 'strength' ? 'bg-green-500'
+                        : i.kind === 'weakness' ? 'bg-red-500'
+                        : 'bg-neutral-500'
+                      }`}
+                    />
+                    <span>{i.text}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {trend && <TrendPanel trend={trend} />}
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-4">
+              <h3 className="font-semibold mb-1">Précision moyenne</h3>
+              <p className="text-xs text-neutral-500 mb-3">
+                Centipawns moyens perdus par coup vs Stockfish. 1 cp = 0.01 pion.
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <div className="text-3xl font-bold text-green-400">{stats.avgCpLossUser.toFixed(0)}<span className="text-sm font-normal text-neutral-500 ml-1">cp</span></div>
+                  <div className="text-xs text-neutral-500">Toi</div>
+                </div>
+                <div>
+                  <div className="text-3xl font-bold text-neutral-300">{stats.avgCpLossOpponent.toFixed(0)}<span className="text-sm font-normal text-neutral-500 ml-1">cp</span></div>
+                  <div className="text-xs text-neutral-500">Adversaires</div>
+                </div>
+              </div>
+              <p className="text-xs text-neutral-500 mt-3 leading-relaxed">
+                <span className="text-green-400">~20-30</span> maître ·{' '}
+                <span className="text-neutral-300">30-60</span> solide ·{' '}
+                <span className="text-orange-400">60-100</span> club ·{' '}
+                <span className="text-red-400">100+</span> à améliorer
+              </p>
+            </div>
+
+            <div className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-4">
+              <h3 className="font-semibold mb-3">
+                {onlyColor === null ? 'Résultats par couleur' : 'Résultats'}
+              </h3>
+              <div className="space-y-2">
+                {(onlyColor === null ? (['white', 'black'] as const) : [onlyColor]).map(color => {
+                  const r = stats.resultsByColor[color]
+                  const total = r.w + r.l + r.d
+                  return (
+                    <div key={color} className="text-sm">
+                      <div className="flex justify-between mb-1">
+                        <span>{color === 'white' ? 'Blancs' : 'Noirs'}</span>
+                        <span className="text-neutral-500">{r.w}V / {r.l}D / {r.d}N</span>
+                      </div>
+                      {total > 0 && (
+                        <div className="flex h-2 rounded overflow-hidden bg-neutral-900">
+                          <div className="bg-green-500" style={{ width: `${(r.w / total) * 100}%` }} />
+                          <div className="bg-neutral-500" style={{ width: `${(r.d / total) * 100}%` }} />
+                          <div className="bg-red-500" style={{ width: `${(r.l / total) * 100}%` }} />
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+          <PhaseBreakdownPanel stats={stats} totalUserMistakes={totalUserMistakes} />
+        </div>
+      )}
+
+      {tab === 'weaknesses' && (
+        <div className="space-y-5">
+          {(recurring.exact.length > 0 || recurring.byOpening.length > 0) && (
+            <RecurringMistakesPanel exact={recurring.exact} byOpening={recurring.byOpening} />
+          )}
+          {motifRadar.length > 0 && (
+            <MotifRadarPanel radar={motifRadar} onDrill={onDrillMotif} />
+          )}
+          <BlunderHeatmap analyses={analyses} />
+          <div className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-4">
+            <h3 className="font-semibold mb-3">Distribution de tes coups</h3>
+            <div className="space-y-2">
+              {classOrder.map(c => {
+                const n = stats.byClass[c]
+                const pct = stats.totalMoves ? (n / stats.totalMoves) * 100 : 0
+                return (
+                  <div key={c} className="text-sm">
+                    <div className="flex justify-between text-xs text-neutral-400 mb-1">
+                      <span>{CLASSIFICATION_LABELS[c]}</span>
+                      <span>{n} · {pct.toFixed(1)}%</span>
+                    </div>
+                    <div className="w-full bg-neutral-900 rounded h-2 overflow-hidden">
+                      <div
+                        className="h-full"
+                        style={{ width: `${pct}%`, backgroundColor: CLASSIFICATION_COLORS[c] }}
+                      />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {tab === 'openings' && (
+        <div className="space-y-5">
+          <StudyRecommendations analyses={analyses} />
+          <ProgressCharts analyses={analyses} />
+          <div className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-4">
+            <h3 className="font-semibold mb-3">Ouvertures jouées</h3>
+            {stats.openingGroups.length === 0 ? (
+              <p className="text-sm text-neutral-500">Pas encore de données.</p>
+            ) : (
+              <OpeningTable groups={stats.openingGroups} />
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function TabBtn({ children, active, onClick }: { children: React.ReactNode; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-3 py-2 -mb-px border-b-2 transition-colors ${
+        active
+          ? 'border-[var(--color-accent)] text-white'
+          : 'border-transparent text-neutral-400 hover:text-neutral-200'
+      }`}
+    >{children}</button>
   )
 }
 
