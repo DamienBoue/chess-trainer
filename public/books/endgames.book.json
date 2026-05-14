@@ -5,33 +5,8 @@
   "importedAt": "2026-05-13T21:26:57Z",
   "exercises": [
     {
-      "id": "eg-001",
-      "n": 1,
-      "chapter": "Mates de base",
-      "page": null,
-      "fen": "4k3/8/8/8/8/8/8/3QK3 w - - 0 1",
-      "side": "w",
-      "firstMoveSan": "Qd7+",
-      "moves": [
-        "Qd7+",
-        "Kf8",
-        "Ke2",
-        "Kg8",
-        "Ke3",
-        "Kf8",
-        "Ke4",
-        "Kg8",
-        "Ke5",
-        "Kf8",
-        "Ke6",
-        "Kg8",
-        "Qg7+"
-      ],
-      "solutionProse": "Roi + Dame contre Roi — Méthode dite « du carré rétrécissant » : la dame se met à un saut de cavalier du roi noir pour le pousser sur la dernière rangée, puis le roi blanc s'approche pour donner mat sur g7 (ou f7 selon la symétrie)."
-    },
-    {
       "id": "eg-002",
-      "n": 2,
+      "n": 1,
       "chapter": "Mates de base",
       "page": null,
       "fen": "4k3/8/8/8/8/8/4K3/R7 w - - 0 1",
@@ -52,7 +27,7 @@
     },
     {
       "id": "eg-003",
-      "n": 3,
+      "n": 2,
       "chapter": "Pion vs Roi",
       "page": null,
       "fen": "8/8/8/4k3/8/8/4P3/4K3 w - - 0 1",
@@ -65,7 +40,7 @@
     },
     {
       "id": "eg-004",
-      "n": 4,
+      "n": 3,
       "chapter": "Pion vs Roi",
       "page": null,
       "fen": "8/8/8/8/8/k7/P7/K7 w - - 0 1",
@@ -77,25 +52,8 @@
       "solutionProse": "Pion de tour : nulle (roi dans le coin) — Pion de tour : si le roi adverse atteint la case de promotion (a1/a8/h1/h8) avant le pion, c'est nulle. Le roi blanc ne peut pas sortir du coin sans permettre Kxa2, et toute tentative aboutit au pat. Cas pratique : tu es du côté du pion à perdre — fonce dans le coin avec ton roi."
     },
     {
-      "id": "eg-005",
-      "n": 5,
-      "chapter": "Pion vs Roi",
-      "page": null,
-      "fen": "8/k7/8/8/8/8/4P3/4K3 w - - 0 1",
-      "side": "w",
-      "firstMoveSan": "e4",
-      "moves": [
-        "e4",
-        "Kb6",
-        "e5",
-        "Kc6",
-        "e6"
-      ],
-      "solutionProse": "Case de la dame (régle du carré) — Règle du carré : du pion à la case de promotion, dessine un carré ; si le roi noir n'est pas DANS ce carré quand il joue, le pion promeut. Ici e2-e8 forme un carré que le roi noir ne peut pas rattraper."
-    },
-    {
       "id": "eg-006",
-      "n": 6,
+      "n": 4,
       "chapter": "Pion vs Roi",
       "page": null,
       "fen": "8/8/8/4k3/4P3/4K3/8/8 b - - 0 1",
@@ -113,7 +71,7 @@
     },
     {
       "id": "eg-007",
-      "n": 7,
+      "n": 5,
       "chapter": "Tours",
       "page": null,
       "fen": "1K1k4/1P6/8/8/8/8/r7/2R5 w - - 0 1",
@@ -136,7 +94,7 @@
     },
     {
       "id": "eg-008",
-      "n": 8,
+      "n": 6,
       "chapter": "Tours",
       "page": null,
       "fen": "4k3/8/8/8/4P3/r7/8/4K1R1 b - - 0 1",
@@ -150,34 +108,8 @@
       "solutionProse": "Position de Philidor (3e rangée) — Défense de Philidor : tour sur la 3e rangée (vue depuis les Noirs, c'est la 6e). Tant que le pion n'avance pas, la tour reste là. Dès que le pion pousse, la tour descend derrière pour vérifications éternelles. NULLE."
     },
     {
-      "id": "eg-009",
-      "n": 9,
-      "chapter": "Tours",
-      "page": null,
-      "fen": "8/8/8/8/k1K5/P7/8/r5R1 b - - 0 1",
-      "side": "b",
-      "firstMoveSan": "Rf1",
-      "moves": [
-        "Rf1"
-      ],
-      "solutionProse": "Vancura — défense latérale — Pion de tour avancé : la défense Vancura consiste à attaquer le pion par le flanc (via la 6e rangée typiquement) au lieu de bloquer frontalement. La tour reste prête à donner des échecs latéraux dès que le roi blanc tente de sortir. Tenable contre le pion de tour en 6e/7e."
-    },
-    {
-      "id": "eg-010",
-      "n": 10,
-      "chapter": "Pièces mineures",
-      "page": null,
-      "fen": "8/8/4k3/4p3/4P3/3B4/8/3bK3 w - - 0 1",
-      "side": "w",
-      "firstMoveSan": "Bb1",
-      "moves": [
-        "Bb1"
-      ],
-      "solutionProse": "Fous de couleurs opposées : forteresse — Les fous de couleurs opposées rendent énormément de fins nulles, même avec un pion ou deux de plus. Tant que le fou défenseur peut surveiller la case de promotion depuis sa diagonale, c'est forteresse. Ici le fou blanc ne peut pas attaquer e5 (case foncée) et son pion e4 ne peut pas avancer."
-    },
-    {
       "id": "eg-011",
-      "n": 11,
+      "n": 7,
       "chapter": "Pièces mineures",
       "page": null,
       "fen": "4k3/8/8/8/8/8/2BB4/4K3 w - - 0 1",
@@ -193,34 +125,8 @@
       "solutionProse": "K + 2 Fous contre K (mat) — Les deux fous matent en coordonant : on chasse le roi vers UN coin (n'importe lequel), puis on resserre la cage. Comptez ~15-20 coups. À connaître pour ne pas céder en blitz une position théoriquement gagnante."
     },
     {
-      "id": "eg-012",
-      "n": 12,
-      "chapter": "Dame contre pion",
-      "page": null,
-      "fen": "8/8/8/8/8/2k5/3p4/K2Q4 w - - 0 1",
-      "side": "w",
-      "firstMoveSan": "Qxd2+",
-      "moves": [
-        "Qxd2+"
-      ],
-      "solutionProse": "Dame contre pion d-7e rangée (gain) — Dame contre pion arrivé en 7e rangée : sauf pion-cavalier (b/g) ou pion-tour (a/h), la dame gagne en capturant le pion par la technique du « zigzag d'échecs » qui force le roi adverse devant son pion, permettant à la dame de gagner un tempo et d'amener son roi soutenir."
-    },
-    {
-      "id": "eg-013",
-      "n": 13,
-      "chapter": "Dame contre pion",
-      "page": null,
-      "fen": "7K/8/8/8/8/2k5/1p6/3Q4 w - - 0 1",
-      "side": "w",
-      "firstMoveSan": "Qd2+",
-      "moves": [
-        "Qd2+"
-      ],
-      "solutionProse": "Dame contre pion-cavalier (nulle) — Exception : pion-cavalier (b2/g2) ou pion-tour, la dame ne peut pas amener son roi à temps — chaque fois que la dame s'approche du pion, le roi adverse se réfugie dans le coin et c'est pat dès que la dame prendrait. NULLE théorique."
-    },
-    {
       "id": "eg-014",
-      "n": 14,
+      "n": 8,
       "chapter": "Pions passés",
       "page": null,
       "fen": "6k1/p1p1p3/8/8/8/8/PPP3K1/8 w - - 0 1",
@@ -241,7 +147,7 @@
     },
     {
       "id": "eg-015",
-      "n": 15,
+      "n": 9,
       "chapter": "Pions passés",
       "page": null,
       "fen": "8/8/p7/8/8/4K3/7P/k7 w - - 0 1",
@@ -262,7 +168,7 @@
     },
     {
       "id": "eg-016",
-      "n": 16,
+      "n": 10,
       "chapter": "Motifs spéciaux",
       "page": null,
       "fen": "8/8/3k4/2pP4/2P5/3K4/8/8 w - - 0 1",
@@ -279,7 +185,7 @@
     },
     {
       "id": "eg-017",
-      "n": 17,
+      "n": 11,
       "chapter": "Motifs spéciaux",
       "page": null,
       "fen": "8/8/8/8/8/k5K1/p7/8 b - - 0 1",
@@ -292,7 +198,7 @@
     },
     {
       "id": "eg-019",
-      "n": 18,
+      "n": 12,
       "chapter": "Cavaliers",
       "page": null,
       "fen": "8/8/8/8/8/8/n4kPK/8 w - - 0 1",
@@ -307,21 +213,8 @@
       "solutionProse": "Cavalier vs pion-tour 7e rangée — nulle — Cavalier contre pion-tour arrivé en 7e : le cavalier peut généralement freiner le pion s'il a deux coups d'avance. Le cavalier saute pour bloquer la case de promotion et le roi blanc ne peut pas tout faire seul."
     },
     {
-      "id": "eg-020",
-      "n": 19,
-      "chapter": "Tours",
-      "page": null,
-      "fen": "8/4k3/8/8/8/8/r3P1K1/3R4 w - - 0 1",
-      "side": "w",
-      "firstMoveSan": "Kg3",
-      "moves": [
-        "Kg3"
-      ],
-      "solutionProse": "Tour derrière le pion passé (règle de Tarrasch) — Règle de Tarrasch : la tour DOIT être derrière son pion passé. Ici les Blancs ont la tour devant (sur d1) — mauvais ! Le pion e2 est même cloué par la tour noire ; il faut d'abord déplacer le roi puis basculer la tour derrière le pion avant de pousser."
-    },
-    {
       "id": "eg-021",
-      "n": 20,
+      "n": 13,
       "chapter": "Études",
       "page": null,
       "fen": "7K/8/k1P5/7p/8/8/8/8 w - - 0 1",
