@@ -2,17 +2,25 @@ import { Fragment, useMemo, useState } from 'react'
 import type { GameAnalysis } from '../types'
 import { aggregate, deriveInsights, type AggregateStats } from '../analysis/aggregate'
 import { CLASSIFICATION_COLORS, CLASSIFICATION_LABELS } from '../analysis/classify'
+import { extractExercises } from '../analysis/exercises'
+import { computeMotifRadar, type MotifStat } from '../analysis/motifRadar'
+import type { MotifTag } from '../analysis/motifs'
 import ProgressCharts from './ProgressCharts'
 import BlunderHeatmap from './BlunderHeatmap'
 import StudyRecommendations from './StudyRecommendations'
 
 interface Props {
   analyses: GameAnalysis[]
+  onDrillMotif?: (motif: MotifTag) => void
 }
 
-export default function StatsView({ analyses }: Props) {
+export default function StatsView({ analyses, onDrillMotif }: Props) {
   const stats = useMemo(() => aggregate(analyses), [analyses])
   const insights = useMemo(() => deriveInsights(stats), [stats])
+  const motifRadar = useMemo(
+    () => computeMotifRadar(extractExercises(analyses)),
+    [analyses],
+  )
 
   // Detect whether we got mixed colors or a single color so the report copy
   // adapts (the global filter at the top of the page may have already reduced
@@ -52,6 +60,10 @@ export default function StatsView({ analyses }: Props) {
       <ProgressCharts analyses={analyses} />
       <StudyRecommendations analyses={analyses} />
       <BlunderHeatmap analyses={analyses} />
+
+      {motifRadar.length > 0 && (
+        <MotifRadarPanel radar={motifRadar} onDrill={onDrillMotif} />
+      )}
 
       {insights.length > 0 && (
         <div className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-4">
@@ -261,5 +273,83 @@ function WinRate({ winRate, wins, played, small }: { winRate: number; wins: numb
       <span className={`${color} ${small ? 'text-xs' : ''}`}>{winRate.toFixed(0)}%</span>
       <span className={`text-neutral-500 ml-1 ${small ? 'text-[10px]' : 'text-xs'}`}>({wins}/{played})</span>
     </>
+  )
+}
+
+function MotifRadarPanel({
+  radar, onDrill,
+}: {
+  radar: MotifStat[]
+  onDrill?: (motif: MotifTag) => void
+}) {
+  // Confidence filter: stat needs ≥3 datapoints to be actionable. Show
+  // the rest as muted afterthoughts.
+  const reliable = radar.filter(r => r.total >= 3)
+  const fragile = radar.filter(r => r.total < 3)
+
+  return (
+    <div className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-4">
+      <div className="flex items-baseline justify-between mb-3 flex-wrap gap-2">
+        <h3 className="font-semibold">Radar des motifs tactiques</h3>
+        <span className="text-xs text-neutral-500">% raté = motifs manqués / total rencontres</span>
+      </div>
+      {reliable.length === 0 ? (
+        <p className="text-sm text-neutral-500">
+          Pas encore assez de données. Analyse plus de parties pour faire émerger ton radar.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {reliable.map(s => (
+            <MotifRow key={s.motif} stat={s} onDrill={onDrill} />
+          ))}
+        </div>
+      )}
+      {fragile.length > 0 && (
+        <details className="mt-3 text-xs">
+          <summary className="cursor-pointer text-neutral-500">
+            Motifs vus 1-2 fois ({fragile.length}) — échantillon trop faible
+          </summary>
+          <div className="mt-2 space-y-1 pl-3">
+            {fragile.map(s => (
+              <div key={s.motif} className="flex items-baseline gap-2 text-neutral-500">
+                <span>{s.label}</span>
+                <span className="font-mono">{s.missed}M / {s.found}T</span>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+    </div>
+  )
+}
+
+function MotifRow({
+  stat, onDrill,
+}: {
+  stat: MotifStat
+  onDrill?: (motif: MotifTag) => void
+}) {
+  const pct = stat.missRate * 100
+  const barColor = pct >= 60 ? 'bg-red-500'
+    : pct >= 35 ? 'bg-orange-400'
+    : 'bg-green-500'
+  return (
+    <div className="flex items-center gap-3 text-sm">
+      <span className="w-28 text-neutral-300 truncate" title={stat.label}>{stat.label}</span>
+      <div className="flex-1 h-2 bg-neutral-900 rounded overflow-hidden">
+        <div className={`h-full ${barColor}`} style={{ width: `${pct}%` }} />
+      </div>
+      <span className="font-mono text-xs text-neutral-300 w-14 text-right">{pct.toFixed(0)}%</span>
+      <span className="font-mono text-[10px] text-neutral-500 w-16">
+        {stat.missed}M / {stat.found}T
+      </span>
+      {onDrill && stat.missed > 0 && (
+        <button
+          onClick={() => onDrill(stat.motif)}
+          className="text-xs px-2 py-0.5 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-200"
+          title={`Drill les ${stat.missed} ${stat.label.toLowerCase()} ratés`}
+        >Drill</button>
+      )}
+    </div>
   )
 }

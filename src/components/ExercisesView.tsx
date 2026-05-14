@@ -5,6 +5,7 @@ import type { GameAnalysis } from '../types'
 import {
   type Exercise,
   type ExerciseCategory,
+  type MotifTag,
   CATEGORY_LABELS,
   CATEGORY_DESCRIPTIONS,
   CATEGORY_COLORS,
@@ -22,25 +23,42 @@ interface Props {
   analyses: GameAnalysis[]
   progress: Record<string, ExerciseProgress>
   onAttempt: (id: string, outcome: 'first-try' | 'after-retry' | 'failed' | 'revealed') => void
+  /** Optional motif preselected by an upstream link (e.g. "Drill" button on
+   *  the motif radar in Stats). */
+  initialMotif?: MotifTag
 }
 
 type StatusFilter = 'all' | 'due' | 'solved' | 'unseen'
 type CategoryFilter = 'all' | ExerciseCategory
 
-export default function ExercisesView({ analyses, progress, onAttempt }: Props) {
+export default function ExercisesView({ analyses, progress, onAttempt, initialMotif }: Props) {
   const exercises = useMemo(() => extractExercises(analyses), [analyses])
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('due')
+  const [motifFilter, setMotifFilter] = useState<MotifTag | 'all'>(initialMotif ?? 'all')
   const [activeId, setActiveId] = useState<string | null>(null)
+
+  // If the upstream changes `initialMotif` (e.g. user clicks another row in
+  // the radar without leaving the app), follow it.
+  useEffect(() => {
+    if (initialMotif && motifFilter !== initialMotif) {
+      setMotifFilter(initialMotif)
+      setStatusFilter('all')      // show ALL exercises with this motif, not just due
+      setCategoryFilter('missed') // the drill button targets misses
+      setActiveId(null)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialMotif])
 
   const filtered = useMemo(() => {
     let list = exercises
     if (categoryFilter !== 'all') list = list.filter(e => e.category === categoryFilter)
+    if (motifFilter !== 'all') list = list.filter(e => e.motifs.includes(motifFilter))
     if (statusFilter === 'due') list = list.filter(e => isDue(progress[e.id]))
     else if (statusFilter === 'solved') list = list.filter(e => (progress[e.id]?.successes ?? 0) > 0)
     else if (statusFilter === 'unseen') list = list.filter(e => !progress[e.id])
     return list
-  }, [exercises, categoryFilter, statusFilter, progress])
+  }, [exercises, categoryFilter, motifFilter, statusFilter, progress])
 
   // Auto-pin the first filtered exercise to activeId on mount (and whenever
   // activeId is null) so the active exercise stays sticky even after it falls
@@ -124,12 +142,25 @@ export default function ExercisesView({ analyses, progress, onAttempt }: Props) 
         <FilterPill active={statusFilter === 'all'} onClick={() => setStatusFilter('all')} count={counts.all}>Tous</FilterPill>
       </div>
       {/* Category filter */}
-      <div className="flex gap-2 mb-4 flex-wrap text-sm">
+      <div className="flex gap-2 mb-2 flex-wrap text-sm">
         <FilterPill active={categoryFilter === 'all'} onClick={() => setCategoryFilter('all')} count={counts.all}>Toutes catégories</FilterPill>
         <FilterPill active={categoryFilter === 'missed'} onClick={() => setCategoryFilter('missed')} count={counts.missed} color={CATEGORY_COLORS.missed}>{CATEGORY_LABELS.missed}</FilterPill>
         <FilterPill active={categoryFilter === 'punishment'} onClick={() => setCategoryFilter('punishment')} count={counts.punishment} color={CATEGORY_COLORS.punishment}>{CATEGORY_LABELS.punishment}</FilterPill>
         <FilterPill active={categoryFilter === 'defense'} onClick={() => setCategoryFilter('defense')} count={counts.defense} color={CATEGORY_COLORS.defense}>{CATEGORY_LABELS.defense}</FilterPill>
       </div>
+      {/* Motif filter — only shown when a motif is actively filtered or via Stats deep-link */}
+      {motifFilter !== 'all' && (
+        <div className="flex gap-2 mb-4 flex-wrap items-center text-xs">
+          <span className="text-neutral-500">Motif :</span>
+          <span className="px-2 py-1 rounded bg-[var(--color-accent)] text-white">
+            {MOTIF_LABELS[motifFilter]}
+          </span>
+          <button
+            onClick={() => setMotifFilter('all')}
+            className="text-neutral-400 hover:text-white underline"
+          >× Retirer le filtre motif</button>
+        </div>
+      )}
 
       <div className="grid lg:grid-cols-[1fr_320px] gap-6">
         {active ? (

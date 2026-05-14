@@ -49,6 +49,9 @@ type View = 'home' | 'games' | 'analysis' | 'stats' | 'exercises' | 'rush' | 'da
 export default function App() {
   const [view, setView] = useState<View>('home')
   const [activeBookId, setActiveBookId] = useState<string | null>(null)
+  // Cross-view deep link: clicking a motif in Stats jumps to Exercises with
+  // that motif preselected.
+  const [drillMotif, setDrillMotif] = useState<import('./analysis/motifs').MotifTag | null>(null)
   const [username, setUsername] = useState<string>(() => localStorage.getItem('chess.username') ?? '')
   const [games, setGames] = useState<ChessComGame[]>(() =>
     username ? loadGames(username) : [],
@@ -345,13 +348,17 @@ export default function App() {
           />
         )}
         {view === 'stats' && (
-          <StatsView analyses={filteredAnalyses} />
+          <StatsView
+            analyses={filteredAnalyses}
+            onDrillMotif={motif => { setDrillMotif(motif); setView('exercises') }}
+          />
         )}
         {view === 'exercises' && (
           <ExercisesView
             analyses={filteredAnalyses}
             progress={progress}
             onAttempt={handleExerciseAttempt}
+            initialMotif={drillMotif ?? undefined}
           />
         )}
         {view === 'rush' && (
