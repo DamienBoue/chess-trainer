@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Chess } from 'chess.js'
 import TrainingBoard from './TrainingBoard'
+import EmptyState from './EmptyState'
 import type { Square } from 'chess.js'
 import type { GameAnalysis } from '../types'
 import { extractExercises } from '../analysis/exercises'
@@ -131,10 +132,12 @@ export default function BlunderDrillView({ analyses, onExit }: Props) {
 
   if (pool.length === 0) {
     return (
-      <div className="p-8 max-w-3xl mx-auto text-neutral-400">
-        <button onClick={onExit} className="text-sm hover:text-white mb-4">← Retour</button>
-        <p>Aucune position de blunder trouvée. Analyse plus de parties pour alimenter le drill.</p>
-      </div>
+      <EmptyState
+        icon="⚡"
+        title="Pas encore de blunders détectés"
+        description="Le drill réflexe se nourrit de tes propres positions juste avant une grosse erreur. Il faut au moins 3 blunders/erreurs ≥150 cp dans tes parties analysées."
+        cta={{ label: '← Retour', onClick: onExit }}
+      />
     )
   }
   if (!current) {

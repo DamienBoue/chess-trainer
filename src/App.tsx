@@ -372,6 +372,7 @@ export default function App() {
           <StatsView
             analyses={filteredAnalyses}
             onDrillMotif={motif => { setDrillMotif(motif); setView('exercises') }}
+            onGoToGames={() => setView('games')}
           />
         )}
         {view === 'exercises' && (
@@ -380,6 +381,7 @@ export default function App() {
             progress={progress}
             onAttempt={handleExerciseAttempt}
             initialMotif={drillMotif ?? undefined}
+            onGoToGames={() => setView('games')}
           />
         )}
         {view === 'rush' && (
@@ -390,13 +392,13 @@ export default function App() {
           />
         )}
         {view === 'daily' && (
-          <DailyView exercises={exercises} />
+          <DailyView exercises={exercises} onGoToGames={() => setView('games')} />
         )}
         {view === 'compare' && (
           <CompareView username={username} games={games} />
         )}
         {view === 'repertoire' && (
-          <RepertoireView analyses={filteredAnalyses} />
+          <RepertoireView analyses={filteredAnalyses} onGoToGames={() => setView('games')} />
         )}
         {view === 'library' && (
           <LibraryView onOpenBook={id => { setActiveBookId(id); setView('book') }} />

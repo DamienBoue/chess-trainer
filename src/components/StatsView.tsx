@@ -10,13 +10,15 @@ import ProgressCharts from './ProgressCharts'
 import BlunderHeatmap from './BlunderHeatmap'
 import StudyRecommendations from './StudyRecommendations'
 import TrainingBoard from './TrainingBoard'
+import EmptyState from './EmptyState'
 
 interface Props {
   analyses: GameAnalysis[]
   onDrillMotif?: (motif: MotifTag) => void
+  onGoToGames?: () => void
 }
 
-export default function StatsView({ analyses, onDrillMotif }: Props) {
+export default function StatsView({ analyses, onDrillMotif, onGoToGames }: Props) {
   const stats = useMemo(() => aggregate(analyses), [analyses])
   const insights = useMemo(() => deriveInsights(stats), [stats])
   const motifRadar = useMemo(
@@ -38,9 +40,12 @@ export default function StatsView({ analyses, onDrillMotif }: Props) {
 
   if (analyses.length === 0) {
     return (
-      <div className="p-8 max-w-3xl mx-auto text-neutral-400">
-        Aucune partie analysée pour l'instant. Va dans l'onglet "Parties" et clique sur une partie pour lancer son analyse.
-      </div>
+      <EmptyState
+        icon="📊"
+        title="Pas encore de stats"
+        description="Les stats sont calculées depuis tes parties analysées par Stockfish. Lance au moins une analyse pour débloquer cette page."
+        cta={onGoToGames ? { label: 'Voir mes parties', onClick: onGoToGames } : undefined}
+      />
     )
   }
 

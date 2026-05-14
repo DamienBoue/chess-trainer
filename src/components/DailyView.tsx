@@ -7,12 +7,14 @@ import {
   type DailyState, todayString, loadDaily, saveDaily, pickDaily, bumpStreak, decayStreakIfMissed,
 } from '../storage/daily'
 import { playSuccess, playWrong } from '../audio/sounds'
+import EmptyState from './EmptyState'
 
 interface Props {
   exercises: Exercise[]
+  onGoToGames?: () => void
 }
 
-export default function DailyView({ exercises }: Props) {
+export default function DailyView({ exercises, onGoToGames }: Props) {
   const today = todayString()
   const [state, setState] = useState<DailyState | null>(() => decayStreakIfMissed(loadDaily(), today))
 
@@ -45,13 +47,23 @@ export default function DailyView({ exercises }: Props) {
 
   if (exercises.length === 0) {
     return (
-      <div className="p-8 max-w-3xl mx-auto text-neutral-400">
-        Tu n'as encore aucun exercice généré. Analyse au moins une partie pour débloquer le puzzle quotidien.
-      </div>
+      <EmptyState
+        icon="📅"
+        title="Pas encore de puzzle quotidien"
+        description="Le quotidien tire chaque jour un exercice déterministe depuis ton pool. Il faut au moins un exercice généré pour qu'il s'active."
+        steps={['Va dans Parties.', 'Analyse au moins une partie.', 'Reviens demain pour démarrer ta série.']}
+        cta={onGoToGames ? { label: 'Voir mes parties', onClick: onGoToGames } : undefined}
+      />
     )
   }
   if (!exercise) {
-    return <div className="p-8 max-w-3xl mx-auto text-neutral-400">Aucun puzzle pour aujourd'hui.</div>
+    return (
+      <EmptyState
+        icon="📅"
+        title="Aucun puzzle pour aujourd'hui"
+        description="Étrange — toutes tes exercices sont à jour mais le selector du jour n'a rien tiré. Recharge la page."
+      />
+    )
   }
 
   return (

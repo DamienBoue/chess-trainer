@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Chess } from 'chess.js'
 import TrainingBoard from './TrainingBoard'
+import EmptyState from './EmptyState'
 import type { GameAnalysis } from '../types'
 import { extractExercises } from '../analysis/exercises'
 import { playSuccess, playWrong } from '../audio/sounds'
@@ -111,14 +112,12 @@ export default function CalcDepthView({ analyses, onExit }: Props) {
 
   if (pool.length === 0) {
     return (
-      <div className="p-8 max-w-3xl mx-auto text-neutral-400">
-        <button onClick={onExit} className="text-sm hover:text-white mb-4">← Retour</button>
-        <p>
-          Aucune position avec une ligne d'engine ≥ {MIN_LINE_PLIES} demi-coups. Analyse plus de
-          parties pour alimenter ce drill (les meilleures sources sont les blunders avec une
-          séquence forcée à trouver).
-        </p>
-      </div>
+      <EmptyState
+        icon="🧮"
+        title="Pas encore de séquence à calculer"
+        description={`Aucune position de ton pool n'a une ligne d'engine ≥${MIN_LINE_PLIES} demi-coups. Les meilleures sources sont les blunders forcés sur lesquels Stockfish a calculé une suite nette.`}
+        cta={{ label: '← Retour', onClick: onExit }}
+      />
     )
   }
   if (!current) {

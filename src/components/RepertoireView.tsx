@@ -12,12 +12,13 @@ import {
   updateProgressAfterAttempt, isDue,
   type ExerciseProgress,
 } from '../storage/persist'
+import EmptyState from './EmptyState'
 
-interface Props { analyses: GameAnalysis[] }
+interface Props { analyses: GameAnalysis[]; onGoToGames?: () => void }
 
 type Tab = 'lines' | 'critiques' | 'trainer' | 'srs' | 'explorer'
 
-export default function RepertoireView({ analyses }: Props) {
+export default function RepertoireView({ analyses, onGoToGames }: Props) {
   const roots = useMemo(() => buildRepertoire(analyses), [analyses])
   const critiques = useMemo(() => critiqueRepertoire(roots), [roots])
   const [tab, setTab] = useState<Tab>('lines')
@@ -26,9 +27,12 @@ export default function RepertoireView({ analyses }: Props) {
 
   if (analyses.length < 3) {
     return (
-      <div className="p-8 max-w-3xl mx-auto text-neutral-400">
-        Analyse au moins 3 parties pour voir ton répertoire émerger (regroupé par ouverture et couleur).
-      </div>
+      <EmptyState
+        icon="📖"
+        title="Pas encore de répertoire"
+        description={`Le répertoire émerge de tes parties analysées (regroupées par ouverture parent + couleur). Il te faut au moins 3 parties (tu en as ${analyses.length}).`}
+        cta={onGoToGames ? { label: 'Voir mes parties', onClick: onGoToGames } : undefined}
+      />
     )
   }
   return (

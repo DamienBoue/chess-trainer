@@ -18,6 +18,7 @@ import EvalBar from './EvalBar'
 import { playMove, playCapture, playSuccess, playWrong } from '../audio/sounds'
 import { exerciseToShareUrl } from '../api/share'
 import { evaluateMultiPV, topGapCp } from '../engine/multipv'
+import EmptyState from './EmptyState'
 
 interface Props {
   analyses: GameAnalysis[]
@@ -26,12 +27,14 @@ interface Props {
   /** Optional motif preselected by an upstream link (e.g. "Drill" button on
    *  the motif radar in Stats). */
   initialMotif?: MotifTag
+  /** Navigation callback for the empty-state CTAs. */
+  onGoToGames?: () => void
 }
 
 type StatusFilter = 'all' | 'due' | 'solved' | 'unseen'
 type CategoryFilter = 'all' | ExerciseCategory
 
-export default function ExercisesView({ analyses, progress, onAttempt, initialMotif }: Props) {
+export default function ExercisesView({ analyses, progress, onAttempt, initialMotif, onGoToGames }: Props) {
   const exercises = useMemo(() => extractExercises(analyses), [analyses])
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('due')
@@ -85,16 +88,27 @@ export default function ExercisesView({ analyses, progress, onAttempt, initialMo
 
   if (analyses.length === 0) {
     return (
-      <div className="p-8 max-w-3xl mx-auto text-neutral-400">
-        Tu n'as encore analysé aucune partie. Va dans "Parties" et clique sur une partie pour générer des exercices à partir de tes coups clés.
-      </div>
+      <EmptyState
+        icon="🎯"
+        title="Pas encore d'exercices"
+        description="Les exercices sont générés depuis tes coups-clés (gaffes, punitions, défenses) repérés par Stockfish dans tes parties analysées."
+        steps={[
+          'Va dans Parties pour voir tes 20 dernières parties chess.com.',
+          'Lance "Tout analyser" — quelques minutes pour 10 parties.',
+          "Reviens ici : les exercices apparaissent automatiquement, triés par sévérité de l'erreur.",
+        ]}
+        cta={onGoToGames ? { label: 'Voir mes parties', onClick: onGoToGames } : undefined}
+      />
     )
   }
   if (exercises.length === 0) {
     return (
-      <div className="p-8 max-w-3xl mx-auto text-neutral-400">
-        Aucun coup-clé détecté pour l'instant. Analyse plus de parties pour en générer.
-      </div>
+      <EmptyState
+        icon="🎯"
+        title="Aucun coup-clé détecté"
+        description="Tes parties analysées n'ont pas (encore) produit d'erreur assez nette pour générer un exercice. Analyse plus de parties pour alimenter le pool."
+        cta={onGoToGames ? { label: 'Voir mes parties', onClick: onGoToGames } : undefined}
+      />
     )
   }
 
