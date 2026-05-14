@@ -152,7 +152,9 @@ Grouped into 3 tabs (Aperçu / Faiblesses / Ouvertures) so the user lands on a f
 - Vue qui prend une ouverture habituelle et **compare ply à ply** ce que tu joues vs ce que jouent les maîtres (Lichess Masters explorer).
 - Pour chaque coup de ta ligne la plus jouée : card "Toi" (count/total + W-L-D) + card "Masters" (top 5 avec barres W-D-L).
 - Flag automatique "⚠ déviation théorique" quand ton coup est hors du top-3 masters.
+- Bouton **🎯 Drill** sur chaque déviation : ouvre le PositionExplorer avec le coup des maîtres comme `bestSan` et ton coup comme `playedSan`.
 - Accessible via le header de RepertoireView + command palette.
+- **Nécessite un token Lichess** depuis que l'API explorer est gated (Préférences → Token Lichess, gratuit, sans scope).
 
 ## Planned (next loops)
 
