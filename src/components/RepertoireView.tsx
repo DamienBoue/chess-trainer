@@ -4,11 +4,11 @@ import TrainingBoard from './TrainingBoard'
 import type { GameAnalysis } from '../types'
 import {
   buildRepertoire, topLines, alternativesAt, rollupString,
-  critiqueRepertoire, enumerateDrillCards, findRepertoireHoles,
-  type RepertoireRoot, type RepertoireCritique, type DrillCard,
-  type RepertoireHole,
+  critiqueRepertoire, enumerateDrillCards,
+  type RepertoireRoot, type DrillCard,
 } from '../analysis/repertoire'
-import PositionExplorer from './PositionExplorer'
+import HolesPanel from './HolesPanel'
+import CritiquesPanel from './CritiquesPanel'
 import {
   loadRepertoireProgress, saveRepertoireProgress,
   updateProgressAfterAttempt, isDue,
@@ -149,120 +149,6 @@ function TabBtn({ children, active, onClick }: { children: React.ReactNode; acti
   )
 }
 
-function HolesPanel({ roots }: { roots: RepertoireRoot[] }) {
-  const holes = useMemo(() => findRepertoireHoles(roots).slice(0, 5), [roots])
-  const [opened, setOpened] = useState<RepertoireHole | null>(null)
-  if (holes.length === 0) return null
-  return (
-    <div className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-4 mb-3">
-      <div className="flex items-baseline justify-between flex-wrap gap-2 mb-3">
-        <h3 className="font-semibold">🕳️ Trous du répertoire</h3>
-        <span className="text-xs text-neutral-500">
-          Positions où tu n'as pas choisi un coup à mémoriser
-        </span>
-      </div>
-      <ul className="space-y-2">
-        {holes.map((h, i) => (
-          <li
-            key={i}
-            onClick={() => h.fenBefore && setOpened(h)}
-            className={`bg-neutral-900/50 border border-[var(--color-border)] rounded p-3 ${
-              h.fenBefore ? 'cursor-pointer hover:border-[var(--color-accent)]/60' : ''
-            }`}
-          >
-            <div className="flex items-baseline gap-2 flex-wrap text-sm">
-              <span className="font-medium text-neutral-200">{h.parent}</span>
-              <span className="text-xs text-neutral-500">
-                {h.color === 'white' ? '♔ Blancs' : '♚ Noirs'} · coup {h.ply}
-              </span>
-              <span className="ml-auto text-xs text-neutral-500">
-                {h.visits} visites · top {(h.topShare * 100).toFixed(0)}%
-              </span>
-            </div>
-            <div className="mt-1.5 flex flex-wrap gap-2 text-xs">
-              {h.choices.map((c, j) => (
-                <span
-                  key={j}
-                  className={`px-1.5 py-0.5 rounded font-mono ${
-                    j === 0 ? 'bg-neutral-800 text-neutral-100' : 'bg-neutral-900 text-neutral-400'
-                  }`}
-                  title={`${c.count} parties (${(c.share * 100).toFixed(0)}%)`}
-                >{c.san} <span className="opacity-60">{(c.share * 100).toFixed(0)}%</span></span>
-              ))}
-            </div>
-            {(h.avgCpLoss > 30 || h.winRate < 0.4) && (
-              <div className="mt-1 text-[10px] text-orange-300">
-                {h.avgCpLoss > 30 && <>CPL moyen : {h.avgCpLoss.toFixed(0)} · </>}
-                {h.winRate < 0.4 && <>Win rate : {(h.winRate * 100).toFixed(0)}%</>}
-              </div>
-            )}
-          </li>
-        ))}
-      </ul>
-      <p className="text-[10px] text-neutral-500 mt-3">
-        Choisis UN coup, drill-le dans l'onglet SRS et c'est plié. Mieux vaut un coup correct mémorisé qu'un choix aléatoire à chaque partie.
-      </p>
-      {opened && opened.fenBefore && (
-        <PositionExplorer
-          fen={opened.fenBefore.split(' ').length >= 4
-            ? opened.fenBefore
-            : opened.fenBefore + ' - - 0 1'}
-          onClose={() => setOpened(null)}
-          playedSan={opened.choices[0]?.san}
-          title={`${opened.parent} · coup ${opened.ply}`}
-        />
-      )}
-    </div>
-  )
-}
-
-function CritiquesPanel({ critiques }: { critiques: RepertoireCritique[] }) {
-  if (critiques.length === 0) {
-    return (
-      <div className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-6 text-sm text-neutral-400">
-        Aucun mauvais réflexe détecté pour l'instant. Continue à analyser des parties pour que des habitudes se dessinent.
-      </div>
-    )
-  }
-  return (
-    <div className="space-y-3">
-      <p className="text-sm text-neutral-400">
-        Des coups que tu joues souvent mais qui méritent d'être étudiés : soit Stockfish n'est pas d'accord (perte cp moyenne élevée), soit ton score y est mauvais.
-      </p>
-      <ul className="space-y-3">
-        {critiques.slice(0, 12).map((c, i) => (
-          <li key={i} className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-3">
-            <div className="flex items-baseline justify-between gap-3 flex-wrap">
-              <div className="flex items-baseline gap-2 flex-wrap">
-                <span className="font-medium">{c.parent}</span>
-                <span className={`text-xs px-2 py-0.5 rounded ${c.color === 'white' ? 'bg-neutral-100/10 text-neutral-200' : 'bg-neutral-700/50 text-neutral-300'}`}>
-                  {c.color === 'white' ? 'Blancs' : 'Noirs'}
-                </span>
-                <span className="text-xs text-neutral-500">après {c.oppPrev === '<start>' ? 'le début' : c.oppPrev} · coup {c.ply}</span>
-              </div>
-              <span className={`text-xs px-2 py-0.5 rounded ${
-                c.reason === 'high-cploss' ? 'bg-orange-500/20 text-orange-300'
-                : c.reason === 'low-winrate' ? 'bg-red-500/20 text-red-300'
-                : 'bg-purple-500/20 text-purple-300'
-              }`}>
-                {c.reason === 'high-cploss' ? 'Imprécis' : c.reason === 'low-winrate' ? 'Mauvais score' : 'Imprécis + mauvais score'}
-              </span>
-            </div>
-            <div className="mt-2 text-sm">
-              Tu joues d'habitude <span className="font-mono text-neutral-100">{c.san}</span> ({c.count}×, {rollupString({ wins: 0, losses: 0, draws: 0 })}…
-              <span className="text-neutral-500"> CPL moyen {c.avgCpLoss.toFixed(0)} cp · WR {(c.winRate * 100).toFixed(0)}% sur {c.total} parties</span>).
-              {c.engineSuggestion && (
-                <div className="text-xs text-neutral-400 mt-1">
-                  Stockfish a souvent préféré <span className="font-mono text-green-400">{c.engineSuggestion.san}</span> ({c.engineSuggestion.count}× dans tes parties).
-                </div>
-              )}
-            </div>
-          </li>
-        ))}
-      </ul>
-    </div>
-  )
-}
 
 type TrainerMode = 'habits' | 'improve'
 
