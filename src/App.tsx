@@ -36,7 +36,6 @@ import {
   type TimeClassFilter,
   type ColorFilter,
 } from './components/TimeClassFilter'
-import { loadDaily, todayString } from './storage/daily'
 import { extractExercises } from './analysis/exercises'
 import { readSharedFromHash, clearShareHash } from './api/share'
 import { analyzeGame } from './analysis/analyze'
@@ -140,10 +139,6 @@ export default function App() {
     () => exercises.filter(e => isDue(progress[e.id])).length,
     [exercises, progress],
   )
-  const dailyState = loadDaily()
-  const today = todayString()
-  const dailySolvedToday = dailyState?.date === today && dailyState.solved
-  const dailyStreak = dailyState?.streak ?? 0
 
   function purgeAnalyses() {
     if (!username) return
@@ -283,9 +278,6 @@ export default function App() {
               <NavBtn active={view === 'home'} onClick={() => setView('home')}>Plan</NavBtn>
               <NavBtn active={view === 'roadmap'} onClick={() => setView('roadmap')}>Roadmap</NavBtn>
               <NavBtn active={view === 'games'} onClick={() => setView('games')}>Parties</NavBtn>
-              <NavBtn active={view === 'daily'} onClick={() => setView('daily')} disabled={exerciseCount === 0}>
-                {dailySolvedToday ? '✓ ' : ''}Quotidien{dailyStreak > 0 ? ` 🔥${dailyStreak}` : ''}
-              </NavBtn>
               <NavBtn active={view === 'stats'} onClick={() => setView('stats')} disabled={filteredAnalyses.length === 0}>
                 Stats {filteredAnalyses.length > 0 && `(${filteredAnalyses.length})`}
               </NavBtn>
@@ -613,7 +605,6 @@ function MobileNavSheet({
         {item('home', 'Plan du jour')}
         {item('roadmap', 'Roadmap')}
         {item('games', 'Parties')}
-        {item('daily', 'Quotidien', counts.exercises === 0)}
         {item('stats', `Stats (${counts.analyses})`, counts.analyses === 0)}
         {item('repertoire', 'Répertoire', counts.analyses < 3)}
         <div className="text-xs text-neutral-500 px-4 pt-3 uppercase tracking-wider">Entraînement</div>

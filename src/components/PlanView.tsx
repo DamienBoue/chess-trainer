@@ -151,6 +151,8 @@ function PlanHeader({
   )
   const elo = useMemo(() => effectiveElo(loadEloPreference(), analyses), [analyses])
   const stats = useMemo(() => aggregate(analyses), [analyses])
+  const dailyState = loadDaily()
+  const streak = dailyState?.streak ?? 0
 
   return (
     <div className="flex items-baseline justify-between flex-wrap gap-3 pb-4 border-b border-[var(--color-border)]">
@@ -164,6 +166,12 @@ function PlanHeader({
           >
             {bracket.label}{elo != null && <span className="ml-1 text-neutral-400">{elo}</span>}
           </button>
+          {streak > 0 && (
+            <span
+              className="text-[11px] px-2 py-0.5 rounded bg-orange-500/15 border border-orange-500/30 text-orange-300 font-normal"
+              title={`Série quotidienne — ${streak} jour${streak > 1 ? 's' : ''} consécutifs`}
+            >🔥 {streak}</span>
+          )}
         </h1>
         {analyses.length > 0 && (
           <p className="text-sm text-neutral-400">
