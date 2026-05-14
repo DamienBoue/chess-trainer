@@ -11,6 +11,16 @@
 const EXPLORER_BASE = 'https://explorer.lichess.ovh'
 const TABLEBASE_BASE = 'https://tablebase.lichess.ovh'
 
+// The explorer endpoints recently started requiring auth. We read the
+// user's Personal Access Token from localStorage (set via Settings) and
+// attach it as a Bearer header when present. Without a token the call
+// will likely 401 and the UI shows a "configure a Lichess token" hint.
+function authHeaders(): HeadersInit {
+  let token = ''
+  try { token = localStorage.getItem('chess.lichess.token') ?? '' } catch { /* noop */ }
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
 export interface ExplorerMove {
   uci: string
   san: string
@@ -67,7 +77,7 @@ function buildExplorerUrl(opts: ExplorerOpts): string {
  */
 export async function fetchExplorer(opts: ExplorerOpts, signal?: AbortSignal): Promise<ExplorerResponse | null> {
   try {
-    const r = await fetch(buildExplorerUrl(opts), { signal })
+    const r = await fetch(buildExplorerUrl(opts), { signal, headers: authHeaders() })
     if (!r.ok) return null
     if (opts.source !== 'player') {
       return await r.json() as ExplorerResponse

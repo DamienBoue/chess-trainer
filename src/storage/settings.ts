@@ -39,3 +39,20 @@ export function setEngineDepth(n: number): void {
   localStorage.setItem('chess.engine.depth', String(clamped))
   window.dispatchEvent(new CustomEvent('settings-changed', { detail: { key: 'engine.depth' } }))
 }
+
+// Lichess Personal Access Token: required since Lichess gated the
+// opening explorer endpoints behind auth. The user generates a
+// scope-less token at lichess.org/account/oauth/token and pastes it
+// in Settings; we send it as `Authorization: Bearer <token>` on the
+// explorer (and tablebase) calls.
+export function getLichessToken(): string {
+  try { return localStorage.getItem('chess.lichess.token') ?? '' } catch { return '' }
+}
+
+export function setLichessToken(t: string): void {
+  try {
+    if (t.trim()) localStorage.setItem('chess.lichess.token', t.trim())
+    else localStorage.removeItem('chess.lichess.token')
+    window.dispatchEvent(new CustomEvent('settings-changed', { detail: { key: 'lichess.token' } }))
+  } catch { /* noop */ }
+}

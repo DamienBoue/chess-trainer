@@ -3,6 +3,7 @@ import { soundsEnabled, setSoundsEnabled } from '../audio/sounds'
 import {
   getBoardTheme, setBoardTheme, type BoardTheme,
   getEngineDepth, setEngineDepth,
+  getLichessToken, setLichessToken,
 } from '../storage/settings'
 import { exportAll, importAll, downloadJson, readJsonFile } from '../storage/exportImport'
 import { DEFAULT_MODEL, loadLlmConfig, saveLlmConfig, type LlmProvider } from '../coach/config'
@@ -24,6 +25,7 @@ export default function SettingsView({ username, onPurgeAnalyses, onResetProgres
   const [busy, setBusy] = useState(false)
   const fileRef = useRef<HTMLInputElement | null>(null)
   const [llm, setLlm] = useState(() => loadLlmConfig())
+  const [lichessToken, setLichessTokenState] = useState(() => getLichessToken())
 
   function updateLlm(patch: Partial<typeof llm>) {
     const next = { ...llm, ...patch }
@@ -169,6 +171,31 @@ export default function SettingsView({ username, onPurgeAnalyses, onResetProgres
           <div className="font-medium text-neutral-200">Rejouer le tour d'onboarding</div>
           <div className="text-xs text-neutral-500">Recharge la page et affiche les 5 cartes d'introduction.</div>
         </button>
+      </section>
+
+      <section className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-4 space-y-3">
+        <h3 className="font-semibold text-sm">Token Lichess (Explorer + Opening Lab)</h3>
+        <p className="text-xs text-neutral-500 leading-relaxed">
+          Lichess a passé son <strong>Opening Explorer</strong> derrière une authentification. Sans token, l'explorer
+          d'AnalysisView et l'Opening Lab affichent "API indisponible". Génère un token gratuit
+          (sans scope particulier) sur{' '}
+          <a href="https://lichess.org/account/oauth/token/create?description=chess-trainer"
+             target="_blank" rel="noopener noreferrer"
+             className="text-blue-300 hover:underline">lichess.org/account/oauth/token</a>
+          {' '}et colle-le ici.
+        </p>
+        <input
+          type="password"
+          value={lichessToken}
+          onChange={e => { setLichessTokenState(e.target.value); setLichessToken(e.target.value) }}
+          placeholder="lip_…"
+          className="w-full px-2 py-1.5 text-sm rounded bg-neutral-900 border border-[var(--color-border)] font-mono"
+          autoComplete="off"
+          spellCheck={false}
+        />
+        <p className="text-[11px] text-neutral-500">
+          Stocké en localStorage. Envoyé à <code>explorer.lichess.ovh</code> en header <code>Authorization: Bearer</code>.
+        </p>
       </section>
 
       <section className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-4 space-y-3">

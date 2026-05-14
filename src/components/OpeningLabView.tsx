@@ -189,7 +189,12 @@ function PlyComparison({
         <div className="bg-neutral-900 rounded p-2.5">
           <div className="text-[11px] uppercase tracking-wider text-neutral-500 mb-1">Masters DB</div>
           {loading && <p className="text-xs text-neutral-500">Chargement…</p>}
-          {err && <p className="text-xs text-neutral-500">API indisponible.</p>}
+          {err && (
+            <p className="text-xs text-neutral-500">
+              API indisponible. Lichess Explorer demande désormais un token —
+              colle-le dans <span className="text-neutral-300">Préférences → Token Lichess</span>.
+            </p>
+          )}
           {masters && masters.moves.length === 0 && (
             <p className="text-xs text-neutral-500">Hors base — position rare en masters.</p>
           )}
