@@ -30,3 +30,7 @@ public/books/*
 !public/books/lichess-sample.book.json
 !public/books/endgames.book.json
 scripts/__pycache__/
+
+# Test coverage reports (generated)
+coverage/
+
