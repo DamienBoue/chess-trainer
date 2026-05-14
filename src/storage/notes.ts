@@ -4,8 +4,9 @@
 
 import { loadJson, saveJson } from './json'
 import { positionKey } from '../utils/move'
+import { KEYS } from './keys'
 
-const KEY = 'chess.notes.v1'
+const KEY = KEYS.notes
 
 export interface PositionNote {
   text: string

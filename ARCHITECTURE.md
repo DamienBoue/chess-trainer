@@ -63,7 +63,11 @@ Bigger feature modules that bundle a small domain (types, import validators) and
 ### `src/storage/` — infrastructure (persistence)
 - IDB-backed: `db.ts`, `games.ts`, `analyses.ts`
 - localStorage-backed: `daily.ts`, `notes.ts`, `plan.ts`, `settings.ts`, `persist.ts` (SRS), `json.ts` (shared helper)
+- `keys.ts` — central registry of every localStorage key the app uses (see below)
 - `exportImport.ts` — backup/restore JSON dump
+
+#### Key registry (`storage/keys.ts`)
+All localStorage keys live in one typed `KEYS` object. Two reasons: (1) prevents accidental collisions or typos at compile time, and (2) makes future migrations (renames, version bumps) a single edit. When you add a new key, register it here first.
 
 ### `src/engine/` — infrastructure (worker)
 Stockfish 17 lite WASM wrapped in a Web Worker. Single port: `evaluate(fen, depth)`.

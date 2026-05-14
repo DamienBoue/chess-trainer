@@ -3,11 +3,11 @@
 // keep working.
 
 import { loadJson, saveJson } from './json'
+import { KEYS } from './keys'
 export { loadGames, saveGames, clearGames } from './games'
 export { loadAnalyses, saveAnalyses, clearAnalyses } from './analyses'
 
-const VERSION = 'v1'
-const PROGRESS_KEY = `chess.progress.${VERSION}`
+const PROGRESS_KEY = KEYS.exerciseProgress
 
 export interface ExerciseProgress {
   attempts: number
@@ -85,7 +85,7 @@ export function isDue(progress: ExerciseProgress | undefined, now: number = Date
 
 // Repertoire SRS progress lives under its own key — same shape, separate
 // namespace so an exercise id never collides with a drill-card id.
-const REPERTOIRE_PROGRESS_KEY = 'chess.repertoire.progress'
+const REPERTOIRE_PROGRESS_KEY = KEYS.repertoireProgress
 
 export function loadRepertoireProgress(): Record<string, ExerciseProgress> {
   return loadJson(REPERTOIRE_PROGRESS_KEY, {})

@@ -4,8 +4,9 @@
 
 import type { GameAnalysis } from '../types'
 import { loadJson, saveJson } from '../storage/json'
+import { KEYS } from '../storage/keys'
 
-const ELO_KEY = 'chess.elo.v1'
+const ELO_KEY = KEYS.elo
 
 export interface SkillBracket {
   id: 'beginner' | 'casual' | 'club' | 'tournament' | 'expert' | 'master'

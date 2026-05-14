@@ -3,6 +3,7 @@
 // provider, keeping the no-backend constraint.
 
 import { loadJson, saveJson } from '../storage/json'
+import { KEYS } from '../storage/keys'
 
 export type LlmProvider = 'anthropic' | 'openai' | 'disabled'
 
@@ -13,7 +14,7 @@ export interface LlmConfig {
   model: string
 }
 
-const KEY = 'chess.llm.v1'
+const KEY = KEYS.llmConfig
 
 const DEFAULTS: LlmConfig = { provider: 'disabled', apiKey: '', model: '' }
 

@@ -1,7 +1,8 @@
 import type { Exercise } from '../analysis/exercises'
 import { loadJson, saveJson } from './json'
+import { KEYS } from './keys'
 
-const KEY = 'chess.daily.v1'
+const KEY = KEYS.daily
 
 export interface DailyState {
   date: string                     // YYYY-MM-DD of the puzzle currently selected

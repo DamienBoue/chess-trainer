@@ -3,8 +3,9 @@
 // progress across reloads.
 
 import { loadJson, saveJson } from './json'
+import { KEYS } from './keys'
 
-const KEY = 'chess.plan.v1'
+const KEY = KEYS.plan
 
 export interface PlanState {
   date: string                 // YYYY-MM-DD

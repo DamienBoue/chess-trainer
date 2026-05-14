@@ -8,6 +8,7 @@
 
 import type { SkillBracket } from './elo'
 import { loadJson, saveJson } from '../storage/json'
+import { KEYS } from '../storage/keys'
 
 export type ModuleArea = 'tactics' | 'endgame' | 'opening' | 'middlegame' | 'mindset' | 'calculation'
 
@@ -75,7 +76,7 @@ export interface ModuleProgress {
   completed: string[]
 }
 
-const PROGRESS_KEY = 'chess.roadmap.v1'
+const PROGRESS_KEY = KEYS.roadmapProgress
 
 export function loadModuleProgress(): ModuleProgress {
   return loadJson<ModuleProgress>(PROGRESS_KEY, { completed: [] })
