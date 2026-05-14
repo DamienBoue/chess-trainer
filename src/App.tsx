@@ -6,6 +6,7 @@ import Dashboard from './components/Dashboard'
 import SettingsView from './components/SettingsView'
 import { ToastHost, toast } from './components/Toast'
 import KeyboardShortcutsModal, { openShortcutsHelp } from './components/KeyboardShortcutsModal'
+import Onboarding from './components/Onboarding'
 import { getEngineDepth } from './storage/settings'
 import GamesList from './components/GamesList'
 import AnalysisView from './components/AnalysisView'
@@ -479,6 +480,7 @@ export default function App() {
       </main>
       <ToastHost />
       <KeyboardShortcutsModal />
+      <Onboarding />
     </div>
   )
 }
