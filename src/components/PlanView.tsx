@@ -11,12 +11,13 @@ import type { MotifTag } from '../analysis/motifs'
 import { summariseDailyPlan } from '../llm/coach'
 import ChecklistRow from './ChecklistRow'
 import LlmAskBox from './LlmAskBox'
+import RoadmapView from './RoadmapView'
 
 interface Props {
   analyses: GameAnalysis[]
   progress: Record<string, ExerciseProgress>
   username?: string
-  onNavigate: (target: 'daily' | 'exercises' | 'repertoire' | 'stats' | 'games' | 'roadmap' | 'home', opts?: { motif?: MotifTag }) => void
+  onNavigate: (target: 'daily' | 'exercises' | 'repertoire' | 'stats' | 'games' | 'roadmap' | 'home' | 'blunder' | 'calc' | 'library' | 'play' | 'book', opts?: { motif?: MotifTag }) => void
 }
 
 export default function PlanView({ analyses, progress, username, onNavigate }: Props) {
@@ -34,6 +35,7 @@ export default function PlanView({ analyses, progress, username, onNavigate }: P
     [analyses, progress, repProgress, dailyDone, bracket],
   )
 
+  const [tab, setTab] = useState<'today' | 'roadmap'>('today')
   const [planState, setPlanState] = useState(() => loadPlanState(today))
   const doneSet = new Set(planState.done)
   // The daily item counts as done as soon as the daily streak says so.
@@ -84,8 +86,22 @@ export default function PlanView({ analyses, progress, username, onNavigate }: P
 
   return (
     <div className="p-4 lg:p-6 max-w-3xl mx-auto space-y-5">
-      {username && <PlanHeader username={username} analyses={analyses} onOpenRoadmap={() => onNavigate('roadmap')} onLogout={() => onNavigate('home')} />}
+      {username && <PlanHeader username={username} analyses={analyses} onOpenRoadmap={() => setTab('roadmap')} onLogout={() => onNavigate('home')} />}
 
+      <div className="flex gap-1 border-b border-[var(--color-border)] text-sm">
+        <PlanTabBtn active={tab === 'today'} onClick={() => setTab('today')}>Aujourd'hui</PlanTabBtn>
+        <PlanTabBtn active={tab === 'roadmap'} onClick={() => setTab('roadmap')}>Mon niveau</PlanTabBtn>
+      </div>
+
+      {tab === 'roadmap' && (
+        <RoadmapView
+          analyses={analyses}
+          embedded
+          onNavigate={target => onNavigate(target as 'exercises' | 'blunder' | 'calc' | 'repertoire' | 'stats')}
+        />
+      )}
+
+      {tab === 'today' && <>
       <div className="flex items-baseline justify-between flex-wrap gap-3">
         <div>
           <h2 className="text-xl font-semibold">Plan du jour <span className="text-sm font-normal text-neutral-500 ml-2">{today}</span></h2>
@@ -131,7 +147,21 @@ export default function PlanView({ analyses, progress, username, onNavigate }: P
           <p>Tu as fait toutes les étapes du jour. Reviens demain pour la suivante.</p>
         </div>
       )}
+      </>}
     </div>
+  )
+}
+
+function PlanTabBtn({ children, active, onClick }: { children: React.ReactNode; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-3 py-2 -mb-px border-b-2 transition-colors ${
+        active
+          ? 'border-[var(--color-accent)] text-white'
+          : 'border-transparent text-neutral-400 hover:text-neutral-200'
+      }`}
+    >{children}</button>
   )
 }
 

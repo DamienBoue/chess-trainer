@@ -22,9 +22,12 @@ import ChecklistRow from './ChecklistRow'
 interface Props {
   analyses: GameAnalysis[]
   onNavigate: (view: 'exercises' | 'blunder' | 'calc' | 'repertoire' | 'library' | 'play' | 'stats' | 'book') => void
+  /** Skip the page-level header and outer padding so it can be embedded
+   *  inside another container (e.g. PlanView's tab). */
+  embedded?: boolean
 }
 
-export default function RoadmapView({ analyses, onNavigate }: Props) {
+export default function RoadmapView({ analyses, onNavigate, embedded = false }: Props) {
   const [pref, setPref] = useState(() => loadEloPreference())
   const [progress, setProgress] = useState(() => loadModuleProgress())
   const inferred = useMemo(() => inferEloFromGames(analyses), [analyses])
@@ -48,13 +51,15 @@ export default function RoadmapView({ analyses, onNavigate }: Props) {
   const completedCount = modules.filter(m => completed.has(m.id)).length
 
   return (
-    <div className="p-4 lg:p-6 max-w-3xl mx-auto space-y-5">
-      <div>
-        <h2 className="text-2xl font-semibold">Roadmap d'apprentissage</h2>
-        <p className="text-sm text-neutral-400">
-          Les modules à maîtriser en priorité pour ton palier. Coche au fur et à mesure.
-        </p>
-      </div>
+    <div className={embedded ? 'space-y-5' : 'p-4 lg:p-6 max-w-3xl mx-auto space-y-5'}>
+      {!embedded && (
+        <div>
+          <h2 className="text-2xl font-semibold">Roadmap d'apprentissage</h2>
+          <p className="text-sm text-neutral-400">
+            Les modules à maîtriser en priorité pour ton palier. Coche au fur et à mesure.
+          </p>
+        </div>
+      )}
 
       <section className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-4 space-y-3">
         <h3 className="font-semibold text-sm">Ton niveau</h3>

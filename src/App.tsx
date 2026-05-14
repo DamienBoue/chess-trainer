@@ -12,6 +12,7 @@ import GamesList from './components/GamesList'
 import SharedExerciseView from './components/SharedExerciseView'
 import DailyView from './components/DailyView'
 import PlanView from './components/PlanView'
+import RoadmapView from './components/RoadmapView'
 
 // Heavy or rarely-visited views are code-split: they only download when
 // the user navigates to them. Cuts initial bundle from ~588 KB to ~310 KB.
@@ -29,7 +30,6 @@ const BlunderDrillView = lazy(() => import('./components/BlunderDrillView'))
 const CalcDepthView = lazy(() => import('./components/CalcDepthView'))
 const PlayersView = lazy(() => import('./components/PlayersView'))
 const SettingsView = lazy(() => import('./components/SettingsView'))
-const RoadmapView = lazy(() => import('./components/RoadmapView'))
 import {
   GlobalFilters,
   applyGlobalFilters,
@@ -276,7 +276,6 @@ export default function App() {
           {username && (
             <>
               <NavBtn active={view === 'home'} onClick={() => setView('home')}>Plan</NavBtn>
-              <NavBtn active={view === 'roadmap'} onClick={() => setView('roadmap')}>Roadmap</NavBtn>
               <NavBtn active={view === 'games'} onClick={() => setView('games')}>Parties</NavBtn>
               <NavBtn active={view === 'stats'} onClick={() => setView('stats')} disabled={filteredAnalyses.length === 0}>
                 Stats {filteredAnalyses.length > 0 && `(${filteredAnalyses.length})`}
@@ -611,7 +610,6 @@ function MobileNavSheet({
         </div>
         <div className="text-xs text-neutral-500 px-4 pt-3 uppercase tracking-wider">Données</div>
         {item('home', 'Plan du jour')}
-        {item('roadmap', 'Roadmap')}
         {item('games', 'Parties')}
         {item('stats', `Stats (${counts.analyses})`, counts.analyses === 0)}
         {item('repertoire', 'Répertoire', counts.analyses < 3)}
