@@ -212,8 +212,9 @@ function ModuleRow({
     <button
       onClick={onGo}
       className="text-xs px-2.5 py-1 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-200"
+      title={`Ouvrir : ${SURFACE_LABELS[mod.surface]}`}
     >
-      Aller →
+      {SURFACE_LABELS[mod.surface]} →
     </button>
   ) : null
   return (
@@ -223,8 +224,25 @@ function ModuleRow({
       </div>
       <h4 className={`font-medium ${done ? 'line-through text-neutral-500' : ''}`}>{mod.title}</h4>
       <p className="text-xs text-neutral-400 mt-0.5">{mod.why}</p>
+      {mod.studyHint && !mod.surface && (
+        <div className="mt-2 text-xs text-amber-200/90 bg-amber-500/5 border border-amber-500/20 rounded p-2 leading-relaxed">
+          <span className="text-[10px] uppercase tracking-wider text-amber-300 block mb-0.5">Piste d'étude</span>
+          {mod.studyHint}
+        </div>
+      )}
     </ChecklistRow>
   )
+}
+
+const SURFACE_LABELS: Record<NonNullable<RoadmapModule['surface']>, string> = {
+  exercises:  'Exercices',
+  blunder:    'Réflexe',
+  calc:       'Calcul',
+  repertoire: 'Répertoire',
+  library:    'Bibliothèque',
+  play:       'Jouer',
+  stats:      'Stats',
+  book:       'Livre',
 }
 
 const BRACKET_COLORS: Record<SkillBracket['id'], string> = {
