@@ -1,6 +1,6 @@
 import { Fragment, useMemo, useState } from 'react'
 import type { GameAnalysis } from '../types'
-import { aggregate, deriveInsights, PHASE_LABELS, type AggregateStats, type Phase } from '../analysis/aggregate'
+import { aggregate, deriveInsights, type AggregateStats } from '../analysis/aggregate'
 import { CLASSIFICATION_COLORS, CLASSIFICATION_LABELS } from '../analysis/classify'
 import { extractExercises } from '../analysis/exercises'
 import { computeMotifRadar, type MotifStat } from '../analysis/motifRadar'
@@ -17,8 +17,10 @@ import Tooltip from './Tooltip'
 import PositionExplorer from './PositionExplorer'
 import { daysAgo } from '../utils/format'
 import { buildTimeline } from '../analysis/timeline'
-import { computeTrend, trendDirection, type Trend, type TrendDelta } from '../analysis/trend'
+import { computeTrend, type Trend } from '../analysis/trend'
 import { buildStrengths } from '../analysis/strengths'
+import TrendPanel from './TrendPanel'
+import PhaseBreakdownPanel from './PhaseBreakdownPanel'
 
 interface Props {
   analyses: GameAnalysis[]
@@ -402,74 +404,6 @@ function MotifRadarPanel({
   )
 }
 
-function TrendPanel({ trend }: { trend: Trend }) {
-  return (
-    <div className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-4">
-      <div className="flex items-baseline justify-between flex-wrap gap-2 mb-3">
-        <h3 className="font-semibold">Tendance récente</h3>
-        <span className="text-xs text-neutral-500">
-          Semaine dernière active vs les 4 précédentes
-        </span>
-      </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <TrendCard
-          label="Précision (cp/coup)"
-          delta={trend.cpLoss}
-          formatRecent={v => v.toFixed(0)}
-          formatDelta={d => `${d > 0 ? '+' : ''}${d.toFixed(0)} cp`}
-        />
-        <TrendCard
-          label="Blunders / partie"
-          delta={trend.blundersPerGame}
-          formatRecent={v => v.toFixed(2)}
-          formatDelta={d => `${d > 0 ? '+' : ''}${d.toFixed(2)}`}
-        />
-        <TrendCard
-          label="Win rate"
-          delta={trend.winRate}
-          formatRecent={v => `${(v * 100).toFixed(0)}%`}
-          formatDelta={d => `${d > 0 ? '+' : ''}${(d * 100).toFixed(0)} pt`}
-        />
-        <TrendCard
-          label="Parties / semaine"
-          delta={trend.gamesPerWeek}
-          formatRecent={v => v.toFixed(0)}
-          formatDelta={d => `${d > 0 ? '+' : ''}${d.toFixed(0)}`}
-        />
-      </div>
-      <p className="text-[10px] text-neutral-500 mt-2">
-        Comparaison sur la dernière semaine active ({trend.cpLoss.recentGames} partie{trend.cpLoss.recentGames > 1 ? 's' : ''}) face aux 4 d'avant ({trend.cpLoss.baselineGames} parties).
-      </p>
-    </div>
-  )
-}
-
-function TrendCard({
-  label, delta, formatRecent, formatDelta,
-}: {
-  label: string
-  delta: TrendDelta
-  formatRecent: (v: number) => string
-  formatDelta: (d: number) => string
-}) {
-  const dir = trendDirection(delta)
-  const colorClass = dir === 'improved' ? 'text-green-400'
-    : dir === 'worsened' ? 'text-red-400'
-    : 'text-neutral-400'
-  const arrow = dir === 'improved' ? (delta.delta < 0 ? '↓' : '↑')
-    : dir === 'worsened' ? (delta.delta < 0 ? '↓' : '↑')
-    : '·'
-  return (
-    <div className="bg-neutral-900/60 border border-[var(--color-border)] rounded-md p-3">
-      <div className="text-xs text-neutral-500">{label}</div>
-      <div className="text-2xl font-bold mt-1">{formatRecent(delta.recent)}</div>
-      <div className={`text-xs mt-1 flex items-center gap-1 ${colorClass}`}>
-        <span>{arrow}</span>
-        <span className="font-mono">{formatDelta(delta.delta)}</span>
-      </div>
-    </div>
-  )
-}
 
 function RecurringMistakesPanel({
   exact, byOpening,
@@ -632,65 +566,3 @@ function MotifRow({
 
 // Phase breakdown: per-phase avg cpLoss + counts. Worst phase gets called
 // out so the user knows where the bleeding happens.
-function PhaseBreakdownPanel({
-  stats, totalUserMistakes,
-}: { stats: AggregateStats; totalUserMistakes: number }) {
-  const phases = ['opening', 'middlegame', 'endgame'] as const
-  const phaseList = phases.map(p => ({ key: p, ...stats.phases[p] }))
-  const activePhases = phaseList.filter(p => p.userMoves > 0)
-  const worstByCpLoss = activePhases.length > 0
-    ? activePhases.reduce((a, b) => a.avgCpLoss > b.avgCpLoss ? a : b)
-    : null
-  const maxCpLoss = Math.max(40, ...activePhases.map(p => p.avgCpLoss))
-
-  return (
-    <div className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-4">
-      <div className="flex items-baseline justify-between mb-1">
-        <h3 className="font-semibold">Performance par phase</h3>
-        <Tooltip content="Ouverture = 1-20 plies. Finale = 20 derniers plies. Milieu = le reste.">
-          <span className="text-[10px] text-neutral-500 cursor-help">ℹ︎</span>
-        </Tooltip>
-      </div>
-      <p className="text-xs text-neutral-500 mb-3">
-        Où la précision décroche dans la partie.
-      </p>
-      <div className="space-y-2.5">
-        {phaseList.map(p => {
-          const pct = maxCpLoss > 0 ? Math.min(100, (p.avgCpLoss / maxCpLoss) * 100) : 0
-          const isWorst = worstByCpLoss?.key === p.key && activePhases.length > 1
-          return (
-            <div key={p.key} className="text-sm">
-              <div className="flex justify-between items-baseline text-xs mb-1">
-                <span className={isWorst ? 'text-red-300 font-medium' : 'text-neutral-300'}>
-                  {PHASE_LABELS[p.key as Phase]}
-                  {isWorst && <span className="ml-1 text-[10px] uppercase tracking-wider">le plus faible</span>}
-                </span>
-                <span className="text-neutral-400 font-mono">
-                  {p.userMoves > 0 ? `${p.avgCpLoss.toFixed(0)} cp/coup` : '—'}
-                </span>
-              </div>
-              <div className="w-full bg-neutral-900 rounded h-1.5 overflow-hidden">
-                <div
-                  className="h-full transition-all"
-                  style={{
-                    width: `${pct}%`,
-                    backgroundColor: isWorst ? '#ef4444' : '#7aa6ee',
-                  }}
-                />
-              </div>
-              <div className="flex gap-3 text-[11px] text-neutral-500 mt-1">
-                <span>{p.userMoves} coups</span>
-                {p.blunders > 0 && <span style={{ color: CLASSIFICATION_COLORS.blunder }}>{p.blunders} gaffes</span>}
-                {p.mistakes > 0 && <span style={{ color: CLASSIFICATION_COLORS.mistake }}>{p.mistakes} err.</span>}
-                {p.inaccuracies > 0 && <span style={{ color: CLASSIFICATION_COLORS.inaccuracy }}>{p.inaccuracies} inex.</span>}
-              </div>
-            </div>
-          )
-        })}
-      </div>
-      <div className="mt-3 text-xs text-neutral-500">
-        Total : {totalUserMistakes} coups imprécis toutes phases.
-      </div>
-    </div>
-  )
-}
