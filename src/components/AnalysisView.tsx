@@ -11,6 +11,7 @@ import { fetchExplorer, type ExplorerResponse } from '../api/lichess'
 import { explainBlunder, llmAvailable } from '../llm/coach'
 import EvalBar from './EvalBar'
 import EvalGraph from './EvalGraph'
+import PositionNote from './PositionNote'
 
 interface Props {
   engine: StockfishEngine
@@ -243,6 +244,10 @@ export default function AnalysisView({
               {(currentMove.classification === 'blunder' || currentMove.classification === 'mistake') && (
                 <CoachExplain analysis={analysis} move={currentMove} />
               )}
+
+              <div className="mt-3 pt-3 border-t border-[var(--color-border)]">
+                <PositionNote fen={currentFen} />
+              </div>
 
               {pvSans.length > 0 && currentMove.bestMoveSan && currentMove.bestMoveSan !== currentMove.san && (
                 <div className="mt-3 pt-3 border-t border-[var(--color-border)]">

@@ -24,8 +24,9 @@ A 10-15 min curated session synthesising every training signal:
 2. Up to 5 SRS exercises that are due
 3. Up to 5 repertoire SRS cards that are due
 4. **Drill by motif** — your worst-performing motif (e.g. forks missed) when miss-rate ≥ 50% and ≥ 3 missed.
-5. The single most costly recurring mistake
-6. The most-visited repertoire hole
+5. **Phase focus** — when one phase (opening/middle/endgame) is ≥ 1.5× worse than another, surface it as a deep-link to Stats.
+6. The single most costly recurring mistake
+7. The most-visited repertoire hole
 
 **Adaptive ordering**: items are reranked based on your skill bracket — beginners get tactics-heavy priority, experts get opening prep priority. Completion state persists per-day. Deep-links to the relevant view.
 
@@ -117,6 +118,12 @@ A 10-15 min curated session synthesising every training signal:
 - **PWA** — offline cache for the shell.
 - **GitHub Pages**-deployable as a static site.
 
+## Personal annotations
+
+- **Per-position notes** keyed by truncated FEN. The same position reached in any future game shares the note.
+- Editor lives in AnalysisView's detail panel and inside the PositionExplorer modal — no separate view.
+- Included automatically in the Export JSON.
+
 ## LLM coach (optional)
 
 - **BYO key** — Anthropic (`sk-ant-…`) or OpenAI (`sk-…`). Stored in localStorage, sent only to the provider.
@@ -125,7 +132,6 @@ A 10-15 min curated session synthesising every training signal:
 
 ## Planned (next loops)
 
-- Personal annotations per position.
 - Annotated PGN export.
 - Reverse-color drill (play the same position from the other side).
 - Phase-specific deep dive (which opening eats your endgames?).

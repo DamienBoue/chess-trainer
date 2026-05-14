@@ -186,6 +186,7 @@ const KIND_LABELS: Record<PlanItem['kind'], string> = {
   'srs-exercises': 'SRS exercices',
   'srs-repertoire': 'SRS répertoire',
   'motif-drill': 'Drill motif',
+  'phase-focus': 'Phase faible',
   'recurring': 'Erreur récurrente',
   'hole': 'Trou répertoire',
 }
@@ -195,6 +196,7 @@ const ACCENTS: Record<PlanItem['kind'], string> = {
   'srs-exercises': 'text-blue-300',
   'srs-repertoire': 'text-purple-300',
   'motif-drill': 'text-pink-300',
+  'phase-focus': 'text-teal-300',
   'recurring': 'text-red-300',
   'hole': 'text-amber-300',
 }

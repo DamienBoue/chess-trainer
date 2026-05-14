@@ -9,6 +9,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Chess } from 'chess.js'
 import TrainingBoard from './TrainingBoard'
+import PositionNote from './PositionNote'
 import { playForMove } from '../audio/sounds'
 import { tryUserMove } from '../utils/move'
 
@@ -165,6 +166,10 @@ export default function PositionExplorer({
             <p className="text-[10px] text-neutral-500">
               Tu peux glisser les pièces librement pour explorer la suite. Esc pour fermer.
             </p>
+
+            <div className="border-t border-[var(--color-border)] pt-3">
+              <PositionNote fen={fen} />
+            </div>
           </aside>
         </div>
       </div>

@@ -14,6 +14,7 @@ import { computeMotifRadar } from './motifRadar'
 import { MOTIF_LABELS, type MotifTag } from './motifs'
 import { buildRepertoire, enumerateDrillCards, findRepertoireHoles, type RepertoireHole } from './repertoire'
 import { findRecurringMistakes, type RecurringMistake } from './recurringMistakes'
+import { aggregate, PHASE_LABELS, type Phase } from './aggregate'
 import type { SkillBracket } from '../skill/elo'
 
 export type PlanItemKind =
@@ -21,6 +22,7 @@ export type PlanItemKind =
   | 'srs-exercises'
   | 'srs-repertoire'
   | 'motif-drill'
+  | 'phase-focus'
   | 'recurring'
   | 'hole'
 
@@ -39,6 +41,7 @@ export interface PlanItem {
   /** Optional context — top recurring mistake / hole shown inline. */
   recurring?: RecurringMistake
   hole?: RepertoireHole
+  phase?: Phase
 }
 
 interface BuildPlanOptions {
@@ -162,6 +165,35 @@ export function buildPlan(
       target: 'repertoire',
       hole: topHole,
     })
+  }
+
+  // 7. Phase focus — when one phase's avg cpLoss is markedly worse than
+  // the others (≥ 1.5×) and we have a meaningful sample, surface it.
+  if (analyses.length >= 5) {
+    const stats = aggregate(analyses)
+    const phases: Phase[] = ['opening', 'middlegame', 'endgame']
+    const active = phases.filter(p => stats.phases[p].userMoves >= 20)
+    if (active.length >= 2) {
+      const worst = active.reduce((a, b) =>
+        stats.phases[a].avgCpLoss > stats.phases[b].avgCpLoss ? a : b)
+      const best = active.reduce((a, b) =>
+        stats.phases[a].avgCpLoss < stats.phases[b].avgCpLoss ? a : b)
+      const ratio = stats.phases[best].avgCpLoss > 0
+        ? stats.phases[worst].avgCpLoss / stats.phases[best].avgCpLoss
+        : 0
+      if (ratio >= 1.5) {
+        items.push({
+          id: `phase:${worst}`,
+          kind: 'phase-focus',
+          title: `Travaille tes ${PHASE_LABELS[worst].toLowerCase()}s`,
+          subtitle: `${stats.phases[worst].avgCpLoss.toFixed(0)} cp/coup en ${PHASE_LABELS[worst].toLowerCase()} vs ${stats.phases[best].avgCpLoss.toFixed(0)} en ${PHASE_LABELS[best].toLowerCase()}. Ouvre les stats pour voir le détail.`,
+          estMinutes: 3,
+          priority: 65,
+          target: 'stats',
+          phase: worst,
+        })
+      }
+    }
   }
 
   return items.sort((a, b) => b.priority - a.priority)
