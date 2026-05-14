@@ -602,4 +602,86 @@ export const CONCEPTS: Concept[] = [
     detail: 'Mesurer l\'activité : combien de cases la pièce contrôle, peut-elle participer à un plan, est-elle bloquée par des pions amis ? La règle "tour active vaut un pion" est un cas particulier. Maxime de Lasker : "Si un coup améliore la position de ta pire pièce, joue-le."',
     related: ['initiative', 'two-weaknesses'],
   },
+
+  // ---------------- More mating patterns ----------------
+  {
+    id: 'boden-mate',
+    title: 'Mat de Boden',
+    category: 'tactics',
+    aliases: ['boden mate', 'mat de boden'],
+    shortDef: 'Deux fous mates le roi via deux diagonales croisées, typiquement après que le roi a roqué côté dame.',
+    detail: 'Pattern classique : roi noir en c8, fous blancs en a6 (vise b7-c8) et f4 (vise b8-h2 ou similaire après poussée). Souvent précédé d\'un sacrifice de dame pour ouvrir les diagonales. À voir absolument une fois pour le reconnaître quand l\'adversaire roque grand sans protéger b7/g7.',
+    related: ['anastasia-mate', 'smothered-mate'],
+  },
+  {
+    id: 'arabian-mate',
+    title: 'Mat arabe',
+    category: 'tactics',
+    aliases: ['arabian mate', 'mat arabe'],
+    shortDef: 'Cavalier + tour mates le roi dans un coin — la tour fait l\'échec, le cavalier couvre les cases d\'évasion.',
+    detail: 'Pattern minimal : roi noir en h8, tour blanche en h7+, cavalier blanc en f7 ou g6 qui couvre g8. Un des plus anciens motifs (déjà documenté au 9e siècle dans les manuels arabes). Reconnaissable instantanément quand un cavalier traîne près d\'un roi dans le coin.',
+    related: ['anastasia-mate', 'boden-mate'],
+  },
+  {
+    id: 'ladder-mate',
+    title: 'Mat de l\'escalier',
+    category: 'tactics',
+    aliases: ['ladder mate', 'mat escalier'],
+    shortDef: 'Deux tours (ou tour+dame) qui mate le roi adverse en descendant rang par rang.',
+    detail: 'Technique de base contre roi seul : tour sur la 7e empêche le roi d\'aller au-delà, l\'autre tour donne échec sur la 8e, le roi descend en 7e... non, attendez. Plan : Ra8+ Kg7, Rb7+ Kh6, Rg8 (puis Ra-h8 selon configuration). Sert aussi en finale K+Q vs K+R bloquée. Mate en ≤16 coups depuis n\'importe quelle position.',
+    related: ['krk-mate'],
+  },
+
+  // ---------------- Pawn structures ----------------
+  {
+    id: 'stonewall',
+    title: 'Stonewall',
+    category: 'structure',
+    aliases: ['stonewall structure'],
+    shortDef: 'Pions blancs (ou noirs) en c3-d4-e3-f4 (ou f5-e6-d5-c6) — formation solide mais le pion central faible.',
+    detail: 'Le pion central (d4 ou d5 selon la couleur) est légèrement faible (case sombre e5/e4 ne peut plus être contrôlée par un pion). Plan typique : attaque kingside avec le mauvais fou échangé d\'abord. Vu dans le Stonewall Attack (1.d4 d5 2.e3 Nf6 3.Bd3 c5 4.c3 + f4) et la Dutch Stonewall (1.d4 f5 2.c4 e6 + …d5 + …c6).',
+    related: ['pawn-structure', 'bad-bishop'],
+  },
+  {
+    id: 'carlsbad',
+    title: 'Structure de Carlsbad',
+    category: 'structure',
+    aliases: ['carlsbad structure', 'carlsbad'],
+    shortDef: 'Structure issue du QGD-échange : pions blancs a2-b2-c3-e3-f2-g2-h2 vs noirs a7-b7-c6-e6-f7-g7-h7. Plan blanc : attaque de minorité.',
+    detail: 'Le plan blanc canonique est l\'attaque de minorité (a3+b4+b5) qui force ...bxc6 → pion c6 arriéré + colonne c demi-ouverte. Le plan noir : contre-jeu kingside ou central avec ...c5 (rare) ou attaque sur le roi via ...Ne4+...f5. Référence : Karpov a battu Korchnoi plusieurs fois là-dessus.',
+    related: ['minority-attack', 'pawn-structure', 'queens-gambit'],
+  },
+  {
+    id: 'bad-bishop',
+    title: 'Mauvais fou',
+    category: 'structure',
+    aliases: ['bad bishop', 'mauvais fou'],
+    shortDef: 'Fou bloqué par ses propres pions sur les cases de sa couleur — peu mobile, vulnérable en finale.',
+    detail: 'Exemple typique : fou clair (cases blanches) coincé derrière des pions sur cases blanches (e6/d5/c6 noirs → Bc8 mauvais). Plan : l\'échanger contre une pièce mineure adverse, OU le ré-router via une longue manœuvre (Bc8-d7-e8-f7 pour la France). Maxime : "améliore ton pire fou avant de songer à attaquer."',
+    related: ['piece-activity', 'french'],
+  },
+
+  // ---------------- More openings ----------------
+  {
+    id: 'kings-gambit',
+    title: 'Gambit du roi',
+    category: 'opening',
+    aliases: ['kings gambit', 'gambit du roi'],
+    shortDef: '1.e4 e5 2.f4 — blanc sacrifie un pion pour ouvrir la colonne f et attaquer rapidement.',
+    detail: 'Romantique, attaquant, presque hors mode en théorie moderne mais terriblement efficace à club. Variantes : Gambit accepté (2...exf4 — la principale, blanc cherche à récupérer le pion avec l\'attaque), Falkbeer (2...d5 — contre-gambit pour bloquer les ambitions blanches). Joué par Anderssen, Spassky, Nakamura aux blitz.',
+    links: [
+      { label: 'Gambit du roi (Wikipedia)', url: 'https://fr.wikipedia.org/wiki/Gambit_du_roi', kind: 'wikipedia' },
+    ],
+  },
+  {
+    id: 'english-opening',
+    title: 'Ouverture anglaise',
+    category: 'opening',
+    aliases: ['english opening', 'anglaise'],
+    shortDef: '1.c4 — flexible, peut transposer dans bcp de systèmes 1.d4 ou rester en jeu autonome.',
+    detail: 'Idée : contrôler la case d5 sans engager le pion d. Réponses noires : 1...e5 (anglaise inversée — souvent symétrique), 1...c5 (symétrique), 1...Nf6 (Indienne), 1...e6 (Tarrasch inversée). Le pion c4 reprend en demi-ouverte si exf4 et donne accès au plan classique avec Nc3+g3+Bg2. Joué par Botvinnik, Kramnik.',
+    links: [
+      { label: 'Partie anglaise (Wikipedia)', url: 'https://fr.wikipedia.org/wiki/Partie_anglaise', kind: 'wikipedia' },
+    ],
+  },
 ]

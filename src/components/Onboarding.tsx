@@ -10,7 +10,7 @@ const STORAGE_KEY = 'chess.onboarding.completed'
 const STEPS: Array<{ title: string; body: string }> = [
   {
     title: 'Bienvenue 👋',
-    body: 'Chess Trainer importe tes parties chess.com, les analyse 100% en local avec Stockfish, et te génère un programme d\'entraînement personnalisé.',
+    body: 'Chess Trainer importe tes parties chess.com, les analyse 100% en local avec Stockfish, et te génère un programme d\'entraînement personnalisé adapté à ton niveau.',
   },
   {
     title: '1. Importe tes parties',
@@ -18,15 +18,19 @@ const STEPS: Array<{ title: string; body: string }> = [
   },
   {
     title: '2. Lance l\'analyse',
-    body: 'Dans l\'onglet Parties, clique "Tout analyser". Stockfish tourne dans ton navigateur (1-2 minutes pour 10 parties). Rien n\'est envoyé à un serveur.',
+    body: 'Dans Parties, clique "Tout analyser". Stockfish tourne dans ton navigateur (1-2 min pour 10 parties). Rien n\'est envoyé à un serveur.',
   },
   {
-    title: '3. Drill ce qu\'il faut',
-    body: 'Une fois l\'analyse finie : exercices SM-2 sur tes erreurs, drill de réflexe blunder, calcul de séquences, répertoire SRS… Le dashboard te dit exactement quoi faire chaque jour.',
+    title: '3. Suis le Plan du jour',
+    body: 'Après l\'analyse, l\'accueil devient ton Plan du jour : 10-15 min de SRS, drills par motif raté, erreur récurrente, trou du répertoire. Adapté à ton palier Elo (onglet "Mon niveau").',
   },
   {
-    title: '4. Au-delà',
-    body: 'Importe un livre PDF, drill des puzzles Lichess, scoute un adversaire chess.com, joue une partie vs Stockfish — appuie sur ? n\'importe où pour les raccourcis.',
+    title: '4. Lab d\'ouverture + Concepts',
+    body: 'Compare ply à ply ce que tu joues vs les maîtres (Répertoire → 🔬 Opening Lab). Et 53 fiches concepts (fork, IQP, Lucena, en passant…) accessibles via Étudier → Concepts ou les chips 📖 partout dans l\'app.',
+  },
+  {
+    title: '5. Optionnel : coach IA',
+    body: 'Préférences → colle une clé Anthropic ou OpenAI pour activer "Expliquer ce coup" sur tes blunders et "Revue de partie" sur tes analyses. La clé reste dans ton navigateur, jamais envoyée à un serveur tiers. Appuie sur ? n\'importe où pour les raccourcis.',
   },
 ]
 
