@@ -11,6 +11,7 @@ import BlunderHeatmap from './BlunderHeatmap'
 import StudyRecommendations from './StudyRecommendations'
 import TrainingBoard from './TrainingBoard'
 import EmptyState from './EmptyState'
+import Tooltip from './Tooltip'
 
 interface Props {
   analyses: GameAnalysis[]
@@ -448,10 +449,14 @@ function MotifRow({
       <div className="flex-1 h-2 bg-neutral-900 rounded overflow-hidden">
         <div className={`h-full ${barColor}`} style={{ width: `${pct}%` }} />
       </div>
-      <span className="font-mono text-xs text-neutral-300 w-14 text-right">{pct.toFixed(0)}%</span>
-      <span className="font-mono text-[10px] text-neutral-500 w-16">
-        {stat.missed}M / {stat.found}T
-      </span>
+      <Tooltip content="% raté = motifs manqués divisés par motifs rencontrés (manqués + trouvés)">
+        <span className="font-mono text-xs text-neutral-300 w-14 text-right cursor-help underline decoration-dotted decoration-neutral-700">{pct.toFixed(0)}%</span>
+      </Tooltip>
+      <Tooltip content="M = motifs manqués (tu as joué un autre coup) · T = motifs trouvés (tu as joué le bon)">
+        <span className="font-mono text-[10px] text-neutral-500 w-16 cursor-help">
+          {stat.missed}M / {stat.found}T
+        </span>
+      </Tooltip>
       {onDrill && stat.missed > 0 && (
         <button
           onClick={() => onDrill(stat.motif)}

@@ -5,6 +5,7 @@ import Home from './components/Home'
 import Dashboard from './components/Dashboard'
 import SettingsView from './components/SettingsView'
 import { ToastHost, toast } from './components/Toast'
+import KeyboardShortcutsModal, { openShortcutsHelp } from './components/KeyboardShortcutsModal'
 import { getEngineDepth } from './storage/settings'
 import GamesList from './components/GamesList'
 import AnalysisView from './components/AnalysisView'
@@ -314,6 +315,12 @@ export default function App() {
               <NavBtn active={view === 'play'} onClick={() => setView('play')}>Jouer</NavBtn>
               <span className="mx-1 h-5 w-px bg-neutral-700/60" aria-hidden="true" />
               <button
+                onClick={openShortcutsHelp}
+                className="px-2 py-1.5 rounded-md text-neutral-300 hover:bg-neutral-800 transition-colors text-xs font-mono"
+                title="Aide raccourcis clavier (?)"
+                aria-label="Aide raccourcis"
+              >?</button>
+              <button
                 onClick={() => setView('settings')}
                 className={`p-1.5 rounded-md transition-colors ${
                   view === 'settings'
@@ -471,6 +478,7 @@ export default function App() {
         )}
       </main>
       <ToastHost />
+      <KeyboardShortcutsModal />
     </div>
   )
 }

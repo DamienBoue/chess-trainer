@@ -6,6 +6,7 @@ import { buildRepertoire, enumerateDrillCards } from '../analysis/repertoire'
 import { findRecurringMistakes } from '../analysis/recurringMistakes'
 import { aggregate } from '../analysis/aggregate'
 import { loadDaily, todayString } from '../storage/daily'
+import Tooltip from './Tooltip'
 
 interface Props {
   username: string
@@ -72,6 +73,7 @@ export default function Dashboard({ username, analyses, progress, onNavigate }: 
           accent={dailyDone ? '#5fa052' : '#ef9a3a'}
           title={dailyDone ? '✓ Quotidien fait' : 'Quotidien'}
           metric={dailyStreak > 0 ? `🔥 ${dailyStreak} j` : null}
+          metricTooltip="Série de jours consécutifs avec le quotidien résolu. Saute un jour = retour à 0."
           subtitle={dailyDone
             ? 'Reviens demain pour conserver la série.'
             : 'Un puzzle daily déterministe pour entretenir le rituel.'}
@@ -198,11 +200,12 @@ function EmptyDashboard({
 }
 
 function DashCard({
-  accent, title, metric, subtitle, cta, onClick, disabled,
+  accent, title, metric, metricTooltip, subtitle, cta, onClick, disabled,
 }: {
   accent: string
   title: string
   metric: string | null
+  metricTooltip?: string
   subtitle: string
   cta: string
   onClick: () => void
@@ -217,7 +220,15 @@ function DashCard({
     >
       <div className="flex items-baseline justify-between">
         <h3 className="font-semibold text-sm" style={{ color: accent }}>{title}</h3>
-        {metric && <span className="font-mono text-xl text-neutral-100">{metric}</span>}
+        {metric && (
+          metricTooltip ? (
+            <Tooltip content={metricTooltip}>
+              <span className="font-mono text-xl text-neutral-100 cursor-help">{metric}</span>
+            </Tooltip>
+          ) : (
+            <span className="font-mono text-xl text-neutral-100">{metric}</span>
+          )
+        )}
       </div>
       <p className="text-xs text-neutral-400 leading-relaxed flex-1">{subtitle}</p>
       <button
