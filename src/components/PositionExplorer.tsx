@@ -11,6 +11,7 @@ import { Chess } from 'chess.js'
 import TrainingBoard from './TrainingBoard'
 import PositionNote from './PositionNote'
 import { playForMove } from '../audio/sounds'
+import { useFocusOnOpen } from './useFocusOnOpen'
 import { tryUserMove } from '../utils/move'
 
 export interface PositionExplorerProps {
@@ -30,6 +31,7 @@ export default function PositionExplorer({
   fen, onClose, playedSan, bestSan, title,
 }: PositionExplorerProps) {
   const initial = useMemo(() => fen, [fen])
+  const dialogRef = useFocusOnOpen<HTMLDivElement>(true)
   // The initial side-to-move drives the board orientation for the entire
   // session. Reading it from `position` directly would flip the board after
   // every ply — confusing, since the user wants to keep their POV.
@@ -99,6 +101,8 @@ export default function PositionExplorer({
       onClick={onClose}
     >
       <div
+        ref={dialogRef}
+        aria-label={title ?? 'Explorer la position'}
         className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-lg shadow-2xl w-full max-w-3xl"
         onClick={e => e.stopPropagation()}
       >

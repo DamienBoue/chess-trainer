@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 import { findConcept } from '../concepts/lookup'
 import type { Concept } from '../concepts/types'
 import ConceptCard from './ConceptCard'
+import { useFocusOnOpen } from './useFocusOnOpen'
 
 const EVENT = 'concept:open'
 
@@ -15,6 +16,7 @@ export function openConcept(idOrAlias: string): void {
 
 export default function ConceptModal() {
   const [concept, setConcept] = useState<Concept | null>(null)
+  const dialogRef = useFocusOnOpen<HTMLDivElement>(concept !== null)
 
   useEffect(() => {
     function onOpen(e: Event) {
@@ -41,6 +43,10 @@ export default function ConceptModal() {
       onClick={() => setConcept(null)}
     >
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Concept : ${concept.title}`}
         className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-lg shadow-2xl w-full max-w-2xl p-5 my-6"
         onClick={e => e.stopPropagation()}
       >

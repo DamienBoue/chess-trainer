@@ -2,6 +2,7 @@
 // `?` opens it from anywhere (ignored when typing in an input).
 
 import { useEffect, useState } from 'react'
+import { useFocusOnOpen } from './useFocusOnOpen'
 
 interface Shortcut {
   keys: string[]
@@ -47,6 +48,7 @@ export function openShortcutsHelp() {
 
 export default function KeyboardShortcutsModal() {
   const [open, setOpen] = useState(false)
+  const dialogRef = useFocusOnOpen<HTMLDivElement>(open)
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -78,6 +80,8 @@ export default function KeyboardShortcutsModal() {
       onClick={() => setOpen(false)}
     >
       <div
+        ref={dialogRef}
+        aria-label="Raccourcis clavier"
         className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-lg shadow-2xl max-w-lg w-full max-h-[80vh] overflow-auto"
         onClick={e => e.stopPropagation()}
       >
