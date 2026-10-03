@@ -14,7 +14,22 @@ const SYSTEM_COACH = [
   'Pas de remplissage. Une réponse tient en 3-6 phrases courtes.',
   'Quand tu cites un coup, utilise la notation algébrique (e.g. Nf3, Bxh6).',
   'Si la position est tactique, nomme le motif (fourchette, clouage, déviation, mat).',
+  'Si l\'enjeu est stratégique, nomme le principe (structure de pions, case faible, rupture, mauvais fou, deux faiblesses…).',
+  'Une "lecture stratégique heuristique" peut t\'être fournie : sers-t\'en comme point de départ, mais corrige-la si elle te paraît fausse.',
 ].join(' ')
+
+/** Strategic reading of a position as prompt context; never throws.
+ *  The strategy engine is loaded on demand to keep it out of the main bundle. */
+async function strategicContext(fen: string, focus: 'w' | 'b'): Promise<string> {
+  try {
+    const [{ analyzePosition }, { describePosition }] = await Promise.all([
+      import('../strategy/report'), import('../strategy/describe'),
+    ])
+    return `Lecture stratégique heuristique :\n${describePosition(analyzePosition(fen), focus)}`
+  } catch {
+    return ''
+  }
+}
 
 export function llmAvailable(): boolean {
   return isLlmEnabled(loadLlmConfig())
@@ -36,6 +51,7 @@ export async function explainBlunder(
     `J'ai joué : ${move.san} (classification "${move.classification}", cpLoss ${move.cpLoss}).`,
     move.bestMoveSan ? `L'engine voulait : ${move.bestMoveSan}.` : '',
     move.bestLineSan ? `Ligne principale du moteur : ${move.bestLineSan}.` : '',
+    await strategicContext(move.fenBefore, move.ply % 2 === 1 ? 'w' : 'b'),
     '',
     'Explique en 3-5 phrases :',
     '1. Pourquoi mon coup est mauvais (concrètement, sur quelle pièce/case).',
@@ -68,17 +84,27 @@ export async function reviewGame(
   const userBlunders = analysis.moves.filter(m => (m.ply % 2 === 1) === userIsWhite && m.classification === 'blunder').length
   const userMistakes = analysis.moves.filter(m => (m.ply % 2 === 1) === userIsWhite && m.classification === 'mistake').length
 
+  let strategic = ''
+  try {
+    const [{ reviewGameStrategy }, { describeGameReview }] = await Promise.all([
+      import('../strategy/game'), import('../strategy/describe'),
+    ])
+    strategic = describeGameReview(reviewGameStrategy(analysis), userIsWhite ? 'w' : 'b')
+  } catch { /* strategic context is optional */ }
+
   const prompt = [
     `Partie analysée : tu joues les ${userIsWhite ? 'Blancs' : 'Noirs'} contre ${analysis.opponent}${analysis.opponentRating ? ` (${analysis.opponentRating})` : ''}.`,
     opening,
     `Résultat : ${analysis.result}. ${totalMoves} demi-coups joués. ${userBlunders} gaffes + ${userMistakes} erreurs côté joueur.`,
     '',
     blunders.length > 0 ? `Erreurs principales (depuis Stockfish) :\n${blunderLines}` : 'Aucune grosse erreur — partie propre.',
+    strategic ? `\nBilan stratégique heuristique :\n${strategic}` : '',
     '',
     `Rédige une revue de partie en 4-6 phrases courtes :`,
     `1. La phase où le joueur a le plus souffert (et pourquoi).`,
     `2. Le moment charnière (un seul, choisi parmi les erreurs ci-dessus).`,
-    `3. UNE recommandation concrète d'entraînement pour la prochaine fois.`,
+    `3. Un enseignement stratégique (structure, cases, plan) si le bilan en montre un.`,
+    `4. UNE recommandation concrète d'entraînement pour la prochaine fois.`,
     `Pas de flatterie ni de remplissage.`,
   ].filter(Boolean).join('\n')
 
@@ -107,3 +133,29 @@ export async function summariseDailyPlan(
   return complete(cfg, SYSTEM_COACH, prompt, { maxTokens: 300, signal: opts.signal })
 }
 
+
+/** Strategic explanation of a position: imbalances, the plan for the
+ *  player, the opponent's intentions, and whether the engine's move fits. */
+export async function explainPosition(
+  fen: string,
+  userColor: 'white' | 'black',
+  engineBestSan?: string,
+  opts: { signal?: AbortSignal } = {},
+): Promise<string> {
+  const cfg = loadLlmConfig()
+  const side = userColor === 'white' ? 'w' : 'b'
+  const toMove = fen.split(' ')[1] === 'b' ? 'Noirs' : 'Blancs'
+  const prompt = [
+    `Position FEN : ${fen}`,
+    `Trait aux ${toMove}. Je joue les ${userColor === 'white' ? 'Blancs' : 'Noirs'}.`,
+    engineBestSan ? `Meilleur coup du moteur ici : ${engineBestSan}.` : '',
+    await strategicContext(fen, side),
+    '',
+    'Explique-moi la position en 5-7 phrases, comme à un joueur de club qui veut progresser en stratégie :',
+    '1. Les 2-3 déséquilibres qui comptent (structure, cases fortes/faibles, pièces, roi, espace).',
+    '2. Le plan qui en découle pour moi, et pourquoi.',
+    '3. Ce que veut l\'adversaire, et comment le prévenir.',
+    engineBestSan ? '4. Si le coup du moteur confirme ou contredit ce plan, et pourquoi.' : '',
+  ].filter(Boolean).join('\n')
+  return complete(cfg, SYSTEM_COACH, prompt, { maxTokens: 700, signal: opts.signal })
+}

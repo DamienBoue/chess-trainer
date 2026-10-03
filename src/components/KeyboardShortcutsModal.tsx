@@ -22,6 +22,11 @@ const SECTIONS: Array<{ title: string; shortcuts: Shortcut[] }> = [
     title: 'Analyse / Lecture de partie',
     shortcuts: [
       { keys: ['←', '→'], label: 'Coup précédent / suivant' },
+      { keys: ['↑', '↓'], label: 'Début / fin de la partie' },
+      { keys: ['N'], label: 'Moment clé suivant (Maj+N : précédent)' },
+      { keys: ['A'], label: 'Flèche du meilleur coup du moteur' },
+      { keys: ['B', 'C', 'S', 'O'], label: 'Onglets Bilan / Coup / Stratégie / Ouverture' },
+      { keys: ['Esc'], label: 'Quitter l\'aperçu de la ligne du moteur' },
       { keys: ['F'], label: 'Retourner l\'échiquier' },
     ],
   },

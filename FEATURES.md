@@ -17,7 +17,15 @@ Living inventory of what the app does today. Updated at the end of every improve
 - **Lichess Tablebase** — perfect play for endgames with ≤ 7 pieces.
 - **Stockfish 17 lite WASM** — runs in a Web Worker, no server.
 
+## Navigation
+
+Five entries, each answering one question (benchmark: Lichess 6, chess.com 7, En Croissant 5):
+**Aujourd'hui** (what do I do now?) · **Parties** (analyse a game) · **S'entraîner** ▾ (drills from your errors, strategy, play & theory) · **Progresser** ▾ (stats, strategic profile, level, compare) · **Ouvertures** ▾ (repertoire, opening lab, mirror drill, opponent prep).
+One model (`components/navModel.ts`) feeds the desktop header, the mobile sheet and the command palette, so labels are identical everywhere. Entries that need data say why and show progress ("Analyse au moins 3 parties (1/3)"). Header utilities: visible **Rechercher ⌘K** button, settings, and an account menu (shortcuts, source code, change account) — clicking the username no longer logs you out.
+
 ## Today's plan view (entry point)
+
+Three one-click tiles on top: **Dernière partie** (review it), **À réviser** (due exercises), **Point faible n°1** (weakest phase → strategic profile).
 
 A 10-15 min curated session synthesising every training signal:
 1. Daily puzzle (if not solved today)
@@ -27,6 +35,7 @@ A 10-15 min curated session synthesising every training signal:
 5. **Phase focus** — when one phase (opening/middle/endgame) is ≥ 1.5× worse than another, surface it as a deep-link to Stats.
 6. The single most costly recurring mistake
 7. The most-visited repertoire hole
+8. **Lecture de position** — a strategy-trainer session built from your games (boosted from club level up).
 
 **Adaptive ordering**: items are reranked based on your skill bracket — beginners get tactics-heavy priority, experts get opening prep priority. Completion state persists per-day. Deep-links to the relevant view.
 
@@ -34,12 +43,32 @@ Plan also has a second tab **Mon niveau** with the Elo declaration + roadmap mod
 
 ## Game analysis
 
+- **Layout** — sticky board with eval bar, controls and eval graph underneath; on the right an always-visible **verdict strip** (move, classification, engine alternative, "Moment clé suivant"), the compact move list (`1. e4 c5 2. Nf3…` with `?!` `?` `??` glyphs, auto-scroll), then 4 tabs: **Bilan** · **Coup** · **Stratégie** · **Ouverture** (inactive tabs are not mounted: no Lichess request or strategic overlay off-screen).
+- **Keyboard** — ← → move, ↑ ↓ start/end, **N** / **Maj+N** next/previous key moment (your errors + strategic moments), **A** engine arrow, **B C S O** tabs, **F** flip, **Échap** leave the engine line. Shortcuts are ignored while typing a note.
+- **Engine arrow** — green arrow of Stockfish's best move in the displayed position (toggle `A` / "➚ moteur", remembered).
 - **Batch analysis** — analyse all unanalyzed games sequentially with progress + cancel.
 - **Per-move review** — Stockfish eval (cp, mate), best move, principal variation, classification.
-- **Move classification** — `best` / `great` / `good` / `inaccuracy` / `mistake` / `blunder` / `book` based on cpLoss.
+- **Move classification** — `best` / `great` / `good` / `inaccuracy` / `mistake` / `blunder` / `book` based on cpLoss. Negative classes use colour-blind-safer hues (Okabe-Ito blue / orange / vermilion) plus glyphs.
 - **Eval graph** — interactive scrubbable graph across the game.
 - **Threat detector** — highlights immediate threats on the board.
 - **Adjustable depth** — 8–22 ply via Settings.
+
+## Strategy (positional analysis)
+
+A deterministic positional engine (`src/strategy/`, no LLM, ~0.15 ms per position) that reads any position like a coach would. Definitions follow Stockfish's classical evaluation (isolated / backward / passed pawns, outposts, space, bad bishop, king shelter) and the plans follow Flores Rios (*Chess Structures*), Nimzowitsch and Silman.
+
+- **Pawn structure** — isolated, doubled, backward, passed (protected, outside, candidate), islands, majorities, chains (base/head, direction), levers.
+- **Squares** — holes, weak squares (with why: near the king, blockade square, enemy pawn support, no minor piece left to contest), **outposts** with the shortest knight route to reach them, weak colour complexes.
+- **Centre** — closed / fixed / tension / mobile / open / semi-open / forming, with what each implies.
+- **Pawn breaks — "when to break the centre"** — every lever with its role (attacks the base/head of the chain, contests a mobile centre…), a **timing verdict** (le moment / à préparer) with explicit pros and cons (development, king safety, support count, bishop pair) and the **structural consequence** of the pawn trade ("après l'échange, ton pion d4 deviendrait isolé"). A preparatory move is suggested when the break isn't ready (Italian: c3 before d4). Breaks that weaken your own king, drop the support of an attacked pawn, give up a key square of your structure or trade the opponent's weak pawn are filtered out.
+- **23 named structures**, recognised in both colour orientations (the Caro-Kann Exchange is a reversed Carlsbad): IQP, hanging pawns, Panov c5-d4, Carlsbad, Slav, Caro-Kann, London/Colle triangle, Nimzo doubled c-pawns, big mobile centre, Maróczy, Hedgehog, Scheveningen, Boleslavsky hole, Najdorf d5 chain, Dragon, French (advance, type I, type II), KID closed centre, Benoni (modern, symmetric), Stonewall, 3-3 vs 4-2 majorities — each with the textbook plans of **both** sides, thematic breaks and key squares.
+- **Pieces & king** — good/bad bishop (central fixed pawns, "bad but active" outside its chain), bishop pair, opposite-coloured bishops, rim knights, rooks on open/half-open files and the 7th, Tarrasch rule, worst piece, king safety (shelter, open files, storms, attackers; central kings judged on castling rights), development, space (Stockfish formula), material imbalance, rule of the square.
+- **28 kinds of plans** for each side (develop/castle, open the centre against an uncastled king, central break, play where your chain points, minority attack, majority → passed pawn, push/blockade passers, outposts, attack weak pawns, open files, 7th rank, bad bishop, bishop pair, king attack, pawn storms on opposite castling, space, free yourself, simplify/complicate, king activity, two weaknesses, prophylaxis…), each with *why*, *how*, arrows and squares.
+- **In the analysis view (tab Stratégie)** — assets/weaknesses for you or your opponent, plans with board overlays (teal = asset, amber = weakness, blue = your plan, violet = opponent's plan), and a cross-check with Stockfish: "Le moteur joue ici Nd5 — dans l'esprit du plan « Installe un cavalier en d5 »", "Coup joué : a4 — ne suit aucun des plans détectés".
+- **Bilan stratégique de la partie** (tab Bilan) — dominant structure, structure & centre timelines (clickable), strategic moments of both sides (isolated/doubled/backward pawns created, holes, king shelter weakened, bishop pair given up, passers conceded or obtained, outposts occupied, **plans missed** when the engine's move started a recognised plan and yours cost ≥ 60 cp), and 3 lessons. Mid-exchange states are ignored (judged after the recapture); winning material is left to the tactics exercises.
+- **Coup tab** — the strategic impact of the selected move.
+- **Vue Stratégie** — **Mon profil** (structures you play with score and cp/move, cp lost by type of centre vs your average, structural concessions vs your opponents, missed plans by kind with links to the exact position), **S'entraîner** (drills from your games: *Quel plan ?* with square-free choices, *Case forte* by clicking the board, *Nomme la structure*; reference positions when you have few games), **Structures** (atlas of the 23 structures with an annotated reference position and your record in each). Reviews are computed in background batches and cached per game.
+- **LLM coach** — the heuristic reading is sent as context ("Lecture stratégique heuristique") for *Expliquer ce coup*, *Revue complète* and the new **✨ Explique-moi le plan**; the model is told to correct it if wrong. The strategy engine is lazy-loaded by the coach so it stays out of the main bundle.
 
 ## SRS & drilling
 
@@ -98,7 +127,7 @@ Grouped into 3 tabs (Aperçu / Faiblesses / Ouvertures) so the user lands on a f
 ## UX & polish
 
 - **Mobile-friendly** — hamburger nav under 640px, responsive boards.
-- **Command palette** (`Cmd/Ctrl+K`) — fuzzy-jump to any view, game, or book.
+- **Command palette** (`Cmd/Ctrl+K` or the header "Rechercher" button) — fuzzy-jump to any view (grouped like the navigation), game, or book.
 - **Keyboard shortcuts** — `?` opens the help modal.
 - **Breadcrumbs** — for nested views (analysis, book chapter).
 - **Toast notifications** — for batch results, save/import outcomes.
@@ -142,7 +171,7 @@ Grouped into 3 tabs (Aperçu / Faiblesses / Ouvertures) so the user lands on a f
 
 ## Concepts library
 
-- **40 fiches** de concepts d'échecs (6 catégories : Tactique, Finale, Structure, Ouverture, Stratégie, Mental).
+- **86 fiches** de concepts d'échecs (6 catégories : Tactique, Finale, Structure, Ouverture, Stratégie, Mental), dont 25 dédiées à la stratégie positionnelle (pion isolé/passé, îlots, majorités, case faible, chaîne de pions, rupture, blocus, tempête, colonne ouverte, 7e rangée, paire de fous, cavalier contre fou, espace, sécurité du roi, types de centre, quand échanger, Hérisson, Maróczy, trou d5, Benoni, centre mobile…) avec positions vérifiées au moteur.
 - Chaque fiche : définition courte + détaillée, liens externes curés (Wikipedia FR, Lichess practice), positions à explorer (FEN), renvois croisés.
 - **ConceptModal** : event-bus pattern (`openConcept(id)`) ouvrable depuis n'importe quelle vue.
 - Surfacés via "📖" sur le motif radar, sur les modules roadmap (12 wired), sur les items du plan, plus une vue **Concepts** dédiée (recherche + filtre).

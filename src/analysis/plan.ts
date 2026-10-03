@@ -25,6 +25,7 @@ export type PlanItemKind =
   | 'phase-focus'
   | 'recurring'
   | 'hole'
+  | 'strategy'
 
 export interface PlanItem {
   id: string
@@ -35,7 +36,7 @@ export interface PlanItem {
   /** Higher = more important. Used to order items adaptively per bracket. */
   priority: number
   /** Used by the UI to deep-link to the relevant view. */
-  target: 'daily' | 'exercises' | 'repertoire' | 'stats'
+  target: 'daily' | 'exercises' | 'repertoire' | 'stats' | 'strategy'
   /** When set, the exercises view should pre-select this motif. */
   motif?: MotifTag
   /** Optional context — top recurring mistake / hole shown inline. */
@@ -201,20 +202,35 @@ export function buildPlan(
     }
   }
 
+  // Positional reading: strategy drills built from the player's own games.
+  if (analyses.length >= 3) {
+    items.push({
+      id: 'strategy',
+      kind: 'strategy',
+      title: 'Lecture de position',
+      subtitle: 'Quel plan ? Quelle case forte ? Quelle structure ? Des positions tirées de tes parties.',
+      estMinutes: 5,
+      priority: bracketBoost(bracket, 'strategy', 55),
+      target: 'strategy',
+      conceptId: 'pawn-structure',
+    })
+  }
+
   return items.sort((a, b) => b.priority - a.priority)
 }
 
 // Adjust a base priority based on what the bracket cares about most.
 // Beginners need tactics > everything; experts want opening prep more.
-function bracketBoost(bracket: SkillBracket | undefined, area: 'tactics' | 'opening', base: number): number {
+function bracketBoost(bracket: SkillBracket | undefined, area: 'tactics' | 'opening' | 'strategy', base: number): number {
   if (!bracket) return base
-  const boosts: Record<SkillBracket['id'], { tactics: number; opening: number }> = {
-    beginner:   { tactics: +30, opening: -20 },
-    casual:     { tactics: +20, opening: -10 },
-    club:       { tactics: +10, opening:   0 },
-    tournament: { tactics:   0, opening: +10 },
-    expert:     { tactics: -10, opening: +20 },
-    master:     { tactics: -20, opening: +30 },
+  // Strategy pays off once tactics are reasonably safe (club level and up).
+  const boosts: Record<SkillBracket['id'], { tactics: number; opening: number; strategy: number }> = {
+    beginner:   { tactics: +30, opening: -20, strategy: -20 },
+    casual:     { tactics: +20, opening: -10, strategy: -10 },
+    club:       { tactics: +10, opening:   0, strategy: +5 },
+    tournament: { tactics:   0, opening: +10, strategy: +15 },
+    expert:     { tactics: -10, opening: +20, strategy: +20 },
+    master:     { tactics: -20, opening: +30, strategy: +20 },
   }
   return base + boosts[bracket.id][area]
 }

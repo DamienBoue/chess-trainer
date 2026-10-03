@@ -19,6 +19,8 @@ export const KEYS = {
   filterTimeClass: 'chess.filter.tc',
   filterColor:     'chess.filter.color',
   debugStockfish:  'sf.debug',
+  strategyOverlays: 'chess.strategy.overlays.v1',
+  strategyTrainer: 'chess.strategy.trainer.v1',
 
   // UI tour
   onboardingDone:  'chess.onboarding.completed',

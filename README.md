@@ -20,6 +20,8 @@ Just open the link and type your chess.com username — no install, no account, 
   - Average centipawn loss (you vs. opponents)
   - Win rate by color and by opening
   - Auto-derived strengths and weaknesses
+- **Strategic analysis** (deterministic, in-browser): pawn structure, strong/weak squares and outposts, centre type, pawn breaks with "is it the right moment?" and their structural consequences, 23 named structures (Carlsbad, IQP, Maróczy, Hedgehog, French, KID, Benoni, Stonewall…) with the plans of both sides, cross-checked against Stockfish's best move
+- Game-level strategic review (structure timeline, structural concessions, missed plans, lessons), a strategic profile across all your games, a positional trainer built from your own positions, and an atlas of pawn structures
 
 ## Stack
 

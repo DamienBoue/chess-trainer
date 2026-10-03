@@ -15,15 +15,18 @@ import LlmAskBox from './LlmAskBox'
 import ConceptChip from './ConceptChip'
 import { openConcept } from './ConceptModal'
 import RoadmapView from './RoadmapView'
+import TodayTiles from './TodayTiles'
 
 interface Props {
   analyses: GameAnalysis[]
   progress: Record<string, ExerciseProgress>
   username?: string
-  onNavigate: (target: 'daily' | 'exercises' | 'repertoire' | 'stats' | 'games' | 'roadmap' | 'home' | 'blunder' | 'calc' | 'library' | 'play' | 'book', opts?: { motif?: MotifTag }) => void
+  onNavigate: (target: 'daily' | 'exercises' | 'repertoire' | 'stats' | 'games' | 'roadmap' | 'home' | 'blunder' | 'calc' | 'library' | 'play' | 'book' | 'strategy' | 'strategyProfile', opts?: { motif?: MotifTag }) => void
+  /** Opens a game's analysis ("Dernière partie" tile). */
+  onOpenGame?: (url: string) => void
 }
 
-export default function PlanView({ analyses, progress, username, onNavigate }: Props) {
+export default function PlanView({ analyses, progress, username, onNavigate, onOpenGame }: Props) {
   const today = todayString()
   const dailyState = loadDaily()
   const dailyDone = dailyState?.date === today && !!dailyState.solved
@@ -78,6 +81,7 @@ export default function PlanView({ analyses, progress, username, onNavigate }: P
     return (
       <div className="p-6 max-w-3xl mx-auto space-y-5">
         {username && <PlanHeader username={username} analyses={analyses} onOpenRoadmap={() => onNavigate('roadmap')} onLogout={() => onNavigate('home')} />}
+        {onOpenGame && <TodayTiles analyses={analyses} progress={progress} onOpenGame={onOpenGame} onNavigate={t => onNavigate(t)} />}
         <h2 className="text-xl font-semibold">Plan du jour <span className="text-sm font-normal text-neutral-500 ml-2">{today}</span></h2>
         <div className="bg-green-500/10 border border-green-500/30 rounded-md p-5 text-sm text-green-200">
           <p className="font-semibold mb-1">✓ Rien au programme aujourd'hui</p>
@@ -105,6 +109,8 @@ export default function PlanView({ analyses, progress, username, onNavigate }: P
       )}
 
       {tab === 'today' && <>
+      {onOpenGame && <TodayTiles analyses={analyses} progress={progress} onOpenGame={onOpenGame} onNavigate={t => onNavigate(t)} />}
+
       <div className="flex items-baseline justify-between flex-wrap gap-3">
         <div>
           <h2 className="text-xl font-semibold">Plan du jour <span className="text-sm font-normal text-neutral-500 ml-2">{today}</span></h2>
@@ -325,6 +331,7 @@ const KIND_LABELS: Record<PlanItem['kind'], string> = {
   'phase-focus': 'Phase faible',
   'recurring': 'Erreur récurrente',
   'hole': 'Trou répertoire',
+  'strategy': 'Stratégie',
 }
 
 const ACCENTS: Record<PlanItem['kind'], string> = {
@@ -335,6 +342,7 @@ const ACCENTS: Record<PlanItem['kind'], string> = {
   'phase-focus': 'text-teal-300',
   'recurring': 'text-red-300',
   'hole': 'text-amber-300',
+  'strategy': 'text-emerald-300',
 }
 
 void MOTIF_LABELS // re-exported by motifs; keep import for type narrowing

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { explainBlunder, reviewGame, summariseDailyPlan, llmAvailable } from './coach'
+import { explainBlunder, explainPosition, reviewGame, summariseDailyPlan, llmAvailable } from './coach'
 import { saveLlmConfig } from './config'
 import { buildGame } from '../analysis/__fixtures__'
 import { BRACKETS } from '../skill/elo'
@@ -109,5 +109,42 @@ describe('summariseDailyPlan prompt', () => {
     expect(prompt).toContain('Quotidien')
     expect(prompt).toContain('SRS · 5')
     expect(prompt).toContain('Joueur loisir') // bracket.label, not id
+  })
+})
+
+describe('strategic context in prompts', () => {
+  beforeEach(() => {
+    vi.stubGlobal('localStorage', mockLocalStorage())
+    saveLlmConfig({ provider: 'anthropic', apiKey: 'sk-x', model: '' })
+  })
+
+  function capture() {
+    const seen = { prompt: '' }
+    vi.stubGlobal('fetch', vi.fn(async (_url, init: { body: string }) => {
+      seen.prompt = (JSON.parse(init.body) as { messages: Array<{ content: string }> }).messages[0].content
+      return new Response(JSON.stringify({ content: [{ type: 'text', text: 'mock' }] }), { status: 200 })
+    }))
+    return seen
+  }
+
+  it('explainPosition grounds the model with the heuristic reading', async () => {
+    const seen = capture()
+    // Najdorf with ...e5: the d5 hole.
+    await explainPosition('rnbq1rk1/1p2bppp/p2p1n2/4p3/4P3/1NN5/PPP1BPPP/R1BQ1RK1 w - - 4 9', 'white', 'Nd5')
+    expect(seen.prompt).toContain('Lecture stratégique heuristique')
+    expect(seen.prompt).toContain('Trou d5')
+    expect(seen.prompt).toContain('Meilleur coup du moteur ici : Nd5')
+  })
+
+  it('explainBlunder adds the strategic reading of the position before the move', async () => {
+    const seen = capture()
+    const g = buildGame({
+      moves: [{
+        ply: 17, san: 'a4', cpLoss: 120, classification: 'mistake', bestMoveSan: 'Nd5',
+        fenBefore: 'rnbq1rk1/1p2bppp/p2p1n2/4p3/4P3/1NN5/PPP1BPPP/R1BQ1RK1 w - - 4 9',
+      }],
+    })
+    await explainBlunder(g, g.moves[0])
+    expect(seen.prompt).toContain('Lecture stratégique heuristique')
   })
 })

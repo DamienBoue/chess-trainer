@@ -59,19 +59,20 @@ describe('CommandPalette', () => {
   it('lists every nav view on first open', () => {
     setup()
     openPalette()
-    expect(screen.getByText(/Plan du jour/)).toBeTruthy()
-    expect(screen.getByText('Stats')).toBeTruthy()
-    expect(screen.getByText(/Jouer vs Stockfish/)).toBeTruthy()
+    expect(screen.getByText(/plan du jour/i)).toBeTruthy()
+    expect(screen.getByText('Statistiques')).toBeTruthy()
+    expect(screen.getByText(/Jouer contre Stockfish/)).toBeTruthy()
+    expect(screen.getByText('Entraîneur stratégique')).toBeTruthy()
   })
 
   it('filters items by fuzzy subsequence', () => {
     setup()
     openPalette()
     const input = screen.getByPlaceholderText(/Rechercher/) as HTMLInputElement
-    fireEvent.change(input, { target: { value: 'stat' } })
-    expect(screen.getByText('Stats')).toBeTruthy()
-    // "Plan du jour" should not contain "stat" as a subsequence.
-    expect(screen.queryByText('Plan du jour')).toBeNull()
+    fireEvent.change(input, { target: { value: 'statis' } })
+    expect(screen.getByText('Statistiques')).toBeTruthy()
+    // "Aujourd'hui — plan du jour" does not contain "statis" as a subsequence.
+    expect(screen.queryByText(/plan du jour/i)).toBeNull()
   })
 
   it('shows "Aucun résultat" when nothing matches', () => {
@@ -132,7 +133,7 @@ describe('CommandPalette', () => {
   it('clicking an item navigates to it', () => {
     const { onNavigate } = setup()
     openPalette()
-    fireEvent.click(screen.getByText('Stats'))
+    fireEvent.click(screen.getByText('Statistiques'))
     expect(onNavigate).toHaveBeenCalledWith(
       expect.objectContaining({ kind: 'view', view: 'stats' }),
     )

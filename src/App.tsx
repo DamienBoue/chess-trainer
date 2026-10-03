@@ -7,6 +7,7 @@ import KeyboardShortcutsModal, { openShortcutsHelp } from './components/Keyboard
 import Onboarding from './components/Onboarding'
 import ConceptModal from './components/ConceptModal'
 import CommandPalette, { type CommandTarget } from './components/CommandPalette'
+import { openCommandPalette } from './components/commandPaletteEvents'
 import Breadcrumbs from './components/Breadcrumbs'
 import { getEngineDepth } from './storage/settings'
 import GamesList from './components/GamesList'
@@ -14,6 +15,9 @@ import SharedExerciseView from './components/SharedExerciseView'
 import DailyView from './components/DailyView'
 import PlanView from './components/PlanView'
 import RoadmapView from './components/RoadmapView'
+
+import { FILTERED_VIEWS, NAV, type NavCounts, type NavTarget, groupItems, isGroupActive, isItemActive } from './components/navModel'
+import type { StrategyTab } from './components/StrategyView'
 
 // Heavy or rarely-visited views are code-split: they only download when
 // the user navigates to them. Cuts initial bundle from ~588 KB to ~310 KB.
@@ -34,6 +38,7 @@ const SettingsView = lazy(() => import('./components/SettingsView'))
 const ConceptsView = lazy(() => import('./components/ConceptsView'))
 const OpeningLabView = lazy(() => import('./components/OpeningLabView'))
 const ReverseDrillView = lazy(() => import('./components/ReverseDrillView'))
+const StrategyView = lazy(() => import('./components/StrategyView'))
 import {
   GlobalFilters,
   applyGlobalFilters,
@@ -59,7 +64,7 @@ export interface BatchState {
   failed: number
 }
 
-type View = 'home' | 'games' | 'analysis' | 'stats' | 'exercises' | 'rush' | 'daily' | 'roadmap' | 'compare' | 'repertoire' | 'library' | 'book' | 'scouting' | 'play' | 'blunder' | 'calc' | 'players' | 'settings' | 'concepts' | 'openingLab' | 'reverseDrill'
+type View = 'home' | 'games' | 'analysis' | 'stats' | 'exercises' | 'rush' | 'daily' | 'roadmap' | 'compare' | 'repertoire' | 'library' | 'book' | 'scouting' | 'play' | 'blunder' | 'calc' | 'players' | 'settings' | 'concepts' | 'openingLab' | 'reverseDrill' | 'strategy'
 
 export default function App() {
   const [view, setView] = useState<View>('home')
@@ -80,6 +85,9 @@ export default function App() {
   const hydratedRef = useRef(false)
   const [progress, setProgress] = useState<Record<string, ExerciseProgress>>(() => loadProgress())
   const [activeGameUrl, setActiveGameUrl] = useState<string | null>(null)
+  // Ply to open the analysis at (deep links from the strategy profile/trainer).
+  const [analysisStartPly, setAnalysisStartPly] = useState<number | null>(null)
+  const [strategyTab, setStrategyTab] = useState<StrategyTab>('profile')
   const [batch, setBatch] = useState<BatchState | null>(null)
   const batchAbortRef = useRef<AbortController | null>(null)
   const [sharedExercise, setSharedExercise] = useState(() => readSharedFromHash())
@@ -110,7 +118,13 @@ export default function App() {
     let cancelled = false
     Promise.all([loadGames(username), loadAnalyses(username)]).then(([g, a]) => {
       if (cancelled) return
-      setGames(g)
+      // Games fetched at login are fresher than the cache: keep them and
+      // only add cached games they don't include (first login: cache empty).
+      setGames(prev => {
+        if (prev.length === 0) return g
+        const seen = new Set(prev.map(x => x.url))
+        return [...prev, ...g.filter(x => !seen.has(x.url))]
+      })
       setAnalyses(a)
       hydratedRef.current = true
     })
@@ -189,8 +203,23 @@ export default function App() {
     }
   }
 
+  const navCounts: NavCounts = { analyses: filteredAnalyses.length, exercises: exerciseCount, due: dueCount }
+
+  function navigate(target: NavTarget) {
+    if (target.strategyTab) setStrategyTab(target.strategyTab)
+    if (target.view === 'library') setActiveBookId(null)
+    setView(target.view as View)
+  }
+
   function handleAnalyzeStart(game: ChessComGame) {
     setActiveGameUrl(game.url)
+    setAnalysisStartPly(null)
+    setView('analysis')
+  }
+
+  function openGameAt(url: string, ply?: number) {
+    setActiveGameUrl(url)
+    setAnalysisStartPly(ply ?? null)
     setView('analysis')
   }
 
@@ -279,110 +308,43 @@ export default function App() {
         <nav className={`${username ? 'hidden sm:flex' : 'flex'} ml-auto items-center gap-1 text-sm flex-wrap`}>
           {username && (
             <>
-              <NavBtn active={view === 'home'} onClick={() => setView('home')}>Plan</NavBtn>
-              <NavBtn active={view === 'games'} onClick={() => setView('games')}>Parties</NavBtn>
-              <NavBtn active={view === 'stats'} onClick={() => setView('stats')} disabled={filteredAnalyses.length === 0}>
-                Stats {filteredAnalyses.length > 0 && `(${filteredAnalyses.length})`}
-              </NavBtn>
-              <NavBtn active={view === 'repertoire'} onClick={() => setView('repertoire')} disabled={filteredAnalyses.length < 3}>
-                Répertoire
-              </NavBtn>
-              <NavGroup
-                label="Étudier"
-                active={view === 'exercises' || view === 'rush' || view === 'blunder' || view === 'calc' || view === 'library' || view === 'book'}
-                items={[
-                  {
-                    key: 'exercises',
-                    label: `Exercices${dueCount > 0 ? ` (${dueCount} dus${exerciseCount !== dueCount ? `/${exerciseCount}` : ''})` : exerciseCount > 0 ? ` (${exerciseCount})` : ''}`,
-                    description: 'Tes propres blunders en SRS — révise à ton rythme.',
-                    onClick: () => setView('exercises'),
-                    disabled: exerciseCount === 0,
-                    active: view === 'exercises',
-                  },
-                  {
-                    key: 'rush',
-                    label: 'Puzzle Rush',
-                    description: 'Burndown chronométré sur tes exercices.',
-                    onClick: () => setView('rush'),
-                    disabled: exerciseCount < 5,
-                    active: view === 'rush',
-                  },
-                  {
-                    key: 'blunder',
-                    label: 'Réflexe anti-gaffe',
-                    description: 'Flashcards rapides : repère la menace en 5 sec.',
-                    onClick: () => setView('blunder'),
-                    disabled: exerciseCount < 3,
-                    active: view === 'blunder',
-                  },
-                  {
-                    key: 'calc',
-                    label: 'Calcul de séquence',
-                    description: 'Mate-in-N et tactiques forcées sans bouger les pièces.',
-                    onClick: () => setView('calc'),
-                    disabled: exerciseCount < 3,
-                    active: view === 'calc',
-                  },
-                  {
-                    key: 'reverseDrill',
-                    label: 'Reverse-color drill',
-                    description: 'Rejoue tes ouvertures côté opposé (miroir).',
-                    onClick: () => setView('reverseDrill'),
-                    disabled: filteredAnalyses.length < 3,
-                    active: view === 'reverseDrill',
-                  },
-                  { key: '-', divider: true } as NavMenuItem,
-                  {
-                    key: 'library',
-                    label: 'Bibliothèque (livres)',
-                    description: 'Livres importés + leurs positions clés en SRS.',
-                    onClick: () => { setActiveBookId(null); setView('library') },
-                    active: view === 'library' || view === 'book',
-                  },
-                  {
-                    key: 'concepts',
-                    label: 'Concepts (théorie)',
-                    description: 'Fiches courtes sur fork, IQP, Lucena… avec liens externes.',
-                    onClick: () => setView('concepts'),
-                    active: view === 'concepts',
-                  },
-                ]}
-              />
-              <NavGroup
-                label="Adversaires"
-                active={view === 'compare' || view === 'scouting' || view === 'players'}
-                items={[
-                  {
-                    key: 'compare',
-                    label: 'Comparer un ami',
-                    description: 'Forces / faiblesses croisées avec un autre joueur chess.com.',
-                    onClick: () => setView('compare'),
-                    active: view === 'compare',
-                  },
-                  {
-                    key: 'scouting',
-                    label: 'Scouter un adversaire',
-                    description: 'Rapport sur un joueur chess.com avant ta prochaine partie.',
-                    onClick: () => setView('scouting'),
-                    active: view === 'scouting',
-                  },
-                  {
-                    key: 'players',
-                    label: 'Joueurs PGN (FIDE / OTB)',
-                    description: 'Importe des PGN pour étudier des joueurs hors chess.com.',
-                    onClick: () => setView('players'),
-                    active: view === 'players',
-                  },
-                ]}
-              />
-              <NavBtn active={view === 'play'} onClick={() => setView('play')}>Jouer</NavBtn>
+              {NAV.map(entry => entry.kind === 'item' ? (
+                <NavBtn
+                  key={entry.item.key}
+                  active={isItemActive(entry.item, view, strategyTab)}
+                  onClick={() => navigate(entry.item.target)}
+                >{entry.item.label(navCounts)}</NavBtn>
+              ) : (
+                <NavGroup
+                  key={entry.group.key}
+                  label={entry.group.label}
+                  active={isGroupActive(entry.group, view, strategyTab)}
+                  items={entry.group.sections.flatMap((section, si) => [
+                    ...(section.label ? [{ key: `h-${si}`, heading: section.label }] : si > 0 ? [{ key: `d-${si}`, divider: true }] : []),
+                    ...section.items.map(it => {
+                      const reason = it.unavailable?.(navCounts) ?? null
+                      return {
+                        key: it.key,
+                        label: it.label(navCounts),
+                        description: reason ?? it.description,
+                        onClick: () => navigate(it.target),
+                        disabled: reason !== null,
+                        active: isItemActive(it, view, strategyTab),
+                      }
+                    }),
+                  ])}
+                />
+              ))}
               <span className="mx-1 h-5 w-px bg-neutral-700/60" aria-hidden="true" />
               <button
-                onClick={openShortcutsHelp}
-                className="px-2 py-1.5 rounded-md text-neutral-300 hover:bg-neutral-800 transition-colors text-xs font-mono"
-                title="Aide raccourcis clavier (?)"
-                aria-label="Aide raccourcis"
-              >?</button>
+                onClick={openCommandPalette}
+                className="flex items-center gap-2 px-2.5 py-1.5 rounded-md border border-[var(--color-border)] text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 text-xs"
+                title="Rechercher une vue, une partie, un livre (Ctrl/⌘ K)"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                Rechercher
+                <kbd className="font-mono text-[11px] px-1 rounded bg-neutral-800 text-neutral-400">⌘K</kbd>
+              </button>
               <button
                 onClick={() => setView('settings')}
                 className={`p-1.5 rounded-md transition-colors ${
@@ -398,29 +360,36 @@ export default function App() {
                   <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
                 </svg>
               </button>
-              <button
-                onClick={handleLogout}
-                className="px-3 py-1.5 rounded-md text-neutral-300 hover:bg-neutral-800 text-xs"
-                title="Se déconnecter"
-              >@{username}</button>
+              <NavGroup
+                label={`@${username}`}
+                active={false}
+                items={[
+                  { key: 'shortcuts', label: 'Raccourcis clavier', description: 'Touche ? n\'importe où.', onClick: openShortcutsHelp },
+                  { key: 'github', label: 'Code source', description: 'Le dépôt GitHub du projet.', onClick: () => window.open('https://github.com/DamienBoue/chess-trainer', '_blank', 'noopener,noreferrer') },
+                  { key: 'd-logout', divider: true },
+                  { key: 'logout', label: 'Changer de compte', description: 'Se déconnecter (tes données restent sur cet appareil).', onClick: handleLogout },
+                ]}
+              />
             </>
           )}
-          <a
-            href="https://github.com/DamienBoue/chess-trainer"
-            target="_blank"
-            rel="noopener noreferrer"
-            title="Voir le code source sur GitHub"
-            className="px-3 py-1.5 rounded-md text-neutral-300 hover:bg-neutral-800 transition-colors flex items-center gap-1.5"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.56 0-.28-.01-1.02-.02-2-3.2.69-3.87-1.54-3.87-1.54-.52-1.33-1.28-1.69-1.28-1.69-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.19-3.1-.12-.29-.51-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11.05 11.05 0 0 1 5.79 0c2.21-1.49 3.18-1.18 3.18-1.18.62 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.42-2.69 5.4-5.25 5.68.41.36.78 1.06.78 2.14 0 1.55-.01 2.8-.01 3.18 0 .31.21.68.8.56 4.57-1.52 7.85-5.83 7.85-10.91C23.5 5.65 18.35.5 12 .5z"/>
-            </svg>
-            <span className="hidden sm:inline">GitHub</span>
-          </a>
+          {!username && (
+            <a
+              href="https://github.com/DamienBoue/chess-trainer"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Voir le code source sur GitHub"
+              className="px-3 py-1.5 rounded-md text-neutral-300 hover:bg-neutral-800 transition-colors flex items-center gap-1.5"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.56 0-.28-.01-1.02-.02-2-3.2.69-3.87-1.54-3.87-1.54-.52-1.33-1.28-1.69-1.28-1.69-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.19-3.1-.12-.29-.51-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11.05 11.05 0 0 1 5.79 0c2.21-1.49 3.18-1.18 3.18-1.18.62 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.42-2.69 5.4-5.25 5.68.41.36.78 1.06.78 2.14 0 1.55-.01 2.8-.01 3.18 0 .31.21.68.8.56 4.57-1.52 7.85-5.83 7.85-10.91C23.5 5.65 18.35.5 12 .5z"/>
+              </svg>
+              <span className="hidden sm:inline">GitHub</span>
+            </a>
+          )}
         </nav>
       </header>
 
-      {username && allAnalyses.length > 0 && view !== 'home' && view !== 'analysis' && view !== 'library' && view !== 'book' && (
+      {username && allAnalyses.length > 0 && FILTERED_VIEWS.has(view) && (
         <div className="border-b border-[var(--color-border)] bg-[var(--color-panel)]/60 px-6 py-2 flex items-center gap-3 flex-wrap">
           <GlobalFilters
             tcValue={tcFilter}
@@ -440,7 +409,7 @@ export default function App() {
         </div>
       )}
 
-      <Breadcrumbs crumbs={buildCrumbs(view, setView, activeGameUrl, games, activeBookId, setActiveBookId)} />
+      <Breadcrumbs crumbs={buildCrumbs(view, setView, activeGameUrl, games, activeBookId, setActiveBookId, username)} />
 
       <main className="flex-1 overflow-auto">
         <Suspense fallback={<LazyFallback />}>
@@ -450,9 +419,12 @@ export default function App() {
               username={username}
               analyses={filteredAnalyses}
               progress={progress}
+              onOpenGame={url => openGameAt(url)}
               onNavigate={(target, opts) => {
                 if (opts?.motif) setDrillMotif(opts.motif)
                 if (target === 'home') handleLogout()
+                else if (target === 'strategy') navigate({ view: 'strategy', strategyTab: 'trainer' })
+                else if (target === 'strategyProfile') navigate({ view: 'strategy', strategyTab: 'profile' })
                 else setView(target as View)
               }}
             />
@@ -475,6 +447,9 @@ export default function App() {
         )}
         {view === 'analysis' && activeGameUrl && (
           <AnalysisView
+            // One instance per game (and per deep link) so navigation state resets.
+            key={`${activeGameUrl}:${analysisStartPly ?? ''}`}
+            initialPly={analysisStartPly ?? undefined}
             engine={engineRef.current!}
             username={username}
             game={games.find(g => g.url === activeGameUrl)!}
@@ -483,6 +458,9 @@ export default function App() {
             onAnalysisComplete={handleAnalysisComplete}
             onBack={() => setView('games')}
           />
+        )}
+        {view === 'strategy' && (
+          <StrategyView analyses={filteredAnalyses} onOpenGame={openGameAt} tab={strategyTab} onTabChange={setStrategyTab} />
         )}
         {view === 'stats' && (
           <StatsView
@@ -582,7 +560,7 @@ export default function App() {
           games={games}
           onNavigate={(t: CommandTarget) => {
             if (t.kind === 'view') {
-              setView(t.view as View)
+              navigate({ view: t.view, strategyTab: t.strategyTab as StrategyTab | undefined })
             } else if (t.kind === 'game') {
               setActiveGameUrl(t.gameUrl)
               setView('analysis')
@@ -597,8 +575,9 @@ export default function App() {
         <MobileNavSheet
           username={username}
           view={view}
-          counts={{ exercises: exerciseCount, due: dueCount, analyses: filteredAnalyses.length }}
-          onNavigate={v => { setView(v); setMobileMenuOpen(false) }}
+          strategyTab={strategyTab}
+          counts={navCounts}
+          onNavigate={t => { navigate(t); setMobileMenuOpen(false) }}
           onClose={() => setMobileMenuOpen(false)}
           onOpenSettings={() => { setView('settings'); setMobileMenuOpen(false) }}
           onOpenShortcuts={() => { openShortcutsHelp(); setMobileMenuOpen(false) }}
@@ -612,8 +591,9 @@ export default function App() {
 interface MobileNavSheetProps {
   username: string
   view: View
-  counts: { exercises: number; due: number; analyses: number }
-  onNavigate: (v: View) => void
+  strategyTab: StrategyTab
+  counts: NavCounts
+  onNavigate: (t: NavTarget) => void
   onClose: () => void
   onOpenSettings: () => void
   onOpenShortcuts: () => void
@@ -621,19 +601,8 @@ interface MobileNavSheetProps {
 }
 
 function MobileNavSheet({
-  username, view, counts, onNavigate, onClose, onOpenSettings, onOpenShortcuts, onLogout,
+  username, view, strategyTab, counts, onNavigate, onClose, onOpenSettings, onOpenShortcuts, onLogout,
 }: MobileNavSheetProps) {
-  const item = (v: View, label: string, disabled?: boolean) => (
-    <button
-      key={v}
-      onClick={() => !disabled && onNavigate(v)}
-      disabled={disabled}
-      className={`w-full text-left px-4 py-3 border-b border-[var(--color-border)] ${
-        view === v ? 'bg-[var(--color-accent)]/20 text-white'
-                  : 'text-neutral-200 hover:bg-neutral-800 disabled:opacity-40'
-      }`}
-    >{label}</button>
-  )
   return (
     <div className="fixed inset-0 z-40 bg-black/60 sm:hidden" onClick={onClose}>
       <div
@@ -644,24 +613,34 @@ function MobileNavSheet({
           <span className="font-semibold">@{username}</span>
           <button onClick={onClose} className="text-neutral-400 hover:text-white text-xl">×</button>
         </div>
-        <div className="text-xs text-neutral-500 px-4 pt-3 uppercase tracking-wider">Données</div>
-        {item('home', 'Plan du jour')}
-        {item('games', 'Parties')}
-        {item('stats', `Stats (${counts.analyses})`, counts.analyses === 0)}
-        {item('repertoire', 'Répertoire', counts.analyses < 3)}
-        <div className="text-xs text-neutral-500 px-4 pt-3 uppercase tracking-wider">Entraînement</div>
-        {item('exercises', `Exercices${counts.due > 0 ? ` (${counts.due})` : ''}`, counts.exercises === 0)}
-        {item('rush', 'Puzzle Rush', counts.exercises < 5)}
-        {item('blunder', 'Blunder reflex', counts.exercises < 3)}
-        {item('calc', 'Calcul', counts.exercises < 3)}
-        {item('library', 'Bibliothèque')}
-        {item('concepts', 'Concepts')}
-        <div className="text-xs text-neutral-500 px-4 pt-3 uppercase tracking-wider">Adversaires</div>
-        {item('compare', 'Comparer')}
-        {item('scouting', 'Scouting')}
-        {item('players', 'Joueurs PGN')}
-        <div className="text-xs text-neutral-500 px-4 pt-3 uppercase tracking-wider">Autre</div>
-        {item('play', 'Jouer vs Stockfish')}
+        {NAV.map(entry => {
+          const items = entry.kind === 'item' ? [entry.item] : groupItems(entry.group)
+          return (
+            <div key={entry.kind === 'item' ? entry.item.key : entry.group.key}>
+              {entry.kind === 'group' && (
+                <div className="text-xs text-neutral-500 px-4 pt-3 uppercase tracking-wider">{entry.group.label}</div>
+              )}
+              {items.map(it => {
+                const reason = it.unavailable?.(counts) ?? null
+                return (
+                  <button
+                    key={it.key}
+                    onClick={() => reason === null && onNavigate(it.target)}
+                    disabled={reason !== null}
+                    className={`w-full text-left px-4 py-3 border-b border-[var(--color-border)] ${
+                      isItemActive(it, view, strategyTab) ? 'bg-[var(--color-accent)]/20 text-white'
+                        : 'text-neutral-200 hover:bg-neutral-800 disabled:opacity-40'
+                    }`}
+                  >
+                    <div>{it.label(counts)}</div>
+                    {reason && <div className="text-[11px] text-neutral-500">{reason}</div>}
+                  </button>
+                )
+              })}
+            </div>
+          )
+        })}
+        <div className="text-xs text-neutral-500 px-4 pt-3 uppercase tracking-wider">Compte</div>
         <button
           onClick={onOpenSettings}
           className="w-full text-left px-4 py-3 border-b border-[var(--color-border)] hover:bg-neutral-800 text-neutral-200"
@@ -686,13 +665,15 @@ function buildCrumbs(
   games: ChessComGame[],
   activeBookId: string | null,
   setActiveBookId: (id: string | null) => void,
+  username: string,
 ): Array<{ label: string; onClick?: () => void }> {
   // Only nested views deserve a crumb trail. Most top-level views skip it.
   if (view === 'analysis' && activeGameUrl) {
     const g = games.find(g => g.url === activeGameUrl)
+    const userIsWhite = g?.white.username.toLowerCase() === username.toLowerCase()
     return [
       { label: 'Parties', onClick: () => setView('games') },
-      { label: g ? `vs ${g.white.username === activeGameUrl ? g.black.username : g.white.username}` : 'Analyse' },
+      { label: g ? `vs ${userIsWhite ? g.black.username : g.white.username}` : 'Analyse' },
     ]
   }
   if (view === 'book' && activeBookId) {
@@ -742,6 +723,8 @@ interface NavMenuItem {
   disabled?: boolean
   active?: boolean
   divider?: boolean
+  /** Small section title inside the menu. */
+  heading?: string
 }
 
 function NavGroup({ label, active, items }: { label: string; active: boolean; items: NavMenuItem[] }) {
@@ -786,6 +769,13 @@ function NavGroup({ label, active, items }: { label: string; active: boolean; it
           {items.map(item => {
             if (item.divider) {
               return <div key={item.key} className="my-1 border-t border-[var(--color-border)]" />
+            }
+            if (item.heading) {
+              return (
+                <div key={item.key} className="px-3 pt-2 pb-0.5 text-[11px] uppercase tracking-wider text-neutral-500 border-t border-[var(--color-border)] first:border-t-0 mt-1 first:mt-0">
+                  {item.heading}
+                </div>
+              )
             }
             return (
               <button

@@ -6,7 +6,7 @@ The codebase is small enough to keep a flat layout, but the *intent* follows DDD
 
 | Layer | Rule | Current folders |
 |---|---|---|
-| **Domain** | Pure business logic. No DOM. No `fetch`. No `localStorage` (with one tolerated exception, see *Tech debt*). Tested with pure-function tests. | `src/analysis/`, `src/skill/`, `src/concepts/`, `src/coach/` (prompt builders + config), `src/library/` (validation + types — but not `storage.ts`), `src/players/` |
+| **Domain** | Pure business logic. No DOM. No `fetch`. No `localStorage` (with one tolerated exception, see *Tech debt*). Tested with pure-function tests. | `src/analysis/`, `src/strategy/`, `src/skill/`, `src/concepts/`, `src/coach/` (prompt builders + config), `src/library/` (validation + types — but not `storage.ts`), `src/players/` |
 | **Infrastructure** | Adapters to external systems. Implements ports for the domain. | `src/api/` (chess.com + Lichess HTTP), `src/storage/` (IDB + localStorage), `src/engine/` (Stockfish worker), `src/coach/client.ts` (Anthropic/OpenAI HTTP), `src/library/storage.ts`, `src/players/storage.ts` |
 | **UI** | React components. May import from any layer; depends only on the domain's public types. | `src/components/`, `src/audio/` |
 | **Shared** | Truly cross-cutting helpers that don't fit any single domain. | `src/utils/`, `src/types.ts` |
@@ -42,6 +42,22 @@ Pure chess data: parsing PGN, classifying moves, building repertoires, detecting
 - `summary.ts` — one-paragraph game prose
 - `threats.ts` — anti-blunder reflex helper
 - `timeline.ts`, `trend.ts` — weekly buckets + recent-vs-baseline deltas
+
+### `src/strategy/` — positional-analysis domain
+Deterministic strategic reading of positions and games (no engine, no LLM). Works on its own light board model (`board.ts`: FEN → 64 squares + attack maps) because it runs on every ply of every game.
+
+- `board.ts` — FEN parsing, square helpers, attack maps, material, knight routes
+- `pawns.ts` — pawn facts (isolated, backward, passed…), chains, levers, attack spans (Stockfish definitions)
+- `squares.ts` — holes, weak squares, outposts (+ knight routes), colour complexes
+- `center.ts` — centre types, pawn breaks (roles, readiness, prep move) and their structural consequences
+- `structures.ts` — the named-structure catalogue (patterns written for side A as White, matched in both orientations; plan texts use `[sq]` relative squares) — `samples.ts` holds one legal reference position per structure
+- `pieces.ts` — phase, development, king safety, bishops, rooks, space, minor-piece activity
+- `insights.ts` / `plans.ts` — descriptive assets/weaknesses and prescriptive plans (why / how / first moves / timing)
+- `report.ts` — `analyzePosition(fen)` (entry point) and `planMatchesMove` (engine cross-check)
+- `game.ts` — `reviewGameStrategy(analysis)`: structure/centre timelines, strategic events per move, missed plans, lessons
+- `profile.ts` — aggregate profile across games; `trainer.ts` — drills; `describe.ts` — compact text for LLM prompts; `text.ts` — French wording helpers
+
+UI pieces: `StrategyPanel` (tab Stratégie), `GameStrategyCard` (tab Bilan), `StrategyView` (+ `StrategyProfilePanel`, `StrategyTrainer`, `StructureAtlas`), `strategyBoard.ts` (report → board overlays), `useStrategyReviews` (batched, cached game reviews).
 
 ### `src/skill/` — adaptivity domain
 Elo + bracket + roadmap. The trainer's "adaptive" layer. Pure logic.
@@ -79,6 +95,7 @@ Stockfish 17 lite WASM wrapped in a Web Worker. Single port: `evaluate(fen, dept
 
 ### `src/components/` — UI (React)
 Tree of components. ~50 files. Imports from any layer.
+Navigation is data-driven: `navModel.ts` is the single source of truth for the header menus, the mobile sheet and the command palette (labels, grouping, availability rules).
 
 ### `src/utils/` — shared
 Tiny pure helpers (move normalization, date formatting). Could be a domain folder; lives in `shared/` because it's used by every layer.

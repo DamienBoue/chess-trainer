@@ -1,8 +1,10 @@
 interface Props {
   evalCp: number  // from white's perspective; mate uses ±(100000 - n)
+  /** Height class, matching the board next to it. */
+  heightClass?: string
 }
 
-export default function EvalBar({ evalCp }: Props) {
+export default function EvalBar({ evalCp, heightClass = 'h-[min(70vw,560px)]' }: Props) {
   // Convert centipawns to a 0..1 white-share via a sigmoid-like squashing.
   const isMate = Math.abs(evalCp) > 50000
   let whiteShare: number
@@ -25,7 +27,7 @@ export default function EvalBar({ evalCp }: Props) {
   }
 
   return (
-    <div className="flex flex-col w-6 h-[min(70vw,560px)] bg-neutral-900 border border-[var(--color-border)] rounded overflow-hidden">
+    <div className={`flex flex-col w-6 ${heightClass} bg-neutral-900 border border-[var(--color-border)] rounded overflow-hidden`}>
       <div
         className="bg-neutral-800 transition-[height] duration-200"
         style={{ height: `${blackShare * 100}%` }}

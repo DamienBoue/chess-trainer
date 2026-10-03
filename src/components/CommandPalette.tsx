@@ -6,9 +6,11 @@ import { useEffect, useMemo, useState } from 'react'
 import type { ChessComGame, GameAnalysis } from '../types'
 import { listBooks } from '../library/storage'
 import type { Book } from '../library/types'
+import { allNavItems } from './navModel'
+import { OPEN_COMMAND_PALETTE as OPEN_EVENT } from './commandPaletteEvents'
 
 export type CommandTarget =
-  | { kind: 'view'; view: string; label: string; section: string }
+  | { kind: 'view'; view: string; label: string; section: string; strategyTab?: string }
   | { kind: 'game'; gameUrl: string; label: string; section: string }
   | { kind: 'book'; bookId: string; label: string; section: string }
 
@@ -19,27 +21,19 @@ interface Props {
   onNavigate: (target: CommandTarget) => void
 }
 
-const VIEW_ITEMS = [
-  { view: 'home',       label: 'Plan du jour', section: 'Vues' },
-  { view: 'roadmap',    label: 'Roadmap (progression Elo)', section: 'Vues' },
-  { view: 'games',      label: 'Parties', section: 'Vues' },
-  { view: 'stats',      label: 'Stats', section: 'Vues' },
-  { view: 'repertoire', label: 'Répertoire', section: 'Vues' },
-  { view: 'exercises',  label: 'Exercices', section: 'Vues' },
-  { view: 'daily',      label: 'Quotidien', section: 'Vues' },
-  { view: 'rush',       label: 'Puzzle Rush', section: 'Vues' },
-  { view: 'blunder',    label: 'Blunder reflex', section: 'Vues' },
-  { view: 'calc',       label: 'Calcul (séquence)', section: 'Vues' },
-  { view: 'reverseDrill', label: 'Reverse-color drill (miroir)', section: 'Vues' },
-  { view: 'library',    label: 'Bibliothèque', section: 'Vues' },
-  { view: 'concepts',   label: 'Concepts (fork, IQP, Lucena…)', section: 'Vues' },
-  { view: 'openingLab', label: 'Opening Lab (toi vs masters)', section: 'Vues' },
-  { view: 'compare',    label: 'Comparer (chess.com)', section: 'Vues' },
-  { view: 'scouting',   label: 'Scouting (chess.com)', section: 'Vues' },
-  { view: 'players',    label: 'Joueurs PGN (FIDE)', section: 'Vues' },
-  { view: 'play',       label: 'Jouer vs Stockfish', section: 'Vues' },
-  { view: 'settings',   label: 'Préférences', section: 'Vues' },
-] as const
+const NO_COUNTS = { analyses: 0, exercises: 0, due: 0 }
+
+// Same entries and labels as the navigation, grouped by section.
+const VIEW_ITEMS: { view: string; label: string; section: string; strategyTab?: string }[] = [
+  ...allNavItems().map(({ item, group }) => ({
+    view: item.target.view,
+    strategyTab: item.target.strategyTab,
+    label: item.key === 'home' ? 'Aujourd\'hui — plan du jour' : item.label(NO_COUNTS),
+    section: group ?? 'Aller à',
+  })),
+  { view: 'daily', label: 'Puzzle quotidien', section: 'S\'entraîner' },
+  { view: 'settings', label: 'Préférences', section: 'Aller à' },
+]
 
 function fuzzyMatch(query: string, target: string): boolean {
   const q = query.toLowerCase()
@@ -69,8 +63,13 @@ export default function CommandPalette({ username, analyses, games, onNavigate }
         setOpen(false)
       }
     }
+    function onOpen() { setOpen(true) }
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    window.addEventListener(OPEN_EVENT, onOpen)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      window.removeEventListener(OPEN_EVENT, onOpen)
+    }
   }, [open])
 
   useEffect(() => {
