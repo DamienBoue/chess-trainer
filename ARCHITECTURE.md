@@ -64,10 +64,15 @@ Bigger feature modules that bundle a small domain (types, import validators) and
 - IDB-backed: `db.ts`, `games.ts`, `analyses.ts`
 - localStorage-backed: `daily.ts`, `notes.ts`, `plan.ts`, `settings.ts`, `persist.ts` (SRS), `json.ts` (shared helper)
 - `keys.ts` — central registry of every localStorage key the app uses (see below)
+- `ports.ts` — `Repos` / `ProgressRepo` / `PlanRepo` / `NotesRepo` / `DailyRepo` interfaces
+- `repos.ts` — `localRepos()` (production wiring) + `inMemoryRepos()` (test fake)
 - `exportImport.ts` — backup/restore JSON dump
 
 #### Key registry (`storage/keys.ts`)
 All localStorage keys live in one typed `KEYS` object. Two reasons: (1) prevents accidental collisions or typos at compile time, and (2) makes future migrations (renames, version bumps) a single edit. When you add a new key, register it here first.
+
+#### Repository ports (`storage/ports.ts`)
+Consumers that need to persist state can depend on the `Repos` interface (or one of its sub-ports) instead of the concrete modules. `localRepos()` wires the production implementation; `inMemoryRepos()` provides a JS-object fake for tests. The migration is incremental — new code is encouraged to use the ports; legacy callers keep working until they're touched.
 
 ### `src/engine/` — infrastructure (worker)
 Stockfish 17 lite WASM wrapped in a Web Worker. Single port: `evaluate(fen, depth)`.

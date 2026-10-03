@@ -36,4 +36,40 @@ describe('detectThreats', () => {
       expect(t[i - 1].delta).toBeGreaterThanOrEqual(t[i].delta)
     }
   })
+
+  it('estimates loss = value − cheapest attacker when attackers > defenders', () => {
+    // White rook on e4. Defenders: white knight on c5 (defends e4? no: knight on c5
+    // covers d7, e6, d3, b3, a4, a6, e4? — yes Nc5 attacks e4 via the knight L).
+    // Actually knight c5 attacks: a4, a6, b3, b7, d3, d7, e4, e6 → defends e4. ✓
+    // Attackers on e4: black rook a4 (file? no, rank 4 — a4..h4), bishop a8 (diagonal a8-h1 → e4 yes).
+    // 2 attackers (rook + bishop), 1 defender (knight). attackers > defenders.
+    // Cheapest attacker = bishop (3), our rook = 5. delta = 5 - 3 = 2.
+    const t = detectThreats('b7/8/8/2N5/r3R3/8/8/4K2k w - - 0 1', 'w')
+    const rook = t.find(x => x.square === 'e4')
+    expect(rook).toBeTruthy()
+    expect(rook?.attackers).toBeGreaterThan(rook?.defenders ?? 0)
+    expect(rook?.delta).toBe(2)
+  })
+
+  it('does NOT flag a piece when delta is 0 (equal trade, no king check)', () => {
+    // Two same-value pieces trading evenly: defender as cheap as attacker.
+    // Rook on e4, attacker rook a4, defender rook e1: 1 vs 1 attackers→ doesn't trigger.
+    const t = detectThreats('r3k3/8/8/8/r3R3/8/8/4R2K w - - 0 1', 'w')
+    expect(t.find(x => x.square === 'e4')).toBeUndefined()
+  })
+
+  it('flags only the user\'s pieces, never the opponent\'s hanging pieces', () => {
+    // Black hanging rook on h7; we ask from white's POV.
+    const t = detectThreats('4k3/7r/8/8/8/8/8/4K3 w - - 0 1', 'w')
+    expect(t.find(x => x.square === 'h7')).toBeUndefined()
+  })
+
+  it('works when the user is Black', () => {
+    // Black rook on e5 hangs, attacked by a white rook on e1, no defender.
+    const t = detectThreats('4k3/8/8/4r3/8/8/8/4R2K b - - 0 1', 'b')
+    const rook = t.find(x => x.square === 'e5')
+    expect(rook).toBeTruthy()
+    expect(rook?.defenders).toBe(0)
+    expect(rook?.delta).toBe(5)
+  })
 })

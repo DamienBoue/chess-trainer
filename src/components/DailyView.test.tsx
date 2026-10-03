@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import DailyView from './DailyView'
 import { mockLocalStorage } from '../test-utils/mockLocalStorage'
-import type { Exercise } from '../analysis/exercises'
+import { fakeExercise as fakeExerciseBase } from '../test-utils/fixtures'
 
 beforeEach(() => {
   vi.stubGlobal('localStorage', mockLocalStorage())
@@ -12,17 +12,8 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-function fakeExercise(id: string, bestMoveSan = 'e4'): Exercise {
-  return {
-    id, category: 'missed',
-    fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
-    userColor: 'white', sideToMove: 'w',
-    bestMoveSan, bestLineSan: bestMoveSan,
-    playedMoveSan: '??', playedClassification: 'blunder',
-    cpSwing: 300, evalBeforeWhite: 0, evalAfterPlayedWhite: -300,
-    motifs: [], difficulty: 'medium',
-    context: { gameUrl: '', opponent: 'bob', ply: 1, moveLabel: '1.', endTime: 0 },
-  }
+function fakeExercise(id: string, bestMoveSan = 'e4') {
+  return fakeExerciseBase(id, { bestMoveSan, bestLineSan: bestMoveSan })
 }
 
 describe('DailyView', () => {

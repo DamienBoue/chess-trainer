@@ -1,9 +1,8 @@
-import { Chess } from 'chess.js'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import OpeningLabView from './OpeningLabView'
-import { buildGame } from '../analysis/__fixtures__'
 import { mockLocalStorage } from '../test-utils/mockLocalStorage'
+import { gameFromSans } from '../test-utils/fixtures'
 
 beforeEach(() => {
   vi.stubGlobal('localStorage', mockLocalStorage())
@@ -12,25 +11,6 @@ afterEach(() => {
   cleanup()
   vi.unstubAllGlobals()
 })
-
-function gameFromSans(opts: { url: string; userColor: 'white' | 'black'; sans: string[]; ecoCode?: string; opening?: string }) {
-  const c = new Chess()
-  const moves = opts.sans.map((san, i) => {
-    const fenBefore = c.fen()
-    const mv = c.move(san)
-    if (!mv) throw new Error('illegal san: ' + san)
-    return {
-      ply: i + 1, san: mv.san,
-      cpLoss: 0, classification: 'best' as const,
-      bestMoveSan: mv.san, fenBefore, fenAfter: c.fen(),
-    }
-  })
-  return buildGame({
-    userColor: opts.userColor, url: opts.url,
-    ecoCode: opts.ecoCode ?? 'C50', opening: opts.opening ?? 'Italian Game',
-    moves,
-  })
-}
 
 describe('OpeningLabView', () => {
   it('shows the empty state when there are no analyses', () => {

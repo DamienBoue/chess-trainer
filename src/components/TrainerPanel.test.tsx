@@ -1,30 +1,10 @@
-import { Chess } from 'chess.js'
 import { afterEach, describe, expect, it } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import TrainerPanel from './TrainerPanel'
 import { buildRepertoire } from '../analysis/repertoire'
-import { buildGame } from '../analysis/__fixtures__'
+import { gameFromSans } from '../test-utils/fixtures'
 
 afterEach(cleanup)
-
-function gameFromSans(opts: { url: string; userColor: 'white' | 'black'; sans: string[]; ecoCode?: string; opening?: string }) {
-  const c = new Chess()
-  const moves = opts.sans.map((san, i) => {
-    const fenBefore = c.fen()
-    const mv = c.move(san)
-    if (!mv) throw new Error('illegal san: ' + san)
-    return {
-      ply: i + 1, san: mv.san,
-      cpLoss: 0, classification: 'best' as const,
-      bestMoveSan: mv.san, fenBefore, fenAfter: c.fen(),
-    }
-  })
-  return buildGame({
-    userColor: opts.userColor, url: opts.url,
-    ecoCode: opts.ecoCode ?? 'C50', opening: opts.opening ?? 'Italian Game',
-    moves,
-  })
-}
 
 describe('TrainerPanel', () => {
   it('shows the no-data message when no root has ≥2 games', () => {

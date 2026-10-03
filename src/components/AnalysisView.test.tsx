@@ -1,44 +1,10 @@
-import { Chess } from 'chess.js'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import AnalysisView from './AnalysisView'
-import type { ChessComGame, GameAnalysis, MoveAnalysis } from '../types'
 import type { StockfishEngine } from '../engine/stockfish'
+import { fakeAnalysis, fakeChessComGame as fakeGame } from '../test-utils/fixtures'
 
 afterEach(cleanup)
-
-// Build an analysed game from a SAN sequence — avoids touching Stockfish.
-function fakeAnalysis(sans: string[]): GameAnalysis {
-  const c = new Chess()
-  const moves: MoveAnalysis[] = sans.map((san, i) => {
-    const fenBefore = c.fen()
-    const mv = c.move(san)
-    if (!mv) throw new Error('illegal san: ' + san)
-    return {
-      ply: i + 1, san: mv.san,
-      fenBefore, fenAfter: c.fen(),
-      evalBefore: 0, evalAfter: 0,
-      classification: 'best',
-      cpLoss: 0,
-    }
-  })
-  return {
-    pgn: '', moves, userColor: 'white', result: 'win',
-    opening: 'Italian Game', ecoCode: 'C50',
-    opponent: 'bob', opponentRating: 1500, userRating: 1480,
-    endTime: 1700000000, timeClass: 'rapid',
-    url: 'https://test/g1',
-  }
-}
-
-function fakeGame(): ChessComGame {
-  return {
-    url: 'https://test/g1', pgn: '', time_control: '600', end_time: 1700000000,
-    rated: true, time_class: 'rapid', rules: 'chess',
-    white: { rating: 1480, result: 'win',  '@id': '', username: 'alice' },
-    black: { rating: 1500, result: 'resigned', '@id': '', username: 'bob' },
-  } as unknown as ChessComGame
-}
 
 // A stub engine that never gets called because existingAnalysis is set.
 const stubEngine = {} as StockfishEngine

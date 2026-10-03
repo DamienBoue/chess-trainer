@@ -33,6 +33,7 @@ const PlayersView = lazy(() => import('./components/PlayersView'))
 const SettingsView = lazy(() => import('./components/SettingsView'))
 const ConceptsView = lazy(() => import('./components/ConceptsView'))
 const OpeningLabView = lazy(() => import('./components/OpeningLabView'))
+const ReverseDrillView = lazy(() => import('./components/ReverseDrillView'))
 import {
   GlobalFilters,
   applyGlobalFilters,
@@ -58,7 +59,7 @@ export interface BatchState {
   failed: number
 }
 
-type View = 'home' | 'games' | 'analysis' | 'stats' | 'exercises' | 'rush' | 'daily' | 'roadmap' | 'compare' | 'repertoire' | 'library' | 'book' | 'scouting' | 'play' | 'blunder' | 'calc' | 'players' | 'settings' | 'concepts' | 'openingLab'
+type View = 'home' | 'games' | 'analysis' | 'stats' | 'exercises' | 'rush' | 'daily' | 'roadmap' | 'compare' | 'repertoire' | 'library' | 'book' | 'scouting' | 'play' | 'blunder' | 'calc' | 'players' | 'settings' | 'concepts' | 'openingLab' | 'reverseDrill'
 
 export default function App() {
   const [view, setView] = useState<View>('home')
@@ -322,6 +323,14 @@ export default function App() {
                     disabled: exerciseCount < 3,
                     active: view === 'calc',
                   },
+                  {
+                    key: 'reverseDrill',
+                    label: 'Reverse-color drill',
+                    description: 'Rejoue tes ouvertures côté opposé (miroir).',
+                    onClick: () => setView('reverseDrill'),
+                    disabled: filteredAnalyses.length < 3,
+                    active: view === 'reverseDrill',
+                  },
                   { key: '-', divider: true } as NavMenuItem,
                   {
                     key: 'library',
@@ -537,6 +546,12 @@ export default function App() {
         )}
         {view === 'calc' && (
           <CalcDepthView analyses={filteredAnalyses} onExit={() => setView('exercises')} />
+        )}
+        {view === 'reverseDrill' && (
+          <ReverseDrillView
+            analyses={filteredAnalyses}
+            onGoToGames={() => setView('games')}
+          />
         )}
         {view === 'players' && (
           <PlayersView />

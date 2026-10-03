@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { getBoardTheme, setBoardTheme, getBoardColors, getEngineDepth, setEngineDepth } from './settings'
+import {
+  getBoardTheme, setBoardTheme, getBoardColors,
+  getEngineDepth, setEngineDepth,
+  getLichessToken, setLichessToken,
+} from './settings'
 import { mockLocalStorage } from '../test-utils/mockLocalStorage'
+import { KEYS } from './keys'
 
 
 describe('board theme', () => {
@@ -57,5 +62,51 @@ describe('engine depth', () => {
     expect(getEngineDepth()).toBe(30)
     setEngineDepth(14.7)
     expect(getEngineDepth()).toBe(15)
+  })
+})
+
+describe('lichess token', () => {
+  beforeEach(() => {
+    vi.stubGlobal('localStorage', mockLocalStorage())
+    vi.stubGlobal('window', { dispatchEvent: vi.fn() })
+    vi.stubGlobal('CustomEvent', class { constructor(public type: string, public init?: object) {} })
+  })
+
+  it('defaults to the empty string when nothing is stored', () => {
+    expect(getLichessToken()).toBe('')
+  })
+
+  it('reads back what was set, trimmed', () => {
+    setLichessToken('  abc123  ')
+    expect(getLichessToken()).toBe('abc123')
+  })
+
+  it('removes the key when set to an empty / whitespace-only string', () => {
+    setLichessToken('xyz')
+    expect(localStorage.getItem(KEYS.lichessToken)).toBe('xyz')
+    setLichessToken('')
+    expect(localStorage.getItem(KEYS.lichessToken)).toBeNull()
+    setLichessToken('xyz')
+    setLichessToken('   ')
+    expect(localStorage.getItem(KEYS.lichessToken)).toBeNull()
+  })
+
+  it('returns empty string when localStorage throws on read', () => {
+    vi.stubGlobal('localStorage', {
+      getItem: () => { throw new Error('quota') },
+      setItem: () => {},
+      removeItem: () => {},
+    })
+    expect(getLichessToken()).toBe('')
+  })
+
+  it('swallows write errors silently', () => {
+    vi.stubGlobal('localStorage', {
+      getItem: () => null,
+      setItem: () => { throw new Error('quota') },
+      removeItem: () => { throw new Error('quota') },
+    })
+    expect(() => setLichessToken('zzz')).not.toThrow()
+    expect(() => setLichessToken('')).not.toThrow()
   })
 })

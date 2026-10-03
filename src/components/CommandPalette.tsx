@@ -30,6 +30,7 @@ const VIEW_ITEMS = [
   { view: 'rush',       label: 'Puzzle Rush', section: 'Vues' },
   { view: 'blunder',    label: 'Blunder reflex', section: 'Vues' },
   { view: 'calc',       label: 'Calcul (séquence)', section: 'Vues' },
+  { view: 'reverseDrill', label: 'Reverse-color drill (miroir)', section: 'Vues' },
   { view: 'library',    label: 'Bibliothèque', section: 'Vues' },
   { view: 'concepts',   label: 'Concepts (fork, IQP, Lucena…)', section: 'Vues' },
   { view: 'openingLab', label: 'Opening Lab (toi vs masters)', section: 'Vues' },

@@ -1,29 +1,13 @@
-import { Chess } from 'chess.js'
 import { afterEach, describe, expect, it } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 import HolesPanel from './HolesPanel'
 import { buildRepertoire } from '../analysis/repertoire'
-import { buildGame } from '../analysis/__fixtures__'
+import { gameFromSans as gameFromSansBase } from '../test-utils/fixtures'
 
 afterEach(cleanup)
 
 function gameFromSans(opts: { url: string; userColor: 'white' | 'black'; sans: string[] }) {
-  const c = new Chess()
-  const moves = opts.sans.map((san, i) => {
-    const fenBefore = c.fen()
-    const mv = c.move(san)
-    if (!mv) throw new Error('illegal san: ' + san)
-    return {
-      ply: i + 1, san: mv.san,
-      cpLoss: 0, classification: 'best' as const,
-      bestMoveSan: mv.san, fenBefore, fenAfter: c.fen(),
-    }
-  })
-  return buildGame({
-    userColor: opts.userColor, url: opts.url,
-    ecoCode: 'C20', opening: 'Open Game',
-    moves,
-  })
+  return gameFromSansBase({ ...opts, ecoCode: 'C20', opening: 'Open Game' })
 }
 
 describe('HolesPanel', () => {
