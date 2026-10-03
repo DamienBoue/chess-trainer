@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
 import { Chess } from 'chess.js'
 import TrainingBoard from './TrainingBoard'
 import type { StockfishEngine } from '../engine/stockfish'
@@ -34,22 +34,25 @@ export default function PlayView({ engine }: Props) {
   const [game, setGame] = useState<Chess>(() => new Chess())
   const [position, setPosition] = useState<string>(() => new Chess().fen())
   const [pgn, setPgn] = useState<string[]>([])  // accumulated SAN
-  const [thinking, setThinking] = useState(false)
+  const [engineTurn, setEngineTurn] = useState<Chess | null>(null)  // game the engine is replying in
   const [outcome, setOutcome] = useState<Outcome | null>(null)
   const [error, setError] = useState<string | null>(null)
   const cancelRef = useRef(false)
 
   const userIsWhite = userColor === 'white'
   const engineColor = userIsWhite ? 'b' : 'w'
+  const thinking = engineTurn !== null
 
-  useEffect(() => {
-    if (phase !== 'playing') return
-    // If engine plays first, kick it off.
-    if (game.turn() === engineColor && !thinking && !outcome) {
-      void askEngine()
+  // Hand the engine its turn when a new game or a move leaves it to play.
+  // Decided during render against the previous phase/position kept in
+  // state; the request itself goes out from the effect below.
+  const [prevTurn, setPrevTurn] = useState({ phase, position })
+  if (prevTurn.phase !== phase || prevTurn.position !== position) {
+    setPrevTurn({ phase, position })
+    if (phase === 'playing' && game.turn() === engineColor && !thinking && !outcome) {
+      setEngineTurn(game)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, position])
+  }
 
   async function start() {
     cancelRef.current = false
@@ -78,38 +81,45 @@ export default function PlayView({ engine }: Props) {
     return null
   }
 
-  async function askEngine() {
-    if (thinking || outcome) return
-    setThinking(true)
-    try {
-      const r = await engine.evaluate(game.fen(), 18, movetimeForElo(elo))
-      if (cancelRef.current) return
-      if (!r.bestMoveUci) {
-        setOutcome(checkTermination(game))
-        return
+  // Ask the engine for its reply in `g` (engine to move) and play it. All
+  // state updates land after the engine answers, in a single batch.
+  const askEngine = useEffectEvent((g: Chess) => {
+    async function reply() {
+      try {
+        const r = await engine.evaluate(g.fen(), 18, movetimeForElo(elo))
+        if (cancelRef.current) return
+        if (!r.bestMoveUci) {
+          setOutcome(checkTermination(g))
+          return
+        }
+        const uci = r.bestMoveUci
+        const from = uci.slice(0, 2)
+        const to = uci.slice(2, 4)
+        const promotion = uci.length === 5 ? uci.slice(4) : undefined
+        const c = new Chess(g.fen())
+        const mv = c.move({ from, to, promotion })
+        if (!mv) return
+        setGame(c)
+        setPosition(c.fen())
+        setPgn(prev => [...prev, mv.san])
+        playForMove(mv.flags)
+        const term = checkTermination(c)
+        if (term) {
+          setOutcome(term)
+          playSuccess()
+        }
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e))
+      } finally {
+        setEngineTurn(null)
       }
-      const uci = r.bestMoveUci
-      const from = uci.slice(0, 2)
-      const to = uci.slice(2, 4)
-      const promotion = uci.length === 5 ? uci.slice(4) : undefined
-      const c = new Chess(game.fen())
-      const mv = c.move({ from, to, promotion })
-      if (!mv) return
-      setGame(c)
-      setPosition(c.fen())
-      setPgn(prev => [...prev, mv.san])
-      playForMove(mv.flags)
-      const term = checkTermination(c)
-      if (term) {
-        setOutcome(term)
-        playSuccess()
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
-    } finally {
-      setThinking(false)
     }
-  }
+    void reply()
+  })
+
+  useEffect(() => {
+    if (engineTurn) askEngine(engineTurn)
+  }, [engineTurn])
 
   function onPieceDrop({ sourceSquare, targetSquare, piece }: {
     sourceSquare: string; targetSquare: string | null; piece: { pieceType: string }
@@ -130,7 +140,7 @@ export default function PlayView({ engine }: Props) {
       setOutcome(term)
       return true
     }
-    // Engine reply triggered by the useEffect on position change.
+    // Engine reply triggered by the turn hand-off on position change.
     return true
   }
 

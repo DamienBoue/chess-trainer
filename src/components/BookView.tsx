@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useEffectEvent, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Chess } from 'chess.js'
 import TrainingBoard from './TrainingBoard'
 import type { Book, BookExercise, BookProgress, ExerciseOutcome } from '../library/types'
@@ -107,7 +107,7 @@ function BrowseMode({ book, progress, onProgressChange, onBack, onStartRush }: B
   const active = filtered[activeIdx] ?? null
 
   const [status, setStatus] = useState<Status>('pending')
-  const [position, setPosition] = useState<string>('')
+  const [position, setPosition] = useState<string>(() => active ? new Chess(active.fen).fen() : '')
   const [feedback, setFeedback] = useState<string>('')
   const [playedMoves, setPlayedMoves] = useState<string[]>([])
   const cleanRunRef = useRef(true)
@@ -115,29 +115,40 @@ function BrowseMode({ book, progress, onProgressChange, onBack, onStartRush }: B
   const opponentTimerRef = useRef<number | null>(null)
   const [tableData, setTableData] = useState<TableResponse | null>(null)
 
-  // Reset on exercise change.
-  useEffect(() => {
+  // Reset on exercise change. The board state is adjusted during render
+  // against the previous exercise id, so the old position never paints
+  // under the new exercise's header…
+  const [boardExerciseId, setBoardExerciseId] = useState(active?.id)
+  if (boardExerciseId !== active?.id) {
+    setBoardExerciseId(active?.id)
+    if (active) {
+      setPosition(new Chess(active.fen).fen())
+      setStatus('pending')
+      setFeedback('')
+      setPlayedMoves([])
+    }
+  }
+  // …and the refs follow in a layout effect, i.e. in the same commit, so a
+  // pending opponent reply can't land between the two halves of the reset.
+  const resetGameRefs = useEffectEvent(() => {
     if (!active) return
     if (opponentTimerRef.current) {
       window.clearTimeout(opponentTimerRef.current)
       opponentTimerRef.current = null
     }
-    const c = new Chess(active.fen)
-    chessRef.current = c
-    setPosition(c.fen())
-    setStatus('pending')
-    setFeedback('')
-    setPlayedMoves([])
+    chessRef.current = new Chess(active.fen)
     cleanRunRef.current = true
-  }, [active?.id])
+  })
+  useLayoutEffect(() => { resetGameRefs() }, [active?.id])
 
   useEffect(() => () => {
     if (opponentTimerRef.current) window.clearTimeout(opponentTimerRef.current)
   }, [])
 
   // Refresh tablebase verdict whenever the on-board position changes.
+  // (No position means no exercise was ever shown: tableData is still null.)
   useEffect(() => {
-    if (!position) { setTableData(null); return }
+    if (!position) return
     let aborted = false
     const ctrl = new AbortController()
     fetchTablebase(position, ctrl.signal).then(r => {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { getNote, setNote } from '../storage/notes'
 
 interface Props {
@@ -12,11 +12,14 @@ export default function PositionNote({ fen, compact = false }: Props) {
   const [text, setText] = useState(() => getNote(fen)?.text ?? '')
   const [editing, setEditing] = useState(false)
 
-  // Hydrate when the position changes (parent navigates).
-  useEffect(() => {
+  // Hydrate when the position changes (parent navigates). Done during
+  // render against the previous FEN, so the old note never paints.
+  const [prevFen, setPrevFen] = useState(fen)
+  if (prevFen !== fen) {
+    setPrevFen(fen)
     setText(getNote(fen)?.text ?? '')
     setEditing(false)
-  }, [fen])
+  }
 
   function save(next: string) {
     setText(next)

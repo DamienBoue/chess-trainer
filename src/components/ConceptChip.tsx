@@ -7,7 +7,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { findConcept } from '../concepts/lookup'
 import { CATEGORY_COLORS, CATEGORY_LABELS } from '../concepts/types'
-import { openConcept } from './ConceptModal'
+import { openConcept } from './conceptEvents'
 
 interface Props {
   /** Concept id or alias. */

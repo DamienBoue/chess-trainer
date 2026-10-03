@@ -1,18 +1,14 @@
 // Global modal overlay that shows a single Concept on top of any view.
 // Driven by an event-bus pattern so any component (StudyHint, motif chip,
-// plan item) can open it without prop-drilling.
+// plan item) can open it without prop-drilling: they call openConcept()
+// from conceptEvents.ts.
 
 import { useEffect, useState } from 'react'
 import { findConcept } from '../concepts/lookup'
 import type { Concept } from '../concepts/types'
 import ConceptCard from './ConceptCard'
+import { OPEN_CONCEPT as EVENT } from './conceptEvents'
 import { useFocusOnOpen } from './useFocusOnOpen'
-
-const EVENT = 'concept:open'
-
-export function openConcept(idOrAlias: string): void {
-  window.dispatchEvent(new CustomEvent(EVENT, { detail: { id: idOrAlias } }))
-}
 
 export default function ConceptModal() {
   const [concept, setConcept] = useState<Concept | null>(null)

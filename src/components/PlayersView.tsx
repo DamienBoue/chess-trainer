@@ -14,8 +14,8 @@ export default function PlayersView() {
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const fileRef = useRef<HTMLInputElement | null>(null)
 
-  async function refresh() {
-    setProfiles(await listPlayers())
+  function refresh() {
+    return listPlayers().then(setProfiles)
   }
   useEffect(() => { refresh() }, [])
 

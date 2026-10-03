@@ -1,7 +1,9 @@
 // Global keyboard shortcut help modal.
-// `?` opens it from anywhere (ignored when typing in an input).
+// `?` opens it from anywhere (ignored when typing in an input), and so
+// does openShortcutsHelp() from shortcutsHelpEvents.ts.
 
 import { useEffect, useState } from 'react'
+import { OPEN_SHORTCUTS_HELP as OPEN_EVENT } from './shortcutsHelpEvents'
 import { useFocusOnOpen } from './useFocusOnOpen'
 
 interface Shortcut {
@@ -46,11 +48,6 @@ const SECTIONS: Array<{ title: string; shortcuts: Shortcut[] }> = [
   },
 ]
 
-/** Programmatic opener — header button calls this. */
-export function openShortcutsHelp() {
-  window.dispatchEvent(new CustomEvent('open-shortcuts'))
-}
-
 export default function KeyboardShortcutsModal() {
   const [open, setOpen] = useState(false)
   const dialogRef = useFocusOnOpen<HTMLDivElement>(open)
@@ -68,10 +65,10 @@ export default function KeyboardShortcutsModal() {
     }
     function onOpenEvent() { setOpen(true) }
     window.addEventListener('keydown', onKey)
-    window.addEventListener('open-shortcuts', onOpenEvent)
+    window.addEventListener(OPEN_EVENT, onOpenEvent)
     return () => {
       window.removeEventListener('keydown', onKey)
-      window.removeEventListener('open-shortcuts', onOpenEvent)
+      window.removeEventListener(OPEN_EVENT, onOpenEvent)
     }
   }, [open])
 

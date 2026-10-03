@@ -3,6 +3,7 @@ import { Chessboard } from 'react-chessboard'
 import { useEffect, useMemo, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import { getBoardColors } from '../storage/settings'
+import { cssSafeBoardId } from './boardId'
 
 // react-chessboard doesn't re-export its Arrow type, so we restate the
 // shape locally. Keep it minimal — we just pass these through.
@@ -91,8 +92,13 @@ export default function TrainingBoard({
   const [selected, setSelected] = useState<Square | null>(null)
   // Clear selection whenever the position changes (e.g. opponent reply,
   // exercise change). Without this, the previous selection bleeds onto
-  // the new position and its destination dots are stale.
-  useEffect(() => { setSelected(null) }, [position])
+  // the new position and its destination dots are stale. Done during
+  // render against the previous position, so the stale dots never paint.
+  const [prevPosition, setPrevPosition] = useState(position)
+  if (prevPosition !== position) {
+    setPrevPosition(position)
+    setSelected(null)
+  }
 
   // Pre-compute legal destinations for the currently-selected piece.
   const legalTargets = useMemo<Record<Square, 'empty' | 'capture'>>(() => {
@@ -193,7 +199,7 @@ export default function TrainingBoard({
               }
             : undefined,
           onSquareClick: handleSquareClick,
-          id,
+          id: cssSafeBoardId(id),
         }}
       />
       {overlay}

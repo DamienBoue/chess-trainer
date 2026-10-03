@@ -72,10 +72,19 @@ export default function CommandPalette({ username, analyses, games, onNavigate }
     }
   }, [open])
 
+  // Fresh search each time the palette opens. Done during render against
+  // the previous open state, so the last query never paints.
+  const [wasOpen, setWasOpen] = useState(open)
+  if (wasOpen !== open) {
+    setWasOpen(open)
+    if (open) {
+      setQuery('')
+      setSelectedIdx(0)
+    }
+  }
+
   useEffect(() => {
     if (!open) return
-    setQuery('')
-    setSelectedIdx(0)
     listBooks().then(setBooks)
   }, [open])
 
@@ -105,10 +114,9 @@ export default function CommandPalette({ username, analyses, games, onNavigate }
     return out.slice(0, 30)
   }, [query, analyses, books])
 
-  // Keep the selection inside bounds when items change.
-  useEffect(() => {
-    if (selectedIdx >= items.length) setSelectedIdx(0)
-  }, [items, selectedIdx])
+  // Keep the selection inside bounds when items change (adjusted during
+  // render; skipped when already at 0, else an empty list would loop).
+  if (selectedIdx > 0 && selectedIdx >= items.length) setSelectedIdx(0)
 
   function pick(t: CommandTarget) {
     setOpen(false)

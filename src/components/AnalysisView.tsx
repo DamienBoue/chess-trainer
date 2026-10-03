@@ -63,14 +63,24 @@ export default function AnalysisView({
     return !v
   })
 
-  // Reset PV preview whenever the user navigates to a different ply.
-  useEffect(() => { setPvStep(null) }, [currentPly])
+  // Reset PV preview whenever the user navigates to a different ply. Done
+  // during render against the previous ply, so the old preview never paints.
+  const [prevPly, setPrevPly] = useState(currentPly)
+  if (prevPly !== currentPly) {
+    setPrevPly(currentPly)
+    setPvStep(null)
+  }
+
+  // Switching to a game that is already analysed shows its analysis (same
+  // during-render adjustment); the effect below only runs the engine.
+  const [prevGameUrl, setPrevGameUrl] = useState(game.url)
+  if (prevGameUrl !== game.url) {
+    setPrevGameUrl(game.url)
+    if (existingAnalysis) setAnalysis(existingAnalysis)
+  }
 
   useEffect(() => {
-    if (existingAnalysis) {
-      setAnalysis(existingAnalysis)
-      return
-    }
+    if (existingAnalysis) return
     let cancelled = false
     ;(async () => {
       try {

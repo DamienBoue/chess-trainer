@@ -1,32 +1,11 @@
 // Minimal toast notification system.
 //
 // Single global queue, mounted once at the App root. Anywhere in the app
-// can call toast.success(...) / toast.error(...) / toast.info(...) to
-// surface feedback. No external dependency.
+// can call toast.success(...) / toast.error(...) / toast.info(...) (from
+// toastBus.ts) to surface feedback. No external dependency.
 
 import { useEffect, useState } from 'react'
-
-export type ToastKind = 'success' | 'error' | 'info'
-
-interface Toast {
-  id: number
-  kind: ToastKind
-  message: string
-}
-
-const listeners = new Set<(t: Toast) => void>()
-let nextId = 1
-
-export const toast = {
-  success(message: string) { emit('success', message) },
-  error(message: string) { emit('error', message) },
-  info(message: string) { emit('info', message) },
-}
-
-function emit(kind: ToastKind, message: string) {
-  const t: Toast = { id: nextId++, kind, message }
-  for (const l of listeners) l(t)
-}
+import { type Toast, subscribeToasts } from './toastBus'
 
 export function ToastHost() {
   const [items, setItems] = useState<Toast[]>([])
@@ -39,8 +18,7 @@ export function ToastHost() {
         setItems(prev => prev.filter(i => i.id !== t.id))
       }, ttl)
     }
-    listeners.add(onToast)
-    return () => { listeners.delete(onToast) }
+    return subscribeToasts(onToast)
   }, [])
   return (
     <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none">

@@ -1,7 +1,8 @@
 // First-visit guided tour.
 //
 // 5 simple cards shown over the home screen until the user dismisses
-// or finishes. State stored in localStorage so we never nag again.
+// or finishes. State stored in localStorage so we never nag again
+// (resetOnboarding() in onboardingReset.ts replays the tour).
 
 import { useEffect, useState } from 'react'
 import { KEYS } from '../storage/keys'
@@ -110,10 +111,4 @@ export default function Onboarding() {
       </div>
     </div>
   )
-}
-
-/** Programmatically replay the tour (e.g. from Settings). */
-export function resetOnboarding() {
-  localStorage.removeItem(STORAGE_KEY)
-  window.location.reload()
 }

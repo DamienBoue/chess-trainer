@@ -59,7 +59,6 @@ export default function PuzzleRushView({ exercises, onAttempt, onExit }: Props) 
       })
     }, 1000)
     return () => clearInterval(id)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, config.durationSec])
 
   function start() {
@@ -258,11 +257,14 @@ function RushBoard({
   const [feedback, setFeedback] = useState<Feedback | null>(null)
   const chess = useMemo(() => new Chess(exercise.fen), [exercise.fen])
 
-  // Reset on exercise change
-  useEffect(() => {
+  // Reset on exercise change. Done during render against the previous FEN,
+  // so the last exercise's board never paints under the new one.
+  const [prevFen, setPrevFen] = useState(exercise.fen)
+  if (prevFen !== exercise.fen) {
+    setPrevFen(exercise.fen)
     setPosition(exercise.fen)
     setFeedback(null)
-  }, [exercise.fen])
+  }
 
   function tryMove(from: string, to: string, promotion: string = 'q'): boolean {
     if (feedback) return false

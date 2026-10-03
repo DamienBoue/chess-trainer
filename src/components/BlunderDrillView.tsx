@@ -87,10 +87,19 @@ export default function BlunderDrillView({ analyses, onExit }: Props) {
 
   const current = pool[idx] ?? null
 
+  // A puzzle waiting for an answer gets the full time budget. Reset during
+  // render against the previously running puzzle, so the countdown effect
+  // below only has to tick.
+  const runningId = current && !last ? current.id : null
+  const [prevRunningId, setPrevRunningId] = useState(runningId)
+  if (prevRunningId !== runningId) {
+    setPrevRunningId(runningId)
+    if (runningId !== null) setTick(DRILL_TIMEOUT_MS)
+  }
+
   // Per-puzzle countdown.
   useEffect(() => {
     if (!current || last) return
-    setTick(DRILL_TIMEOUT_MS)
     const start = Date.now()
     const interval = window.setInterval(() => {
       const left = DRILL_TIMEOUT_MS - (Date.now() - start)

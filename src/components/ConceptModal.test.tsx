@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
-import ConceptModal, { openConcept } from './ConceptModal'
+import ConceptModal from './ConceptModal'
+import { openConcept } from './conceptEvents'
 
 afterEach(cleanup)
 

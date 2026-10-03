@@ -29,21 +29,26 @@ export default function DailyView({ exercises, onGoToGames }: Props) {
     return fresh
   }, [exercises, state, today])
 
-  useEffect(() => {
-    // Persist the picked exercise for today if needed
-    if (!exercise) return
-    if (!state || state.date !== today || state.exerciseId !== exercise.id) {
-      const next: DailyState = {
-        date: today,
-        exerciseId: exercise.id,
-        solved: state?.date === today ? !!state.solved : false,
-        streak: state?.streak ?? 0,
-        lastSolvedDate: state?.lastSolvedDate ?? null,
-      }
-      saveDaily(next)
-      setState(next)
+  // Adopt the picked exercise as today's state if needed. Done during render
+  // against the current state; only the write to storage is left to the
+  // effect below, once per adopted state.
+  const [adopted, setAdopted] = useState<DailyState | null>(null)
+  if (exercise && (!state || state.date !== today || state.exerciseId !== exercise.id)) {
+    const next: DailyState = {
+      date: today,
+      exerciseId: exercise.id,
+      solved: state?.date === today ? !!state.solved : false,
+      streak: state?.streak ?? 0,
+      lastSolvedDate: state?.lastSolvedDate ?? null,
     }
-  }, [exercise, state, today])
+    setState(next)
+    setAdopted(next)
+  }
+
+  useEffect(() => {
+    // Persist the picked exercise for today
+    if (adopted) saveDaily(adopted)
+  }, [adopted])
 
   if (exercises.length === 0) {
     return (
@@ -106,9 +111,6 @@ function DailyPuzzle({
   alreadySolved: boolean | undefined
   onSolved: () => void
 }) {
-  const [position, setPosition] = useState(exercise.fen)
-  const [status, setStatus] = useState<'pending' | 'wrong' | 'solved'>(alreadySolved ? 'solved' : 'pending')
-  const [feedback, setFeedback] = useState<string | null>(alreadySolved ? '✓ Déjà résolu aujourd\'hui — reviens demain pour le suivant.' : null)
   const chess = useMemo(() => {
     const c = new Chess(exercise.fen)
     if (alreadySolved) {
@@ -116,10 +118,10 @@ function DailyPuzzle({
     }
     return c
   }, [exercise, alreadySolved])
-
-  useEffect(() => {
-    if (alreadySolved) setPosition(chess.fen())
-  }, [alreadySolved, chess])
+  // Already solved today → open on the position after the solution move.
+  const [position, setPosition] = useState(() => (alreadySolved ? chess.fen() : exercise.fen))
+  const [status, setStatus] = useState<'pending' | 'wrong' | 'solved'>(alreadySolved ? 'solved' : 'pending')
+  const [feedback, setFeedback] = useState<string | null>(alreadySolved ? '✓ Déjà résolu aujourd\'hui — reviens demain pour le suivant.' : null)
 
   function tryMove(from: string, to: string): boolean {
     if (status === 'solved') return false

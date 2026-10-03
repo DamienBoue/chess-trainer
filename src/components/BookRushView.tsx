@@ -68,7 +68,6 @@ export default function BookRushView({ book, progress, onProgressChange, onExit 
       })
     }, 1000)
     return () => clearInterval(id)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, config.durationSec])
 
   function start() {
@@ -333,10 +332,13 @@ function RushBoard({
   const chess = useMemo(() => new Chess(exercise.fen), [exercise.fen])
   const expectedSan = exercise.moves[0] ?? exercise.firstMoveSan ?? ''
 
-  useEffect(() => {
+  // Reset on exercise change, during render against the previous FEN.
+  const [prevFen, setPrevFen] = useState(exercise.fen)
+  if (prevFen !== exercise.fen) {
+    setPrevFen(exercise.fen)
     setPosition(exercise.fen)
     setFeedback(null)
-  }, [exercise.fen])
+  }
 
   function tryMove(from: string, to: string, promotion: string = 'q'): boolean {
     if (feedback || !expectedSan) return false

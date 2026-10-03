@@ -5,7 +5,7 @@ import { useMemo, useState } from 'react'
 import { allConcepts, searchConcepts } from '../concepts/lookup'
 import type { ConceptCategory } from '../concepts/types'
 import { CATEGORY_COLORS, CATEGORY_LABELS } from '../concepts/types'
-import { openConcept } from './ConceptModal'
+import { openConcept } from './conceptEvents'
 
 const CATEGORIES: Array<ConceptCategory | 'all'> = ['all', 'tactics', 'endgame', 'structure', 'opening', 'strategy', 'mindset']
 

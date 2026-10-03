@@ -16,11 +16,18 @@ export default function ExplorerSection({ fen, currentSan }: Props) {
   const [source, setSource] = useState<'lichess' | 'masters'>('lichess')
   const [unavailable, setUnavailable] = useState(false)
 
+  // Position or source changed: back to the loading placeholder during
+  // render, the effect below fetches the new payload.
+  const [dataFor, setDataFor] = useState({ fen, source })
+  if (dataFor.fen !== fen || dataFor.source !== source) {
+    setDataFor({ fen, source })
+    setUnavailable(false)
+    setData(null)
+  }
+
   useEffect(() => {
     let aborted = false
     const ctrl = new AbortController()
-    setUnavailable(false)
-    setData(null)
     fetchExplorer({
       source,
       fen,

@@ -104,19 +104,28 @@ function LichessExplorerPanel({ username }: { username: string }) {
     history: [],
   }))
   const [data, setData] = useState<ExplorerResponse | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Reset traversal when color or player changes.
-  useEffect(() => {
+  // Reset traversal when color or player changes (during render, so the new
+  // side is never queried from the previous position).
+  const [traversalOf, setTraversalOf] = useState({ color, username })
+  if (traversalOf.color !== color || traversalOf.username !== username) {
+    setTraversalOf({ color, username })
     setNode({ fen: new Chess().fen(), history: [] })
-  }, [color, username])
+  }
+
+  // New query: flag the reload during render, the effect below fetches it.
+  const [query, setQuery] = useState({ username, color, fen: node.fen })
+  if (query.username !== username || query.color !== color || query.fen !== node.fen) {
+    setQuery({ username, color, fen: node.fen })
+    setLoading(true)
+    setError(null)
+  }
 
   useEffect(() => {
     let aborted = false
     const ctrl = new AbortController()
-    setLoading(true)
-    setError(null)
     fetchExplorer({
       source: 'player',
       player: username,

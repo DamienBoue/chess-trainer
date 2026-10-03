@@ -136,7 +136,7 @@ function TrainerBoard({
     let last: RepertoireNode | null = null
     for (const k of session.pathKeys) {
       const found = cur.get(k)
-      if (!found) return { currentChildren: cur, currentNode: last }
+      if (!found) break
       last = found
       cur = found.children
     }

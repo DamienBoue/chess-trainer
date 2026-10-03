@@ -136,10 +136,17 @@ function PlyComparison({
   const [loading, setLoading] = useState(true)
   const [err, setErr] = useState(false)
 
+  // Position changed: flag the reload during render, the effect below
+  // fetches the masters payload.
+  const [mastersFen, setMastersFen] = useState(step.fenBefore)
+  if (mastersFen !== step.fenBefore) {
+    setMastersFen(step.fenBefore)
+    setLoading(true); setErr(false)
+  }
+
   useEffect(() => {
     let aborted = false
     const ctrl = new AbortController()
-    setLoading(true); setErr(false)
     fetchExplorer({ source: 'masters', fen: step.fenBefore, moves: 6 }, ctrl.signal).then(r => {
       if (aborted) return
       if (!r) setErr(true)

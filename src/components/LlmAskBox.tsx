@@ -3,7 +3,7 @@
 // model's prose answer with a Regenerate link. The parent owns the
 // fetch function — this component knows nothing about chess.
 
-import { useEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { llmAvailable } from '../coach/coach'
 
 interface Props {
@@ -30,10 +30,17 @@ export default function LlmAskBox({
   const [err, setErr] = useState<string | null>(null)
   const ctrlRef = useRef<AbortController | null>(null)
 
-  useEffect(() => {
-    // Reset whenever the parent's key changes.
-    ctrlRef.current?.abort()
+  // Reset whenever the parent's key changes. The answer is cleared during
+  // render against the previous key, so the old one never paints; the
+  // in-flight request is aborted in a layout effect, i.e. still within the
+  // commit, so a late reply can't land on the cleared state.
+  const [prevResetKey, setPrevResetKey] = useState(resetKey)
+  if (prevResetKey !== resetKey) {
+    setPrevResetKey(resetKey)
     setText(null); setErr(null); setLoading(false)
+  }
+  useLayoutEffect(() => {
+    ctrlRef.current?.abort()
   }, [resetKey])
 
   if (!available) return fallback ? <>{fallback}</> : null

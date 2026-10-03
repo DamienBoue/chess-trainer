@@ -6,7 +6,7 @@
 //   - Any other context where we want a quick "look at this FEN" view
 //     without leaving the current screen.
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Chess } from 'chess.js'
 import TrainingBoard from './TrainingBoard'
 import PositionNote from './PositionNote'
@@ -43,11 +43,18 @@ export default function PositionExplorer({
   const [position, setPosition] = useState(initial)
   const [moveLog, setMoveLog] = useState<string[]>([])
 
-  // Reset whenever the FEN changes (different mistake clicked).
-  useEffect(() => {
-    chess.current = new Chess(initial)
+  // Reset whenever the FEN changes (different mistake clicked). The board
+  // state is adjusted during render against the previous FEN, so the old
+  // position never paints; the chess.js instance lives in a ref, so it is
+  // swapped in a layout effect, i.e. in the same commit.
+  const [prevInitial, setPrevInitial] = useState(initial)
+  if (prevInitial !== initial) {
+    setPrevInitial(initial)
     setPosition(initial)
     setMoveLog([])
+  }
+  useLayoutEffect(() => {
+    chess.current = new Chess(initial)
   }, [initial])
 
   // Close on Esc.
@@ -61,8 +68,13 @@ export default function PositionExplorer({
 
   const sideToMove = position.split(' ')[1] === 'b' ? 'black' : 'white'
   const [orientation, setOrientation] = useState<'white' | 'black'>(initialOrientation)
-  // Reset orientation when the explorer opens on a new position.
-  useEffect(() => { setOrientation(initialOrientation) }, [initialOrientation])
+  // Reset orientation when the explorer opens on a new position (same
+  // during-render adjustment as the board reset above).
+  const [prevInitialOrientation, setPrevInitialOrientation] = useState(initialOrientation)
+  if (prevInitialOrientation !== initialOrientation) {
+    setPrevInitialOrientation(initialOrientation)
+    setOrientation(initialOrientation)
+  }
 
   function onPieceDrop({ sourceSquare, targetSquare, piece }: {
     sourceSquare: string; targetSquare: string | null; piece: { pieceType: string }

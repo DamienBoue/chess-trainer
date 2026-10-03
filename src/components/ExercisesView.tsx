@@ -46,16 +46,18 @@ export default function ExercisesView({ analyses, progress, onAttempt, initialMo
   const [activeId, setActiveId] = useState<string | null>(null)
 
   // If the upstream changes `initialMotif` (e.g. user clicks another row in
-  // the radar without leaving the app), follow it.
-  useEffect(() => {
+  // the radar without leaving the app), follow it. Done during render
+  // against the previous prop value.
+  const [prevInitialMotif, setPrevInitialMotif] = useState(initialMotif)
+  if (prevInitialMotif !== initialMotif) {
+    setPrevInitialMotif(initialMotif)
     if (initialMotif && motifFilter !== initialMotif) {
       setMotifFilter(initialMotif)
       setStatusFilter('all')      // show ALL exercises with this motif, not just due
       setCategoryFilter('missed') // the drill button targets misses
       setActiveId(null)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialMotif])
+  }
 
   const filtered = useMemo(() => {
     let list = exercises
@@ -72,9 +74,8 @@ export default function ExercisesView({ analyses, progress, onAttempt, initialMo
   // activeId is null) so the active exercise stays sticky even after it falls
   // out of the filter (e.g. user solved it under "À réviser" — without this
   // it would drop and be replaced by the next one, looking like auto-advance).
-  useEffect(() => {
-    if (!activeId && filtered[0]) setActiveId(filtered[0].id)
-  }, [activeId, filtered])
+  // Pinned during render; it is the exercise `active` falls back to anyway.
+  if (!activeId && filtered[0]) setActiveId(filtered[0].id)
 
   const active = useMemo(
     () => (activeId ? exercises.find(e => e.id === activeId) : null) ?? filtered[0] ?? null,
@@ -377,7 +378,6 @@ function ExercisePractice({
     const isReveal = status === 'revealed'
     if (!isReveal && (isUserTurn || status === 'wrong')) return
     const san = lineSans[linePly]
-    if (!san) { setLinePly(lineSans.length); return }
     const timer = window.setTimeout(() => {
       let mv
       try { mv = chess.move(san) } catch { /* noop */ }

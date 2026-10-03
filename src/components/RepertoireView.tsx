@@ -174,18 +174,6 @@ function SrsPanel({ roots }: { roots: RepertoireRoot[] }) {
   const [position, setPosition] = useState<string>('')
   const [revealed, setRevealed] = useState(false)
 
-  // Pick a card when the queue changes (and we don't have one yet).
-  useEffect(() => {
-    if (current) return
-    pickNext()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [due.length, current])
-
-  // Reset on mode change.
-  useEffect(() => {
-    setCurrent(null); setStatus('pending'); setFeedback(''); setRevealed(false)
-  }, [mode])
-
   function pickNext() {
     if (due.length === 0) { setCurrent(null); return }
     // Order: oldest-due first, then shallower decisions first (foundations).
@@ -201,6 +189,17 @@ function SrsPanel({ roots }: { roots: RepertoireRoot[] }) {
     setStatus('pending')
     setFeedback('')
     setRevealed(false)
+  }
+
+  // Pick a card whenever we don't have one and the queue isn't empty —
+  // adjusted during render, so the card shows up in the same commit.
+  if (!current && due.length > 0) pickNext()
+
+  // Mode switch resets the drill; the next render picks from the new queue.
+  function changeMode(next: SrsMode) {
+    if (next === mode) return
+    setMode(next)
+    setCurrent(null); setStatus('pending'); setFeedback(''); setRevealed(false)
   }
 
   function onPieceDrop({ sourceSquare, targetSquare, piece }: {
@@ -234,7 +233,7 @@ function SrsPanel({ roots }: { roots: RepertoireRoot[] }) {
   function skip() {
     if (!current) return
     setProgress(prev => ({ ...prev, [current.id]: updateProgressAfterAttempt(prev[current.id], 'failed') }))
-    setCurrent(null)  // useEffect picks the next due card
+    setCurrent(null)  // next render picks the next due card
   }
 
   function nextCard() {
@@ -266,11 +265,11 @@ function SrsPanel({ roots }: { roots: RepertoireRoot[] }) {
         </div>
         <div className="inline-flex rounded-md border border-[var(--color-border)] bg-neutral-900 p-0.5 text-xs">
           <button
-            onClick={() => setMode('habits')}
+            onClick={() => changeMode('habits')}
             className={`px-2 py-1 rounded ${mode === 'habits' ? 'bg-[var(--color-accent)] text-white' : 'text-neutral-300 hover:bg-neutral-800'}`}
           >Habitudes</button>
           <button
-            onClick={() => setMode('improve')}
+            onClick={() => changeMode('improve')}
             className={`px-2 py-1 rounded ${mode === 'improve' ? 'bg-[var(--color-accent)] text-white' : 'text-neutral-300 hover:bg-neutral-800'}`}
             title="Drille les corrections recommandées par Stockfish au lieu de tes habitudes"
           >Améliorer</button>
@@ -292,7 +291,10 @@ function SrsPanel({ roots }: { roots: RepertoireRoot[] }) {
               <span className="text-xs px-1.5 py-0.5 rounded bg-blue-900/40 text-blue-300">SF correction</span>
             )}
           </div>
+          {/* One board per card: a card change remounts it instead of
+              animating from the previous card's position. */}
           <TrainingBoard
+            key={current.id}
             position={position}
             orientation={current.rootColor}
             allowDragging={status !== 'correct'}

@@ -58,7 +58,7 @@ export function inMemoryRepos(initial: Partial<{
 }> = {}): Repos {
   let progress = { ...(initial.progress ?? {}) }
   let plan: PlanState | null = initial.plan ?? null
-  let notes: NotesStore = { ...(initial.notes ?? {}) }
+  const notes: NotesStore = { ...(initial.notes ?? {}) }
   let daily: DailyState | null = initial.daily ?? null
 
   // Match notes.ts: an empty FEN key is identical to its positionKey here.

@@ -13,7 +13,7 @@ import { conceptForMotif, pickDailyConcept } from '../concepts/lookup'
 import ChecklistRow from './ChecklistRow'
 import LlmAskBox from './LlmAskBox'
 import ConceptChip from './ConceptChip'
-import { openConcept } from './ConceptModal'
+import { openConcept } from './conceptEvents'
 import RoadmapView from './RoadmapView'
 import TodayTiles from './TodayTiles'
 

@@ -2,8 +2,10 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import type { ChessComGame, GameAnalysis } from './types'
 import { StockfishEngine } from './engine/stockfish'
 import Home from './components/Home'
-import { ToastHost, toast } from './components/Toast'
-import KeyboardShortcutsModal, { openShortcutsHelp } from './components/KeyboardShortcutsModal'
+import { ToastHost } from './components/Toast'
+import { toast } from './components/toastBus'
+import KeyboardShortcutsModal from './components/KeyboardShortcutsModal'
+import { openShortcutsHelp } from './components/shortcutsHelpEvents'
 import Onboarding from './components/Onboarding'
 import ConceptModal from './components/ConceptModal'
 import CommandPalette, { type CommandTarget } from './components/CommandPalette'
@@ -39,12 +41,12 @@ const ConceptsView = lazy(() => import('./components/ConceptsView'))
 const OpeningLabView = lazy(() => import('./components/OpeningLabView'))
 const ReverseDrillView = lazy(() => import('./components/ReverseDrillView'))
 const StrategyView = lazy(() => import('./components/StrategyView'))
+import { GlobalFilters } from './components/TimeClassFilter'
 import {
-  GlobalFilters,
   applyGlobalFilters,
   type TimeClassFilter,
   type ColorFilter,
-} from './components/TimeClassFilter'
+} from './components/gameFilters'
 import { extractExercises } from './analysis/exercises'
 import { readSharedFromHash, clearShareHash } from './api/share'
 import { analyzeGame } from './analysis/analyze'
@@ -65,6 +67,16 @@ export interface BatchState {
 }
 
 type View = 'home' | 'games' | 'analysis' | 'stats' | 'exercises' | 'rush' | 'daily' | 'roadmap' | 'compare' | 'repertoire' | 'library' | 'book' | 'scouting' | 'play' | 'blunder' | 'calc' | 'players' | 'settings' | 'concepts' | 'openingLab' | 'reverseDrill' | 'strategy'
+
+// One long-lived Stockfish worker per page load, created on App's first render.
+// App holds it in state, which survives Fast Refresh re-running this module;
+// the module-level cache makes the initializer idempotent, since StrictMode
+// double-invokes it in dev and would otherwise spawn a second worker.
+let sharedEngine: StockfishEngine | null = null
+function getSharedEngine(): StockfishEngine {
+  if (!sharedEngine) sharedEngine = new StockfishEngine()
+  return sharedEngine
+}
 
 export default function App() {
   const [view, setView] = useState<View>('home')
@@ -100,18 +112,18 @@ export default function App() {
   useEffect(() => { localStorage.setItem('chess.filter.tc', tcFilter) }, [tcFilter])
   useEffect(() => { localStorage.setItem('chess.filter.color', colorFilter) }, [colorFilter])
 
-  const engineRef = useRef<StockfishEngine | null>(null)
-  if (!engineRef.current) engineRef.current = new StockfishEngine()
+  const [engine] = useState(getSharedEngine)
   // Note: we intentionally don't terminate the worker on unmount. React StrictMode
-  // calls useEffect cleanups during dev, which would kill the engine while the ref
-  // still points to it, leaving us with a zombie worker. The browser cleans up the
+  // calls useEffect cleanups during dev, which would kill the engine while App
+  // still holds it, leaving us with a zombie worker. The browser cleans up the
   // worker when the tab closes anyway.
 
   // Hydrate games + analyses from IndexedDB whenever the username changes.
   useEffect(() => {
     hydratedRef.current = false
     if (!username) {
-      setGames([]); setAnalyses({})
+      // Logged out: nothing to load. games/analyses are already empty (initial
+      // state, or cleared by handleLogout).
       hydratedRef.current = true
       return
     }
@@ -232,7 +244,7 @@ export default function App() {
   }
 
   async function handleStartBatch() {
-    if (batch || !engineRef.current) return
+    if (batch) return
     const toAnalyze = games.filter(g => !analyses[g.url])
     if (toAnalyze.length === 0) return
     const controller = new AbortController()
@@ -245,7 +257,7 @@ export default function App() {
       if (controller.signal.aborted) break
       setBatch({ total: toAnalyze.length, done, currentGameUrl: game.url, currentMove: null, failed })
       try {
-        const result = await analyzeGame(engineRef.current, game, username, {
+        const result = await analyzeGame(engine, game, username, {
           depth: getEngineDepth(),
           movetimeMs: 600,
           signal: controller.signal,
@@ -450,7 +462,7 @@ export default function App() {
             // One instance per game (and per deep link) so navigation state resets.
             key={`${activeGameUrl}:${analysisStartPly ?? ''}`}
             initialPly={analysisStartPly ?? undefined}
-            engine={engineRef.current!}
+            engine={engine}
             username={username}
             game={games.find(g => g.url === activeGameUrl)!}
             existingAnalysis={activeAnalysis}
@@ -517,7 +529,7 @@ export default function App() {
           <ScoutingView />
         )}
         {view === 'play' && (
-          <PlayView engine={engineRef.current!} />
+          <PlayView engine={engine} />
         )}
         {view === 'blunder' && (
           <BlunderDrillView analyses={filteredAnalyses} onExit={() => setView('exercises')} />

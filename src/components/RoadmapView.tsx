@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { GameAnalysis } from '../types'
 import {
   BRACKETS,
@@ -41,13 +41,6 @@ export default function RoadmapView({ analyses, onNavigate, embedded = false }: 
   const isPreview = viewBracket.id !== bracket.id
   const modules = modulesForBracket(viewBracket)
   const suggestion = useMemo(() => suggestBracketChange(pref, analyses), [pref, analyses])
-
-  // Keep viewBracket in sync when the real bracket changes (e.g. user
-  // updates declared Elo) unless they're actively previewing another.
-  useEffect(() => {
-    if (!isPreview) setViewBracketId(bracket.id)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bracket.id])
 
   function updateDeclared(value: string) {
     const n = parseInt(value, 10)

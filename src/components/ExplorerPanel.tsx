@@ -48,15 +48,22 @@ export default function ExplorerPanel({ roots }: Props) {
   )
   const [orientation, setOrientation] = useState<'white' | 'black'>(startOptions[0].orientation)
   const [candidates, setCandidates] = useState<ExplorerCandidate[] | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [n, setN] = useState(4)
   const currentFen = history[history.length - 1].fen
+
+  // Position (or N) changed: drop the previous candidates during render,
+  // the effect below fetches the new ones.
+  const [candidatesFor, setCandidatesFor] = useState({ fen: currentFen, n })
+  if (candidatesFor.fen !== currentFen || candidatesFor.n !== n) {
+    setCandidatesFor({ fen: currentFen, n })
+    setLoading(true)
+    setCandidates(null)
+  }
 
   // Fetch top-N candidates whenever the current position changes.
   useEffect(() => {
     let cancelled = false
-    setLoading(true)
-    setCandidates(null)
     evaluateMultiPV(currentFen, n, 12, 600)
       .then(lines => {
         if (cancelled) return

@@ -7,8 +7,8 @@ import {
 } from '../storage/settings'
 import { exportAll, importAll, downloadJson, readJsonFile } from '../storage/exportImport'
 import { DEFAULT_MODEL, loadLlmConfig, saveLlmConfig, type LlmProvider } from '../coach/config'
-import { toast } from './Toast'
-import { resetOnboarding } from './Onboarding'
+import { toast } from './toastBus'
+import { resetOnboarding } from './onboardingReset'
 
 interface Props {
   username: string

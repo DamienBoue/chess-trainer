@@ -71,11 +71,19 @@ export default function CalcDepthView({ analyses, onExit }: Props) {
 
   const current = pool[idx] ?? null
 
-  useEffect(() => {
+  // New puzzle → blank input and no result. Done during render against the
+  // previous puzzle id, so the old attempt never shows on the new position.
+  const [prevId, setPrevId] = useState(current?.id)
+  // Bumped to move focus into the answer box (the effect below also runs on
+  // mount). Skipped when leaving a shown attempt ("Suivant"): focus is left alone.
+  const [focusRequest, setFocusRequest] = useState(0)
+  if (prevId !== current?.id) {
+    setPrevId(current?.id)
+    if (!result) setFocusRequest(n => n + 1)
     setInput('')
     setResult(null)
-    inputRef.current?.focus()
-  }, [current?.id])
+  }
+  useEffect(() => { inputRef.current?.focus() }, [focusRequest])
 
   function submit() {
     if (!current || result) return

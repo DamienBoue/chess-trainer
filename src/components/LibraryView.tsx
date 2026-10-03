@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { Book } from '../library/types'
 import { listBooks, deleteBook, getProgress, saveBook } from '../library/storage'
 import { importBookFromFile, migrateLegacyWoodpeckerProgress, validateBookJson } from '../library/import'
-import { toast } from './Toast'
+import { toast } from './toastBus'
 import { SkeletonListItem } from './Skeleton'
 
 interface Props {

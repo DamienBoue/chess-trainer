@@ -102,7 +102,7 @@ function BatchBanner({
     ? (batch.currentMove.done / batch.currentMove.total) * 100
     : 0
   const currentGame = batch.currentGameUrl ? games.find(g => g.url === batch.currentGameUrl) : null
-  const opponentName = currentGame ? extractOpponent(currentGame, batch.currentGameUrl) : ''
+  const opponentName = currentGame ? extractOpponent(currentGame) : ''
 
   return (
     <div className="mb-4 bg-[var(--color-panel)] border border-[var(--color-accent)] rounded-md p-4">
@@ -153,7 +153,7 @@ function ProgressBar({ pct, label, small }: { pct: number; label: string; small?
   )
 }
 
-function extractOpponent(game: ChessComGame, _url: string | null): string {
+function extractOpponent(game: ChessComGame): string {
   // Without knowing user color here, just return both
   return `${game.white.username} vs ${game.black.username}`
 }
