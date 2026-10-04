@@ -14,7 +14,6 @@ import ChecklistRow from './ChecklistRow'
 import LlmAskBox from './LlmAskBox'
 import ConceptChip from './ConceptChip'
 import { openConcept } from './conceptEvents'
-import RoadmapView from './RoadmapView'
 import TodayTiles from './TodayTiles'
 
 interface Props {
@@ -23,7 +22,7 @@ interface Props {
   username?: string
   onNavigate: (target: 'daily' | 'exercises' | 'repertoire' | 'stats' | 'games' | 'roadmap' | 'home' | 'blunder' | 'calc' | 'library' | 'play' | 'book' | 'strategy' | 'strategyProfile', opts?: { motif?: MotifTag }) => void
   /** Opens a game's analysis ("Dernière partie" tile). */
-  onOpenGame?: (url: string) => void
+  onOpenGame?: (url: string, opts?: { review?: boolean }) => void
 }
 
 export default function PlanView({ analyses, progress, username, onNavigate, onOpenGame }: Props) {
@@ -41,7 +40,6 @@ export default function PlanView({ analyses, progress, username, onNavigate, onO
     [analyses, progress, repProgress, dailyDone, bracket],
   )
 
-  const [tab, setTab] = useState<'today' | 'roadmap'>('today')
   const [planState, setPlanState] = useState(() => loadPlanState(today))
   const doneSet = new Set(planState.done)
   // The daily item counts as done as soon as the daily streak says so.
@@ -53,6 +51,8 @@ export default function PlanView({ analyses, progress, username, onNavigate, onO
   }
 
   const totalDone = items.filter(it => doneSet.has(it.id)).length
+  // The one thing to do now: the first step not done yet.
+  const nextId = items.find(it => !doneSet.has(it.id))?.id
   const totalMin = totalMinutes(items)
   const completion = items.length === 0 ? 0 : totalDone / items.length
 
@@ -60,7 +60,7 @@ export default function PlanView({ analyses, progress, username, onNavigate, onO
   if (analyses.length === 0) {
     return (
       <div className="p-6 max-w-2xl mx-auto space-y-5">
-        {username && <PlanHeader username={username} analyses={analyses} onOpenRoadmap={() => onNavigate('roadmap')} onLogout={() => onNavigate('home')} />}
+        {username && <PlanHeader username={username} analyses={analyses} onOpenRoadmap={() => onNavigate('roadmap')} />}
         <div className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-5">
           <h3 className="font-semibold mb-2">Démarrer en 3 étapes</h3>
           <ol className="list-decimal pl-5 text-sm text-neutral-300 space-y-1 mb-4">
@@ -80,7 +80,7 @@ export default function PlanView({ analyses, progress, username, onNavigate, onO
   if (items.length === 0) {
     return (
       <div className="p-6 max-w-3xl mx-auto space-y-5">
-        {username && <PlanHeader username={username} analyses={analyses} onOpenRoadmap={() => onNavigate('roadmap')} onLogout={() => onNavigate('home')} />}
+        {username && <PlanHeader username={username} analyses={analyses} onOpenRoadmap={() => onNavigate('roadmap')} />}
         {onOpenGame && <TodayTiles analyses={analyses} progress={progress} onOpenGame={onOpenGame} onNavigate={t => onNavigate(t)} />}
         <h2 className="text-xl font-semibold">Plan du jour <span className="text-sm font-normal text-neutral-500 ml-2">{today}</span></h2>
         <div className="bg-green-500/10 border border-green-500/30 rounded-md p-5 text-sm text-green-200">
@@ -93,22 +93,8 @@ export default function PlanView({ analyses, progress, username, onNavigate, onO
 
   return (
     <div className="p-4 lg:p-6 max-w-3xl mx-auto space-y-5">
-      {username && <PlanHeader username={username} analyses={analyses} onOpenRoadmap={() => setTab('roadmap')} onLogout={() => onNavigate('home')} />}
+      {username && <PlanHeader username={username} analyses={analyses} onOpenRoadmap={() => onNavigate('roadmap')} />}
 
-      <div className="flex gap-1 border-b border-[var(--color-border)] text-sm">
-        <PlanTabBtn active={tab === 'today'} onClick={() => setTab('today')}>Aujourd'hui</PlanTabBtn>
-        <PlanTabBtn active={tab === 'roadmap'} onClick={() => setTab('roadmap')}>Mon niveau</PlanTabBtn>
-      </div>
-
-      {tab === 'roadmap' && (
-        <RoadmapView
-          analyses={analyses}
-          embedded
-          onNavigate={target => onNavigate(target as 'exercises' | 'blunder' | 'calc' | 'repertoire' | 'stats')}
-        />
-      )}
-
-      {tab === 'today' && <>
       {onOpenGame && <TodayTiles analyses={analyses} progress={progress} onOpenGame={onOpenGame} onNavigate={t => onNavigate(t)} />}
 
       <div className="flex items-baseline justify-between flex-wrap gap-3">
@@ -138,6 +124,7 @@ export default function PlanView({ analyses, progress, username, onNavigate, onO
           <PlanRow
             key={item.id}
             item={item}
+            next={item.id === nextId}
             done={doneSet.has(item.id)}
             onToggle={() => toggle(item.id)}
             onGo={() => {
@@ -158,7 +145,6 @@ export default function PlanView({ analyses, progress, username, onNavigate, onO
       )}
 
       <DailyConceptCard today={today} />
-      </>}
     </div>
   )
 }
@@ -185,28 +171,14 @@ function DailyConceptCard({ today }: { today: string }) {
   )
 }
 
-function PlanTabBtn({ children, active, onClick }: { children: React.ReactNode; active: boolean; onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`px-3 py-2 -mb-px border-b-2 transition-colors ${
-        active
-          ? 'border-[var(--color-accent)] text-white'
-          : 'border-transparent text-neutral-400 hover:text-neutral-200'
-      }`}
-    >{children}</button>
-  )
-}
-
 // Greeting + Elo bracket badge + 1-line stats. Sits at the top of the
 // authenticated home (= Plan). Replaces the old Dashboard banner.
 function PlanHeader({
-  username, analyses, onOpenRoadmap, onLogout,
+  username, analyses, onOpenRoadmap,
 }: {
   username: string
   analyses: GameAnalysis[]
   onOpenRoadmap: () => void
-  onLogout: () => void
 }) {
   const bracket = useMemo(
     () => bracketForElo(effectiveElo(loadEloPreference(), analyses)),
@@ -225,7 +197,7 @@ function PlanHeader({
           <button
             onClick={onOpenRoadmap}
             className="text-[11px] px-2 py-0.5 rounded bg-neutral-800 hover:bg-neutral-700 font-normal uppercase tracking-wider"
-            title="Niveau actuel — ouvrir la roadmap"
+            title="Niveau actuel — voir Mon niveau"
           >
             {bracket.label}{elo != null && <span className="ml-1 text-neutral-400">{elo}</span>}
           </button>
@@ -242,10 +214,6 @@ function PlanHeader({
           </p>
         )}
       </div>
-      <button
-        onClick={onLogout}
-        className="text-xs text-neutral-400 hover:text-white underline"
-      >Changer de compte</button>
     </div>
   )
 }
@@ -267,9 +235,10 @@ function CoachIntro({ items, bracket }: { items: PlanItem[]; bracket: ReturnType
 }
 
 function PlanRow({
-  item, done, onToggle, onGo,
+  item, next, done, onToggle, onGo,
 }: {
   item: PlanItem
+  next: boolean
   done: boolean
   onToggle: () => void
   onGo: () => void
@@ -278,12 +247,17 @@ function PlanRow({
   const action = (
     <button
       onClick={onGo}
-      className="px-3 py-1.5 text-sm rounded bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] text-white font-medium"
+      className={`min-h-10 sm:min-h-0 text-sm rounded font-medium ${
+        done
+          ? 'px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-200'
+          : 'px-3 py-1.5 bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] text-white'
+      }`}
     >
-      {done ? 'Revoir' : 'Faire'}
+      {done ? 'Revoir' : next ? 'Commencer' : 'Faire'}
     </button>
   )
   return (
+    <div className={next ? 'rounded-md ring-1 ring-[var(--color-accent)]/70' : undefined}>
     <ChecklistRow
       done={done}
       onToggle={onToggle}
@@ -320,6 +294,7 @@ function PlanRow({
         </p>
       )}
     </ChecklistRow>
+    </div>
   )
 }
 

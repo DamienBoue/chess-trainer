@@ -12,7 +12,8 @@ import { aggregate, PHASE_LABELS, type Phase } from '../analysis/aggregate'
 interface Props {
   analyses: GameAnalysis[]
   progress: Record<string, ExerciseProgress>
-  onOpenGame: (url: string) => void
+  /** `review`: straight into the guided "Revoir mes erreurs" mode. */
+  onOpenGame: (url: string, opts?: { review?: boolean }) => void
   onNavigate: (target: 'exercises' | 'strategyProfile' | 'stats') => void
 }
 
@@ -41,8 +42,8 @@ export default function TodayTiles({ analyses, progress, onOpenGame, onNavigate 
       <Tile
         title="Dernière partie"
         body={<>vs <span className="text-neutral-100">{last.opponent}</span> · {RESULT_FR[last.result]}<br />{userErrors === 0 ? 'Aucune erreur grave' : `${userErrors} erreur${userErrors > 1 ? 's' : ''} ou gaffe${userErrors > 1 ? 's' : ''}`}</>}
-        cta="Revoir"
-        onClick={() => onOpenGame(last.url)}
+        cta={userErrors > 0 ? 'Revoir mes erreurs' : 'Revoir'}
+        onClick={() => onOpenGame(last.url, userErrors > 0 ? { review: true } : undefined)}
       />
       <Tile
         title="À réviser"
@@ -62,15 +63,19 @@ export default function TodayTiles({ analyses, progress, onOpenGame, onNavigate 
   )
 }
 
+// The whole card is the button: on a phone, a small "Revoir →" link was a
+// hard target. Stacked rows on phones, three columns from sm.
 function Tile({ title, body, cta, onClick }: { title: string; body: React.ReactNode; cta: string; onClick: () => void }) {
   return (
-    <div className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-3 flex flex-col">
-      <div className="text-[11px] uppercase tracking-wider text-neutral-500 mb-1">{title}</div>
-      <div className="text-sm text-neutral-300 leading-snug flex-1">{body}</div>
-      <button
-        onClick={onClick}
-        className="mt-2 self-start text-xs px-2.5 py-1 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-100"
-      >{cta} →</button>
-    </div>
+    <button
+      onClick={onClick}
+      className="text-left bg-[var(--color-panel)] hover:bg-neutral-800 border border-[var(--color-border)] rounded-md p-3 flex items-center gap-3 sm:flex-col sm:items-stretch"
+    >
+      <span className="flex-1 min-w-0">
+        <span className="block text-[11px] uppercase tracking-wider text-neutral-500 mb-1">{title}</span>
+        <span className="block text-sm text-neutral-300 leading-snug">{body}</span>
+      </span>
+      <span className="shrink-0 text-xs font-medium text-[var(--color-accent-hover)] sm:mt-auto sm:pt-2">{cta} →</span>
+    </button>
   )
 }

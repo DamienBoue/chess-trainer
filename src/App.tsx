@@ -10,6 +10,9 @@ import Onboarding from './components/Onboarding'
 import ConceptModal from './components/ConceptModal'
 import CommandPalette, { type CommandTarget } from './components/CommandPalette'
 import { openCommandPalette } from './components/commandPaletteEvents'
+import MobileTabBar from './components/MobileTabBar'
+import HubView from './components/HubView'
+import BottomSheet from './components/BottomSheet'
 import Breadcrumbs from './components/Breadcrumbs'
 import { getEngineDepth } from './storage/settings'
 import GamesList from './components/GamesList'
@@ -18,7 +21,8 @@ import DailyView from './components/DailyView'
 import PlanView from './components/PlanView'
 import RoadmapView from './components/RoadmapView'
 
-import { FILTERED_VIEWS, NAV, type NavCounts, type NavTarget, groupItems, isGroupActive, isItemActive } from './components/navModel'
+import { FILTERED_VIEWS, NAV, type NavCounts, type NavTarget, hubGroup, isGroupActive, isItemActive, parentOf, titleOf } from './components/navModel'
+import { type AnalysisTabId, findGameBySlug, formatRoute, gameSlug, parseHash, sameScreen, writeHash } from './components/route'
 import type { StrategyTab } from './components/StrategyView'
 
 // Heavy or rarely-visited views are code-split: they only download when
@@ -44,6 +48,7 @@ const StrategyView = lazy(() => import('./components/StrategyView'))
 import { GlobalFilters } from './components/TimeClassFilter'
 import {
   applyGlobalFilters,
+  labelForTimeClass,
   type TimeClassFilter,
   type ColorFilter,
 } from './components/gameFilters'
@@ -66,7 +71,7 @@ export interface BatchState {
   failed: number
 }
 
-type View = 'home' | 'games' | 'analysis' | 'stats' | 'exercises' | 'rush' | 'daily' | 'roadmap' | 'compare' | 'repertoire' | 'library' | 'book' | 'scouting' | 'play' | 'blunder' | 'calc' | 'players' | 'settings' | 'concepts' | 'openingLab' | 'reverseDrill' | 'strategy'
+type View = 'home' | 'games' | 'trainHub' | 'theoryHub' | 'progressHub' | 'analysis' | 'stats' | 'exercises' | 'rush' | 'daily' | 'roadmap' | 'compare' | 'repertoire' | 'library' | 'book' | 'scouting' | 'play' | 'blunder' | 'calc' | 'players' | 'settings' | 'concepts' | 'openingLab' | 'reverseDrill' | 'strategy'
 
 // One long-lived Stockfish worker per page load, created on App's first render.
 // App holds it in state, which survives Fast Refresh re-running this module;
@@ -79,12 +84,15 @@ function getSharedEngine(): StockfishEngine {
 }
 
 export default function App() {
-  const [view, setView] = useState<View>('home')
-  const [activeBookId, setActiveBookId] = useState<string | null>(null)
+  // Screen restored from the URL (#/…): reload, shared link, back/forward.
+  const [initialRoute] = useState(() => parseHash(window.location.hash))
+  const [view, setView] = useState<View>(() => (initialRoute?.view as View | undefined) ?? 'home')
+  const [activeBookId, setActiveBookId] = useState<string | null>(initialRoute?.bookId ?? null)
   // Cross-view deep link: clicking a motif in Stats jumps to Exercises with
   // that motif preselected.
   const [drillMotif, setDrillMotif] = useState<import('./analysis/motifs').MotifTag | null>(null)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false)
   const [username, setUsername] = useState<string>(() => localStorage.getItem('chess.username') ?? '')
   // Games + analyses now live in IndexedDB → loaded asynchronously after
   // mount. We start empty, then hydrate from IDB in the effect below.
@@ -99,7 +107,28 @@ export default function App() {
   const [activeGameUrl, setActiveGameUrl] = useState<string | null>(null)
   // Ply to open the analysis at (deep links from the strategy profile/trainer).
   const [analysisStartPly, setAnalysisStartPly] = useState<number | null>(null)
-  const [strategyTab, setStrategyTab] = useState<StrategyTab>('profile')
+  // From a URL, no tab means the default one, Bilan (see formatRoute).
+  // Straight into "Revoir mes erreurs" (home's last-game card); never from a URL.
+  const [analysisStartReview, setAnalysisStartReview] = useState(false)
+  const [analysisStartTab, setAnalysisStartTab] = useState<AnalysisTabId | null>(
+    initialRoute?.view === 'analysis' ? initialRoute.tab ?? 'review' : null)
+  // A game link (#/partie/…) waits for the games to come out of IndexedDB.
+  const [pendingGame, setPendingGame] = useState(() =>
+    initialRoute?.view === 'analysis' && initialRoute.gameSlug
+      ? { slug: initialRoute.gameSlug, ply: initialRoute.ply }
+      : null)
+  const [hydrated, setHydrated] = useState(false)
+  if (pendingGame && hydrated) {
+    const g = findGameBySlug([...games, ...Object.values(analyses)], pendingGame.slug)
+    setPendingGame(null)
+    if (g) {
+      setActiveGameUrl(g.url)
+      setAnalysisStartPly(pendingGame.ply ?? null)
+    } else {
+      setView('games')
+    }
+  }
+  const [strategyTab, setStrategyTab] = useState<StrategyTab>(initialRoute?.strategyTab ?? 'profile')
   const [batch, setBatch] = useState<BatchState | null>(null)
   const batchAbortRef = useRef<AbortController | null>(null)
   const [sharedExercise, setSharedExercise] = useState(() => readSharedFromHash())
@@ -139,6 +168,7 @@ export default function App() {
       })
       setAnalyses(a)
       hydratedRef.current = true
+      setHydrated(true)
     })
     return () => { cancelled = true }
   }, [username])
@@ -224,15 +254,73 @@ export default function App() {
   }
 
   function handleAnalyzeStart(game: ChessComGame) {
-    setActiveGameUrl(game.url)
-    setAnalysisStartPly(null)
+    openGameAt(game.url)
+  }
+
+  function openGameAt(url: string, ply?: number, opts?: { review?: boolean }) {
+    setActiveGameUrl(url)
+    setAnalysisStartPly(ply ?? null)
+    setAnalysisStartTab(null)
+    setAnalysisStartReview(!!opts?.review)
     setView('analysis')
   }
 
-  function openGameAt(url: string, ply?: number) {
-    setActiveGameUrl(url)
-    setAnalysisStartPly(ply ?? null)
-    setView('analysis')
+  // ---- URL routing ------------------------------------------------------
+  // Logged out, every route lands on the login screen.
+  const shownView: View = username ? view : 'home'
+  const activeGame = activeGameUrl
+    ? games.find(g => g.url === activeGameUrl) ?? (analyses[activeGameUrl] ? gameFromAnalysis(analyses[activeGameUrl], username) : undefined)
+    : undefined
+  const screenHash = formatRoute({
+    view: shownView,
+    gameSlug: activeGameUrl ? gameSlug(activeGameUrl) : undefined,
+    strategyTab,
+    bookId: activeBookId ?? undefined,
+  })
+
+  // State → URL. Moving to another screen adds a history entry; the move and
+  // tab inside an analysis only replace it (see onRouteState below). The
+  // landing URL (an alias, a game that is gone…) is corrected in place.
+  const urlSyncedRef = useRef(false)
+  useEffect(() => {
+    if (sharedExercise || pendingGame) return
+    const current = window.location.hash
+    const landing = !urlSyncedRef.current
+    urlSyncedRef.current = true
+    if (sameScreen(current, screenHash)) return
+    writeHash(screenHash, !landing && current.startsWith('#/') ? 'push' : 'replace')
+  }, [screenHash, sharedExercise, pendingGame])
+
+  // URL → state on back/forward (or a hand-edited hash).
+  useEffect(() => {
+    function onPop() {
+      const r = parseHash(window.location.hash)
+      if (!r) return
+      if (r.view === 'analysis') {
+        const g = r.gameSlug ? findGameBySlug([...games, ...Object.values(analyses)], r.gameSlug) : undefined
+        if (!g) { setView('games'); return }
+        setActiveGameUrl(g.url)
+        setAnalysisStartPly(r.ply ?? null)
+        setAnalysisStartTab(r.tab ?? 'review')
+        setAnalysisStartReview(false)
+      }
+      if (r.strategyTab) setStrategyTab(r.strategyTab)
+      if (r.view === 'book') setActiveBookId(r.bookId ?? null)
+      setView(r.view as View)
+    }
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [games, analyses])
+
+  // The analysis reports its move and tab. Same game: its entry is updated
+  // in place. A game just opened: its entry is added here, since this runs
+  // before the screen sync above (child effects first).
+  function replaceAnalysisRoute(s: { ply: number; tab: AnalysisTabId }) {
+    if (!activeGameUrl) return
+    const hash = formatRoute({ view: 'analysis', gameSlug: gameSlug(activeGameUrl), ply: s.ply, tab: s.tab })
+    const current = window.location.hash
+    if (current === hash) return
+    writeHash(hash, sameScreen(current, hash) || !current.startsWith('#/') ? 'replace' : 'push')
   }
 
   function handleAnalysisComplete(analysis: GameAnalysis) {
@@ -287,6 +375,21 @@ export default function App() {
     batchAbortRef.current?.abort()
   }
 
+  // ---- Navigation chrome --------------------------------------------------
+  const hub = hubGroup(shownView)
+  const upScreen = username ? parentOf(shownView, strategyTab) : null
+  const crumbHere = shownView === 'analysis' && activeGame
+    ? `vs ${activeGame.white.username.toLowerCase() === username.toLowerCase() ? activeGame.black.username : activeGame.white.username}`
+    : shownView === 'book' ? 'Livre' : titleOf(shownView, strategyTab) ?? ''
+  const showFilters = !!username && allAnalyses.length > 0 && FILTERED_VIEWS.has(shownView)
+  const filtersActive = tcFilter !== 'all' || colorFilter !== 'all'
+  const filterSummary = filtersActive
+    ? [tcFilter !== 'all' ? labelForTimeClass(tcFilter) : null, colorFilter === 'white' ? 'Blancs' : colorFilter === 'black' ? 'Noirs' : null]
+      .filter(Boolean).join(' · ')
+    : 'Tout'
+  // The analysis is a full-screen board task: its own move bar replaces the tab bar.
+  const showTabBar = !!username && shownView !== 'analysis'
+
   // Shared exercise mode: short-circuit the rest of the app and show a focused
   // standalone view. The user can close it to return to their own data.
   if (sharedExercise) {
@@ -300,22 +403,54 @@ export default function App() {
 
   return (
     <div className="min-h-full flex flex-col">
-      <header className="border-b border-[var(--color-border)] bg-[var(--color-panel)] px-6 py-3 flex items-center gap-4">
-        <h1 className="text-lg font-semibold tracking-tight">
+      <header className="max-sm:sticky max-sm:top-0 z-20 border-b border-[var(--color-border)] bg-[var(--color-panel)] px-3 sm:px-6 py-1.5 sm:py-3 flex items-center gap-2 sm:gap-4">
+        <h1 className={`${username ? 'hidden sm:block' : 'py-1.5 pl-1 sm:p-0'} text-lg font-semibold tracking-tight`}>
           ♞ Chess Trainer
         </h1>
-        {username && (
+        {/* Phones: where am I, and the way up (the part's hub, the games list…). */}
+        {username && (upScreen ? (
           <button
-            onClick={() => setMobileMenuOpen(true)}
-            className="sm:hidden ml-auto px-2 py-1.5 rounded-md text-neutral-300 hover:bg-neutral-800"
-            aria-label="Menu"
+            onClick={() => navigate(upScreen.target)}
+            className="sm:hidden flex items-center min-w-0 h-11 pr-2 rounded-md text-neutral-200 hover:bg-neutral-800"
+            aria-label={`Retour : ${upScreen.title}`}
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <line x1="3" y1="6" x2="21" y2="6"/>
-              <line x1="3" y1="12" x2="21" y2="12"/>
-              <line x1="3" y1="18" x2="21" y2="18"/>
-            </svg>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6" /></svg>
+            <span className="truncate font-medium">{upScreen.title}</span>
           </button>
+        ) : (
+          <span className="sm:hidden pl-1 text-lg font-semibold truncate">{titleOf(shownView, strategyTab) ?? 'Chess Trainer'}</span>
+        ))}
+        {username && (
+          <div className="sm:hidden ml-auto flex items-center gap-0.5 shrink-0">
+            {showFilters && (
+              <button
+                onClick={() => setFilterSheetOpen(true)}
+                className={`h-8 mr-1 px-2.5 rounded-full border text-xs flex items-center gap-1 ${
+                  filtersActive
+                    ? 'border-[var(--color-accent)]/60 bg-[var(--color-accent)]/15 text-[var(--color-accent-hover)]'
+                    : 'border-[var(--color-border)] text-neutral-300'
+                }`}
+                aria-label={`Filtrer mes parties : ${filterSummary}`}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 5h18l-7 8v6l-4 2v-8z" /></svg>
+                {filterSummary}
+              </button>
+            )}
+            <button
+              onClick={openCommandPalette}
+              className="w-11 h-11 grid place-items-center rounded-md text-neutral-300 hover:bg-neutral-800"
+              aria-label="Rechercher"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            </button>
+            <button
+              onClick={() => setMobileMenuOpen(true)}
+              className="w-11 h-11 grid place-items-center rounded-md text-neutral-300 hover:bg-neutral-800"
+              aria-label="Compte et préférences"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>
+            </button>
+          </div>
         )}
         <nav className={`${username ? 'hidden sm:flex' : 'flex'} ml-auto items-center gap-1 text-sm flex-wrap`}>
           {username && (
@@ -325,26 +460,36 @@ export default function App() {
                   key={entry.item.key}
                   active={isItemActive(entry.item, view, strategyTab)}
                   onClick={() => navigate(entry.item.target)}
-                >{entry.item.label(navCounts)}</NavBtn>
+                >{entry.item.label}</NavBtn>
               ) : (
                 <NavGroup
                   key={entry.group.key}
                   label={entry.group.label}
                   active={isGroupActive(entry.group, view, strategyTab)}
-                  items={entry.group.sections.flatMap((section, si) => [
-                    ...(section.label ? [{ key: `h-${si}`, heading: section.label }] : si > 0 ? [{ key: `d-${si}`, divider: true }] : []),
-                    ...section.items.map(it => {
-                      const reason = it.unavailable?.(navCounts) ?? null
-                      return {
-                        key: it.key,
-                        label: it.label(navCounts),
-                        description: reason ?? it.description,
-                        onClick: () => navigate(it.target),
-                        disabled: reason !== null,
-                        active: isItemActive(it, view, strategyTab),
-                      }
-                    }),
-                  ])}
+                  items={[
+                    {
+                      key: 'hub',
+                      label: 'Vue d\'ensemble',
+                      description: entry.group.intro,
+                      onClick: () => navigate({ view: entry.group.hub }),
+                      active: view === entry.group.hub,
+                    },
+                    ...entry.group.sections.flatMap((section, si) => [
+                      section.label ? { key: `h-${si}`, heading: section.label } : { key: `d-${si}`, divider: true },
+                      ...section.items.map(it => {
+                        const reason = it.unavailable?.(navCounts) ?? null
+                        const status = reason === null ? it.status?.(navCounts) ?? null : null
+                        return {
+                          key: it.key,
+                          label: status ? `${it.label} (${status})` : it.label,
+                          description: reason ?? it.description,
+                          onClick: () => navigate(it.target),
+                          disabled: reason !== null,
+                          active: isItemActive(it, view, strategyTab),
+                        }
+                      }),
+                    ]),
+                  ]}
                 />
               ))}
               <span className="mx-1 h-5 w-px bg-neutral-700/60" aria-hidden="true" />
@@ -401,8 +546,8 @@ export default function App() {
         </nav>
       </header>
 
-      {username && allAnalyses.length > 0 && FILTERED_VIEWS.has(view) && (
-        <div className="border-b border-[var(--color-border)] bg-[var(--color-panel)]/60 px-6 py-2 flex items-center gap-3 flex-wrap">
+      {showFilters && (
+        <div className="hidden sm:flex border-b border-[var(--color-border)] bg-[var(--color-panel)]/60 px-6 py-2 items-center gap-3 flex-wrap">
           <GlobalFilters
             tcValue={tcFilter}
             onTcChange={setTcFilter}
@@ -410,7 +555,7 @@ export default function App() {
             onColorChange={setColorFilter}
             analyses={allAnalyses}
           />
-          {(tcFilter !== 'all' || colorFilter !== 'all') && (
+          {filtersActive && (
             <button
               onClick={() => { setTcFilter('all'); setColorFilter('all') }}
               className="text-xs text-neutral-400 hover:text-neutral-200 underline ml-auto"
@@ -421,17 +566,21 @@ export default function App() {
         </div>
       )}
 
-      <Breadcrumbs crumbs={buildCrumbs(view, setView, activeGameUrl, games, activeBookId, setActiveBookId, username)} />
+      {/* Phones have the way up in the top bar. */}
+      <div className="hidden sm:block">
+        <Breadcrumbs crumbs={username ? buildCrumbs(shownView, strategyTab, crumbHere, navigate) : []} />
+      </div>
 
-      <main className="flex-1 overflow-auto">
+      <main className={`flex-1 overflow-auto ${showTabBar ? 'pb-20 sm:pb-0' : ''}`}>
         <Suspense fallback={<LazyFallback />}>
-        {view === 'home' && (
+        {hub && <HubView group={hub} counts={navCounts} onNavigate={navigate} />}
+        {shownView === 'home' && (
           username ? (
             <PlanView
               username={username}
               analyses={filteredAnalyses}
               progress={progress}
-              onOpenGame={url => openGameAt(url)}
+              onOpenGame={(url, opts) => openGameAt(url, undefined, opts)}
               onNavigate={(target, opts) => {
                 if (opts?.motif) setDrillMotif(opts.motif)
                 if (target === 'home') handleLogout()
@@ -444,7 +593,7 @@ export default function App() {
             <Home initialUsername={username} onSubmit={handleSubmitUsername} />
           )
         )}
-        {view === 'games' && (
+        {shownView === 'games' && (
           <GamesList
             username={username}
             games={games}
@@ -457,31 +606,34 @@ export default function App() {
             onReload={handleReloadGames}
           />
         )}
-        {view === 'analysis' && activeGameUrl && (
+        {shownView === 'analysis' && activeGame && (
           <AnalysisView
             // One instance per game (and per deep link) so navigation state resets.
-            key={`${activeGameUrl}:${analysisStartPly ?? ''}`}
+            key={`${activeGame.url}:${analysisStartPly ?? ''}:${analysisStartTab ?? ''}${analysisStartReview ? ':revue' : ''}`}
             initialPly={analysisStartPly ?? undefined}
+            initialTab={analysisStartTab ?? undefined}
+            initialReviewing={analysisStartReview}
+            onRouteState={replaceAnalysisRoute}
             engine={engine}
             username={username}
-            game={games.find(g => g.url === activeGameUrl)!}
+            game={activeGame}
             existingAnalysis={activeAnalysis}
             allAnalyses={allAnalyses}
             onAnalysisComplete={handleAnalysisComplete}
             onBack={() => setView('games')}
           />
         )}
-        {view === 'strategy' && (
+        {shownView === 'strategy' && (
           <StrategyView analyses={filteredAnalyses} onOpenGame={openGameAt} tab={strategyTab} onTabChange={setStrategyTab} />
         )}
-        {view === 'stats' && (
+        {shownView === 'stats' && (
           <StatsView
             analyses={filteredAnalyses}
             onDrillMotif={motif => { setDrillMotif(motif); setView('exercises') }}
             onGoToGames={() => setView('games')}
           />
         )}
-        {view === 'exercises' && (
+        {shownView === 'exercises' && (
           <ExercisesView
             analyses={filteredAnalyses}
             progress={progress}
@@ -490,70 +642,70 @@ export default function App() {
             onGoToGames={() => setView('games')}
           />
         )}
-        {view === 'rush' && (
+        {shownView === 'rush' && (
           <PuzzleRushView
             exercises={exercises}
             onAttempt={handleExerciseAttempt}
             onExit={() => setView('exercises')}
           />
         )}
-        {view === 'daily' && (
+        {shownView === 'daily' && (
           <DailyView exercises={exercises} onGoToGames={() => setView('games')} />
         )}
-        {view === 'concepts' && (
+        {shownView === 'concepts' && (
           <ConceptsView />
         )}
-        {view === 'openingLab' && (
+        {shownView === 'openingLab' && (
           <OpeningLabView analyses={filteredAnalyses} onBack={() => setView('repertoire')} />
         )}
-        {view === 'roadmap' && (
+        {shownView === 'roadmap' && (
           <RoadmapView
             analyses={filteredAnalyses}
             onNavigate={target => setView(target as View)}
           />
         )}
-        {view === 'compare' && (
+        {shownView === 'compare' && (
           <CompareView username={username} games={games} />
         )}
-        {view === 'repertoire' && (
+        {shownView === 'repertoire' && (
           <RepertoireView
             analyses={filteredAnalyses}
             onGoToGames={() => setView('games')}
             onOpenLab={() => setView('openingLab')}
           />
         )}
-        {view === 'library' && (
+        {shownView === 'library' && (
           <LibraryView onOpenBook={id => { setActiveBookId(id); setView('book') }} />
         )}
-        {view === 'scouting' && (
+        {shownView === 'scouting' && (
           <ScoutingView />
         )}
-        {view === 'play' && (
+        {shownView === 'play' && (
           <PlayView engine={engine} />
         )}
-        {view === 'blunder' && (
+        {shownView === 'blunder' && (
           <BlunderDrillView analyses={filteredAnalyses} onExit={() => setView('exercises')} />
         )}
-        {view === 'calc' && (
+        {shownView === 'calc' && (
           <CalcDepthView analyses={filteredAnalyses} onExit={() => setView('exercises')} />
         )}
-        {view === 'reverseDrill' && (
+        {shownView === 'reverseDrill' && (
           <ReverseDrillView
             analyses={filteredAnalyses}
             onGoToGames={() => setView('games')}
           />
         )}
-        {view === 'players' && (
+        {shownView === 'players' && (
           <PlayersView />
         )}
-        {view === 'settings' && (
+        {shownView === 'settings' && (
           <SettingsView
             username={username}
             onPurgeAnalyses={purgeAnalyses}
             onResetProgress={resetProgress}
           />
         )}
-        {view === 'book' && activeBookId && (
+        {shownView === 'book' && activeBookId && (
           <BookView
             bookId={activeBookId}
             onBack={() => { setActiveBookId(null); setView('library') }}
@@ -574,8 +726,7 @@ export default function App() {
             if (t.kind === 'view') {
               navigate({ view: t.view, strategyTab: t.strategyTab as StrategyTab | undefined })
             } else if (t.kind === 'game') {
-              setActiveGameUrl(t.gameUrl)
-              setView('analysis')
+              openGameAt(t.gameUrl)
             } else if (t.kind === 'book') {
               setActiveBookId(t.bookId)
               setView('book')
@@ -583,118 +734,90 @@ export default function App() {
           }}
         />
       )}
+      {showTabBar && (
+        <MobileTabBar view={shownView} strategyTab={strategyTab} counts={navCounts} onNavigate={navigate} />
+      )}
       {mobileMenuOpen && username && (
-        <MobileNavSheet
-          username={username}
-          view={view}
-          strategyTab={strategyTab}
-          counts={navCounts}
-          onNavigate={t => { navigate(t); setMobileMenuOpen(false) }}
-          onClose={() => setMobileMenuOpen(false)}
-          onOpenSettings={() => { setView('settings'); setMobileMenuOpen(false) }}
-          onOpenShortcuts={() => { openShortcutsHelp(); setMobileMenuOpen(false) }}
-          onLogout={() => { handleLogout(); setMobileMenuOpen(false) }}
-        />
+        <BottomSheet title={`@${username}`} onClose={() => setMobileMenuOpen(false)}>
+          <AccountActions
+            onOpenSettings={() => { setView('settings'); setMobileMenuOpen(false) }}
+            onLogout={() => { handleLogout(); setMobileMenuOpen(false) }}
+          />
+        </BottomSheet>
+      )}
+      {filterSheetOpen && showFilters && (
+        <BottomSheet title="Filtrer mes parties" onClose={() => setFilterSheetOpen(false)}>
+          <div className="px-4 pb-4 space-y-4">
+            <p className="text-xs text-neutral-400">S'applique aux statistiques, aux exercices, au répertoire et aux entraînements.</p>
+            <GlobalFilters
+              tcValue={tcFilter}
+              onTcChange={setTcFilter}
+              colorValue={colorFilter}
+              onColorChange={setColorFilter}
+              analyses={allAnalyses}
+            />
+            <div className="flex items-center gap-2">
+              {filtersActive && (
+                <button
+                  onClick={() => { setTcFilter('all'); setColorFilter('all') }}
+                  className="h-11 px-3 text-sm text-neutral-300 hover:text-white underline"
+                >Réinitialiser</button>
+              )}
+              <button
+                onClick={() => setFilterSheetOpen(false)}
+                className="ml-auto h-11 px-5 rounded-md bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] text-white text-sm font-medium"
+              >OK</button>
+            </div>
+          </div>
+        </BottomSheet>
       )}
     </div>
   )
 }
 
-interface MobileNavSheetProps {
-  username: string
-  view: View
-  strategyTab: StrategyTab
-  counts: NavCounts
-  onNavigate: (t: NavTarget) => void
-  onClose: () => void
-  onOpenSettings: () => void
-  onOpenShortcuts: () => void
-  onLogout: () => void
-}
-
-function MobileNavSheet({
-  username, view, strategyTab, counts, onNavigate, onClose, onOpenSettings, onOpenShortcuts, onLogout,
-}: MobileNavSheetProps) {
+// Phones: navigation lives in the tab bar and the hubs; the account sheet
+// keeps the account-level actions (no keyboard shortcuts on a phone).
+function AccountActions({ onOpenSettings, onLogout }: { onOpenSettings: () => void; onLogout: () => void }) {
+  const row = 'w-full text-left px-4 py-3.5 border-t border-[var(--color-border)] hover:bg-neutral-800 text-neutral-200'
   return (
-    <div className="fixed inset-0 z-40 bg-black/60 sm:hidden" onClick={onClose}>
-      <div
-        className="absolute right-0 top-0 bottom-0 w-72 max-w-[85vw] bg-[var(--color-panel)] border-l border-[var(--color-border)] overflow-y-auto"
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="px-4 py-3 border-b border-[var(--color-border)] flex items-center justify-between">
-          <span className="font-semibold">@{username}</span>
-          <button onClick={onClose} className="text-neutral-400 hover:text-white text-xl">×</button>
-        </div>
-        {NAV.map(entry => {
-          const items = entry.kind === 'item' ? [entry.item] : groupItems(entry.group)
-          return (
-            <div key={entry.kind === 'item' ? entry.item.key : entry.group.key}>
-              {entry.kind === 'group' && (
-                <div className="text-xs text-neutral-500 px-4 pt-3 uppercase tracking-wider">{entry.group.label}</div>
-              )}
-              {items.map(it => {
-                const reason = it.unavailable?.(counts) ?? null
-                return (
-                  <button
-                    key={it.key}
-                    onClick={() => reason === null && onNavigate(it.target)}
-                    disabled={reason !== null}
-                    className={`w-full text-left px-4 py-3 border-b border-[var(--color-border)] ${
-                      isItemActive(it, view, strategyTab) ? 'bg-[var(--color-accent)]/20 text-white'
-                        : 'text-neutral-200 hover:bg-neutral-800 disabled:opacity-40'
-                    }`}
-                  >
-                    <div>{it.label(counts)}</div>
-                    {reason && <div className="text-[11px] text-neutral-500">{reason}</div>}
-                  </button>
-                )
-              })}
-            </div>
-          )
-        })}
-        <div className="text-xs text-neutral-500 px-4 pt-3 uppercase tracking-wider">Compte</div>
-        <button
-          onClick={onOpenSettings}
-          className="w-full text-left px-4 py-3 border-b border-[var(--color-border)] hover:bg-neutral-800 text-neutral-200"
-        >Préférences</button>
-        <button
-          onClick={onOpenShortcuts}
-          className="w-full text-left px-4 py-3 border-b border-[var(--color-border)] hover:bg-neutral-800 text-neutral-200"
-        >Raccourcis clavier</button>
-        <button
-          onClick={onLogout}
-          className="w-full text-left px-4 py-3 border-b border-[var(--color-border)] hover:bg-red-900/40 text-red-300"
-        >Se déconnecter</button>
-      </div>
+    <div className="pb-2">
+      <button onClick={onOpenSettings} className={row}>Préférences</button>
+      <a href="https://github.com/DamienBoue/chess-trainer" target="_blank" rel="noopener noreferrer" className={`block ${row}`}>Code source (GitHub)</a>
+      <button onClick={onLogout} className="w-full text-left px-4 py-3.5 border-t border-[var(--color-border)] hover:bg-red-900/40 text-red-300">
+        Changer de compte
+      </button>
     </div>
   )
 }
 
+// Desktop trail: the chain of parent screens, then the current one.
 function buildCrumbs(
-  view: View,
-  setView: (v: View) => void,
-  activeGameUrl: string | null,
-  games: ChessComGame[],
-  activeBookId: string | null,
-  setActiveBookId: (id: string | null) => void,
-  username: string,
+  view: string,
+  strategyTab: StrategyTab,
+  here: string,
+  navigate: (t: NavTarget) => void,
 ): Array<{ label: string; onClick?: () => void }> {
-  // Only nested views deserve a crumb trail. Most top-level views skip it.
-  if (view === 'analysis' && activeGameUrl) {
-    const g = games.find(g => g.url === activeGameUrl)
-    const userIsWhite = g?.white.username.toLowerCase() === username.toLowerCase()
-    return [
-      { label: 'Parties', onClick: () => setView('games') },
-      { label: g ? `vs ${userIsWhite ? g.black.username : g.white.username}` : 'Analyse' },
-    ]
+  const trail: Array<{ label: string; onClick?: () => void }> = []
+  for (let up = parentOf(view, strategyTab); up; up = parentOf(up.target.view, up.target.strategyTab)) {
+    const target = up.target
+    trail.unshift({ label: up.title, onClick: () => navigate(target) })
   }
-  if (view === 'book' && activeBookId) {
-    return [
-      { label: 'Bibliothèque', onClick: () => { setActiveBookId(null); setView('library') } },
-      { label: 'Livre' },
-    ]
+  return [...trail, { label: here }]
+}
+
+// A game whose analysis outlived the games list (older than the months
+// fetched from chess.com): enough of a record to show that analysis.
+function gameFromAnalysis(a: GameAnalysis, username: string): ChessComGame {
+  const side = (name: string, rating: number | undefined, won: boolean) => ({
+    username: name, rating: rating ?? 0, result: a.result === 'draw' ? 'agreed' : won ? 'win' : 'lose', '@id': '',
+  })
+  const user = side(username, a.userRating, a.result === 'win')
+  const opponent = side(a.opponent, a.opponentRating, a.result === 'loss')
+  return {
+    url: a.url, pgn: a.pgn, time_control: '', end_time: a.endTime, rated: true, time_class: a.timeClass, rules: 'chess',
+    white: a.userColor === 'white' ? user : opponent,
+    black: a.userColor === 'white' ? opponent : user,
   }
-  return []
 }
 
 function LazyFallback() {

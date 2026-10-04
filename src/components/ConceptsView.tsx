@@ -22,7 +22,7 @@ export default function ConceptsView() {
   return (
     <div className="p-4 lg:p-6 max-w-5xl mx-auto space-y-4">
       <div>
-        <h2 className="text-2xl font-semibold">Bibliothèque de concepts</h2>
+        <h2 className="text-2xl font-semibold">Concepts</h2>
         <p className="text-sm text-neutral-400">
           Définitions courtes, ressources externes, positions à explorer. {allConcepts().length} fiches.
         </p>
@@ -31,7 +31,7 @@ export default function ConceptsView() {
       <div className="flex gap-2 flex-wrap items-center">
         <input
           type="search"
-          placeholder="Chercher (fork, IQP, Vancura…)"
+          placeholder="Chercher (fourchette, IQP, Vancura…)"
           value={query}
           onChange={e => setQuery(e.target.value)}
           className="flex-1 min-w-[200px] px-3 py-1.5 text-sm rounded bg-neutral-900 border border-[var(--color-border)] focus:border-[var(--color-accent)] focus:outline-none"

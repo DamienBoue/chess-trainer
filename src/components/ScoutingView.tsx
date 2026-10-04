@@ -5,6 +5,7 @@ import type { ChessComGame } from '../types'
 import { getRecentGames } from '../api/chesscom'
 import { scoutingProfile, type ScoutingProfile, type OpeningStat, type ColorSplit } from '../analysis/scouting'
 import { fetchExplorer, type ExplorerResponse, type ExplorerMove } from '../api/lichess'
+import { labelForTimeClass } from './gameFilters'
 
 export default function ScoutingView() {
   const [name, setName] = useState('')
@@ -40,9 +41,9 @@ export default function ScoutingView() {
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
       <div>
-        <h2 className="text-2xl font-semibold mb-1">Scouting d'adversaire</h2>
+        <h2 className="text-2xl font-semibold mb-1">Préparer un adversaire</h2>
         <p className="text-sm text-neutral-400">
-          Saisi un pseudo chess.com pour récupérer ses parties récentes (publiques) et obtenir un profil d'ouvertures,
+          Saisis un pseudo chess.com pour récupérer ses parties récentes (publiques) et obtenir un profil d'ouvertures,
           répartition de cadence, forme récente, points forts et points faibles.
         </p>
       </div>
@@ -74,7 +75,7 @@ export default function ScoutingView() {
           disabled={loading || !name.trim()}
           className="px-4 py-2 bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] text-white rounded-md disabled:opacity-50 font-medium"
         >
-          {loading ? 'Récupération…' : 'Scouter'}
+          {loading ? 'Récupération…' : 'Préparer'}
         </button>
       </form>
 
@@ -323,7 +324,7 @@ function ProfileCard({ profile, games }: { profile: ScoutingProfile; games: Ches
         <Stat label="Parties scannées" value={profile.games} />
         <Stat label="Score global" value={`${(overall * 100).toFixed(0)}%`} />
         <Stat label="Bilan" value={`${totalWins}V / ${totalLosses}D / ${totalDraws}N`} />
-        <Stat label="Adv. rating moy." value={avgOppRating || '—'} />
+        <Stat label="Elo moyen adv." value={avgOppRating || '—'} />
       </div>
 
       <div className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-4">
@@ -337,7 +338,7 @@ function ProfileCard({ profile, games }: { profile: ScoutingProfile; games: Ches
                 r === 'L' ? 'bg-red-900/50 text-red-300' :
                 'bg-neutral-800 text-neutral-300'
               }`}
-            >{r}</span>
+            >{r === 'W' ? 'V' : r === 'L' ? 'D' : 'N'}</span>
           ))}
         </div>
       </div>
@@ -363,7 +364,7 @@ function ProfileCard({ profile, games }: { profile: ScoutingProfile; games: Ches
         <div className="space-y-2">
           {profile.timeClassBreakdown.map(({ tc, games: n, winRate }) => (
             <div key={tc} className="flex items-center gap-3 text-sm">
-              <span className="w-24 text-neutral-400 capitalize">{tc}</span>
+              <span className="w-28 shrink-0 text-neutral-400">{labelForTimeClass(tc)}</span>
               <span className="font-mono text-neutral-300 w-10">{n}</span>
               <div className="flex-1 h-1.5 bg-neutral-900 rounded overflow-hidden">
                 <div

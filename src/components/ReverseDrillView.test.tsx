@@ -14,6 +14,8 @@ describe('ReverseDrillView', () => {
   it('shows the empty state when no analyses exist', () => {
     render(<ReverseDrillView analyses={[]} />)
     expect(screen.getByText(/Tu n'as pas encore de parties analysées/)).toBeTruthy()
+    // The page keeps its menu label as title, even when empty.
+    expect(screen.getByRole('heading', { name: 'Ouvertures en miroir' })).toBeTruthy()
   })
 
   it('the empty-state CTA fires onGoToGames', () => {
@@ -30,6 +32,7 @@ describe('ReverseDrillView', () => {
     ]
     render(<ReverseDrillView analyses={games} />)
     expect(screen.getByText(/au moins 2 parties dans une même ouverture/)).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Ouvertures en miroir' })).toBeTruthy()
   })
 
   it('renders the heading and the line list when mirror lines exist', () => {
@@ -38,7 +41,8 @@ describe('ReverseDrillView', () => {
       gameFromSans({ url: 'g2', userColor: 'white', sans: ['e4', 'e5', 'Nf3', 'Nc6'] }),
     ]
     render(<ReverseDrillView analyses={games} />)
-    expect(screen.getByText(/Reverse-color drill/i)).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Ouvertures en miroir' })).toBeTruthy()
+    expect(screen.queryByText(/drill/i)).toBeNull()
     // The button list contains at least one root.
     expect(screen.getByText(/Lignes mémorisées disponibles/)).toBeTruthy()
   })

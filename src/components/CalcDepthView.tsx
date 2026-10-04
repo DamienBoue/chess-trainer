@@ -22,6 +22,9 @@ interface Puzzle {
 
 const MIN_LINE_PLIES = 4
 
+// The page title is the menu label; it stays on screen in every state.
+const PAGE_TITLE = 'Calcul de séquence'
+
 // SAN-ish regex: capture pieces letters + file/rank + optional checks/promotion.
 const SAN_RE = /(O-O(?:-O)?[+#]?|[KQRBN]?[a-h]?[1-8]?x?[a-h][1-8](?:=[QRBN])?[+#]?)/g
 
@@ -120,19 +123,25 @@ export default function CalcDepthView({ analyses, onExit }: Props) {
 
   if (pool.length === 0) {
     return (
-      <EmptyState
-        icon="🧮"
-        title="Pas encore de séquence à calculer"
-        description={`Aucune position de ton pool n'a une ligne d'engine ≥${MIN_LINE_PLIES} demi-coups. Les meilleures sources sont les blunders forcés sur lesquels Stockfish a calculé une suite nette.`}
-        cta={{ label: '← Retour', onClick: onExit }}
-      />
+      <>
+        <div className="max-w-2xl mx-auto px-8 pt-8">
+          <h2 className="text-2xl font-semibold">{PAGE_TITLE}</h2>
+        </div>
+        <EmptyState
+          icon="🧮"
+          title="Pas encore de séquence à calculer"
+          description={`Aucune de tes positions n'a une ligne du moteur d'au moins ${MIN_LINE_PLIES} demi-coups. Les meilleures sources sont les gaffes forcées sur lesquelles Stockfish a calculé une suite nette.`}
+          cta={{ label: '← Retour', onClick: onExit }}
+        />
+      </>
     )
   }
   if (!current) {
     const acc = score.attempts > 0 ? (score.solved / score.attempts) * 100 : 0
     return (
       <div className="p-8 max-w-3xl mx-auto">
-        <h2 className="text-2xl font-semibold mb-4">Session terminée</h2>
+        <h2 className="text-2xl font-semibold">{PAGE_TITLE}</h2>
+        <h3 className="text-lg font-semibold mt-4 mb-4">Session terminée</h3>
         <div className="grid grid-cols-3 gap-3 mb-6">
           <Stat label="Résolus" value={score.solved} />
           <Stat label="Tentés" value={score.attempts} />
@@ -154,6 +163,7 @@ export default function CalcDepthView({ analyses, onExit }: Props) {
 
   return (
     <div className="p-4 lg:p-6 max-w-5xl mx-auto">
+      <h2 className="text-2xl font-semibold mb-2">{PAGE_TITLE}</h2>
       <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
         <button onClick={onExit} className="text-sm text-neutral-400 hover:text-white">← Sortir</button>
         <div className="text-sm">

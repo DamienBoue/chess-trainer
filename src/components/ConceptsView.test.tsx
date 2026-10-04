@@ -7,7 +7,8 @@ afterEach(cleanup)
 describe('ConceptsView', () => {
   it('renders the catalogue heading + counts', () => {
     render(<ConceptsView />)
-    expect(screen.getByText('Bibliothèque de concepts')).toBeTruthy()
+    // "Bibliothèque" is the books page: this one is just "Concepts".
+    expect(screen.getByRole('heading', { name: 'Concepts' })).toBeTruthy()
   })
 
   it('shows every category as a filter chip + "Toutes"', () => {

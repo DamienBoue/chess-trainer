@@ -26,8 +26,20 @@ describe('OpeningLabView', () => {
     // Stub fetch so it returns "API unavailable".
     vi.stubGlobal('fetch', vi.fn(async () => new Response(null, { status: 401 })))
     render(<OpeningLabView analyses={games} />)
-    expect(screen.getByText(/Lab d'ouverture/i)).toBeTruthy()
+    // The page title is its menu label.
+    expect(screen.getByRole('heading', { name: "Labo d'ouvertures" })).toBeTruthy()
     expect(screen.getByText(/Italian Game/)).toBeTruthy()
+    expect(screen.getByText(/Ta ligne la plus jouée/i)).toBeTruthy()
+  })
+
+  it('selects an opening once the games arrive after the first render (reload)', () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(null, { status: 401 })))
+    const { rerender } = render(<OpeningLabView analyses={[]} />)
+    const games = [
+      gameFromSans({ url: 'g1', userColor: 'white', sans: ['e4', 'e5', 'Nf3'] }),
+      gameFromSans({ url: 'g2', userColor: 'white', sans: ['e4', 'e5', 'Nf3'] }),
+    ]
+    rerender(<OpeningLabView analyses={games} />)
     expect(screen.getByText(/Ta ligne la plus jouée/i)).toBeTruthy()
   })
 
@@ -62,6 +74,11 @@ describe('OpeningLabView', () => {
     await waitFor(() => {
       expect(screen.getAllByText('d4').length).toBeGreaterThan(0)
     }, { timeout: 1000 })
+    // French labels, and no stray "$" before the share of the user's move.
+    expect(screen.getAllByText('Base des maîtres').length).toBeGreaterThan(0)
+    expect(screen.getByText('Demi-coup 1')).toBeTruthy()
+    const share = screen.getByText(/Ton coup chez les maîtres/)
+    expect(share.textContent).toBe('Ton coup chez les maîtres : 67%')
   })
 
   it('clicking onBack invokes the callback', () => {

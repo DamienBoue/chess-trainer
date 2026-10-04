@@ -24,9 +24,24 @@ function corpus() {
 }
 
 describe('StatsView', () => {
-  it('renders the heading with the number of games', () => {
+  it('titles the page "Statistiques" and counts the games in the subtitle', () => {
     render(<StatsView analyses={corpus()} />)
-    expect(screen.getByText(/Bilan \(2/i)).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Statistiques' })).toBeTruthy()
+    // Both games were played with the white pieces.
+    expect(screen.getByText('2 parties analysées avec les Blancs')).toBeTruthy()
+  })
+
+  it('does not name a colour when both are in the set, and singularises one game', () => {
+    const [white] = corpus()
+    const black = buildGame({
+      userColor: 'black', result: 'win', opponent: 'dave',
+      moves: [{ ply: 2, san: 'e5', cpLoss: 0, classification: 'book' }],
+    })
+    const { unmount } = render(<StatsView analyses={[white, black]} />)
+    expect(screen.getByText('2 parties analysées')).toBeTruthy()
+    unmount()
+    render(<StatsView analyses={[white]} />)
+    expect(screen.getByText('1 partie analysée avec les Blancs')).toBeTruthy()
   })
 
   it('shows the empty state when no analyses exist', () => {

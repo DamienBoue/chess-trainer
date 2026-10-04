@@ -18,7 +18,15 @@ interface AnalysesRecord {
   analyses: Record<string, GameAnalysis>
 }
 
-function migrateMoveMetrics(parsed: Record<string, GameAnalysis>): {
+// Analyses saved before the "mate 0" sign fix scored a checkmate on the
+// board as won by the mated side, so the mating move read as a blunder.
+function checkmateEval(m: { san: string; fenBefore: string; evalAfter: number }): number {
+  if (!m.san.endsWith('#')) return m.evalAfter
+  const moverSign = m.fenBefore.split(' ')[1] === 'w' ? 1 : -1
+  return moverSign * m.evalAfter < 0 ? -m.evalAfter : m.evalAfter
+}
+
+export function migrateMoveMetrics(parsed: Record<string, GameAnalysis>): {
   fixed: Record<string, GameAnalysis>
   dirty: boolean
 } {
@@ -29,9 +37,10 @@ function migrateMoveMetrics(parsed: Record<string, GameAnalysis>): {
   for (const url of Object.keys(parsed)) {
     const a = parsed[url]
     const fixed = a.moves.map((m, i) => {
-      const { cpLoss, classification } = recomputeMoveMetrics(m, i)
-      if (cpLoss !== m.cpLoss || classification !== m.classification) dirty = true
-      return { ...m, cpLoss, classification }
+      const evalAfter = checkmateEval(m)
+      const { cpLoss, classification } = recomputeMoveMetrics({ ...m, evalAfter }, i)
+      if (evalAfter !== m.evalAfter || cpLoss !== m.cpLoss || classification !== m.classification) dirty = true
+      return { ...m, evalAfter, cpLoss, classification }
     })
     parsed[url] = { ...a, moves: fixed }
   }

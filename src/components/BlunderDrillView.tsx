@@ -33,6 +33,9 @@ interface AttemptResult {
 
 const DRILL_TIMEOUT_MS = 12000  // soft deadline per puzzle
 
+// The page title is the menu label; it stays on screen in every state.
+const PAGE_TITLE = 'Réflexe anti-gaffe'
+
 function buildPool(analyses: GameAnalysis[]): DrillPosition[] {
   // Pull positions just before user blunders/mistakes from the existing
   // exercises pipeline. extractExercises already does the heavy lifting
@@ -141,19 +144,25 @@ export default function BlunderDrillView({ analyses, onExit }: Props) {
 
   if (pool.length === 0) {
     return (
-      <EmptyState
-        icon="⚡"
-        title="Pas encore de blunders détectés"
-        description="Le drill réflexe se nourrit de tes propres positions juste avant une grosse erreur. Il faut au moins 3 blunders/erreurs ≥150 cp dans tes parties analysées."
-        cta={{ label: '← Retour', onClick: onExit }}
-      />
+      <>
+        <div className="max-w-2xl mx-auto px-8 pt-8">
+          <h2 className="text-2xl font-semibold">{PAGE_TITLE}</h2>
+        </div>
+        <EmptyState
+          icon="⚡"
+          title="Pas encore de gaffes détectées"
+          description="Cet entraînement se nourrit de tes propres positions juste avant une grosse erreur. Il faut au moins 3 gaffes ou erreurs d'au moins 150 cp dans tes parties analysées."
+          cta={{ label: '← Retour', onClick: onExit }}
+        />
+      </>
     )
   }
   if (!current) {
     const accuracy = attempts > 0 ? (score / attempts) * 100 : 0
     return (
       <div className="p-8 max-w-3xl mx-auto">
-        <h2 className="text-2xl font-semibold mb-4">Session terminée</h2>
+        <h2 className="text-2xl font-semibold">{PAGE_TITLE}</h2>
+        <h3 className="text-lg font-semibold mt-4 mb-4">Session terminée</h3>
         <div className="grid grid-cols-3 gap-3 mb-6">
           <Stat label="Score" value={score} />
           <Stat label="Tentés" value={attempts} />
@@ -197,6 +206,7 @@ export default function BlunderDrillView({ analyses, onExit }: Props) {
 
   return (
     <div className="p-4 lg:p-6 max-w-5xl mx-auto">
+      <h2 className="text-2xl font-semibold mb-2">{PAGE_TITLE}</h2>
       <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
         <button onClick={onExit} className="text-sm text-neutral-400 hover:text-white">← Sortir</button>
         <div className="flex items-center gap-3 text-sm">

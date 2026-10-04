@@ -154,10 +154,17 @@ function EventRow({ e, analysis, active, onJump }: { e: GameEvent; analysis: Gam
 }
 
 /** Strategic consequences of one move (shown in the move-by-move tab). */
-export function MoveStrategyNotes({ analysis, ply }: { analysis: GameAnalysis; ply: number }) {
+export function MoveStrategyNotes({ analysis, ply, omitMissedPlan = false }: {
+  analysis: GameAnalysis
+  ply: number
+  /** The caller already explains the missed plan (mistake review). */
+  omitMissedPlan?: boolean
+}) {
   const events = useMemo(() => {
-    try { return reviewOf(analysis).events.filter(e => e.ply === ply) } catch { return [] }
-  }, [analysis, ply])
+    try {
+      return reviewOf(analysis).events.filter(e => e.ply === ply && !(omitMissedPlan && e.kind === 'missed-plan'))
+    } catch { return [] }
+  }, [analysis, ply, omitMissedPlan])
   if (events.length === 0) return null
   return (
     <div className="mt-3 pt-3 border-t border-[var(--color-border)]">

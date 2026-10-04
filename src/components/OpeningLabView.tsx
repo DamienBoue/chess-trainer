@@ -24,10 +24,13 @@ interface Props {
 
 export default function OpeningLabView({ analyses, initialKey, onBack }: Props) {
   const roots = useMemo(() => buildRepertoire(analyses), [analyses])
-  const [selected, setSelected] = useState<RepertoireRoot | null>(() => {
-    if (!initialKey) return roots[0] ?? null
-    return roots.find(r => r.parent === initialKey.parent && r.color === initialKey.color) ?? null
-  })
+  const [selected, setSelected] = useState<RepertoireRoot | null>(null)
+  // Until the user picks one, the requested opening, else the most played.
+  // Looked up in the current roots: after a reload the games arrive after
+  // the first render, and a pick must follow its opening when they change.
+  const sameRoot = (k: { parent: string; color: string } | null | undefined) =>
+    k ? roots.find(r => r.parent === k.parent && r.color === k.color) : undefined
+  const shown = sameRoot(selected) ?? sameRoot(initialKey) ?? roots[0] ?? null
 
   if (roots.length === 0) {
     return (
@@ -41,7 +44,7 @@ export default function OpeningLabView({ analyses, initialKey, onBack }: Props) 
     <div className="p-4 lg:p-6 max-w-5xl mx-auto space-y-4">
       <div className="flex items-baseline justify-between flex-wrap gap-2">
         <div>
-          <h2 className="text-2xl font-semibold">Lab d'ouverture</h2>
+          <h2 className="text-2xl font-semibold">Labo d'ouvertures</h2>
           <p className="text-sm text-neutral-400">
             Ce que tu joues vs ce que les maîtres jouent. Repère les déviations théoriques.
           </p>
@@ -56,7 +59,7 @@ export default function OpeningLabView({ analyses, initialKey, onBack }: Props) 
       <div className="flex gap-2 flex-wrap">
         {roots.map(r => {
           const key = `${r.parent}-${r.color}`
-          const active = selected && selected.parent === r.parent && selected.color === r.color
+          const active = shown && shown.parent === r.parent && shown.color === r.color
           return (
             <button
               key={key}
@@ -73,7 +76,7 @@ export default function OpeningLabView({ analyses, initialKey, onBack }: Props) 
         })}
       </div>
 
-      {selected && <LabBody root={selected} />}
+      {shown && <LabBody root={shown} />}
     </div>
   )
 }
@@ -83,7 +86,7 @@ function LabBody({ root }: { root: RepertoireRoot }) {
   const [explore, setExplore] = useState<{ fen: string; played?: string; best?: string } | null>(null)
 
   if (line.length === 0) {
-    return <p className="text-sm text-neutral-500">Pas assez de données pour reconstruire une ligne — peu de plies enregistrés.</p>
+    return <p className="text-sm text-neutral-500">Pas assez de données pour reconstruire une ligne — peu de demi-coups enregistrés.</p>
   }
 
   return (
@@ -118,7 +121,7 @@ function LabBody({ root }: { root: RepertoireRoot }) {
           playedSan={explore.played}
           bestSan={explore.best}
           onClose={() => setExplore(null)}
-          title={explore.best ? `Drill : ${explore.best}` : 'Explorer la position'}
+          title={explore.best ? `Entraînement : ${explore.best}` : 'Explorer la position'}
         />
       )}
     </div>
@@ -164,7 +167,7 @@ function PlyComparison({
     <div className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-3">
       <div className="flex items-baseline justify-between mb-2 flex-wrap gap-2">
         <div className="flex items-baseline gap-2">
-          <span className="text-xs text-neutral-500">Ply {plyNumber}</span>
+          <span className="text-xs text-neutral-500">Demi-coup {plyNumber}</span>
           {step.oppPrev !== '<start>' && (
             <span className="text-sm text-neutral-400 font-mono">{step.oppPrev}</span>
           )}
@@ -174,8 +177,8 @@ function PlyComparison({
             <button
               onClick={() => onExplore({ played: step.userSan, best: masters.moves[0].san })}
               className="text-xs px-2 py-0.5 rounded bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 border border-purple-500/30"
-              title={`Drill : trouve le coup des maîtres (${masters.moves[0].san})`}
-            >🎯 Drill</button>
+              title={`S'entraîner : trouve le coup des maîtres (${masters.moves[0].san})`}
+            >🎯 S'entraîner</button>
           )}
           <button
             onClick={() => onExplore({})}
@@ -202,23 +205,23 @@ function PlyComparison({
           </div>
           {isBookDeviation && (
             <div className="mt-1.5 text-[11px] text-amber-200/80">
-              ⚠ Coup hors du top-3 masters — déviation théorique possible.
+              ⚠ Coup hors du top 3 des maîtres — déviation théorique possible.
             </div>
           )}
         </div>
 
         {/* Masters side */}
         <div className="bg-neutral-900 rounded p-2.5">
-          <div className="text-[11px] uppercase tracking-wider text-neutral-500 mb-1">Masters DB</div>
+          <div className="text-[11px] uppercase tracking-wider text-neutral-500 mb-1">Base des maîtres</div>
           {loading && <p className="text-xs text-neutral-500">Chargement…</p>}
           {err && (
             <p className="text-xs text-neutral-500">
-              API indisponible. Lichess Explorer demande désormais un token —
+              API indisponible. L'explorateur Lichess demande désormais un token —
               colle-le dans <span className="text-neutral-300">Préférences → Token Lichess</span>.
             </p>
           )}
           {masters && masters.moves.length === 0 && (
-            <p className="text-xs text-neutral-500">Hors base — position rare en masters.</p>
+            <p className="text-xs text-neutral-500">Hors base — position rare chez les maîtres.</p>
           )}
           {masters && masters.moves.length > 0 && (
             <ul className="space-y-1">
@@ -229,7 +232,7 @@ function PlyComparison({
           )}
           {userMoveInMasters && (
             <p className="mt-1.5 text-[10px] text-neutral-500">
-              Ton coup en masters : ${' '}
+              Ton coup chez les maîtres :{' '}
               <span className="font-mono">{Math.round(100 * totalGames(userMoveInMasters) / totalGames(masters!))}%</span>
             </p>
           )}

@@ -37,6 +37,16 @@ export default function RoadmapView({ analyses, onNavigate, embedded = false }: 
   // Which bracket's modules are currently displayed. Defaults to the
   // user's real bracket but the ladder lets them browse other levels.
   const [viewBracketId, setViewBracketId] = useState<SkillBracket['id']>(bracket.id)
+  // When the real bracket changes (declared Elo edited, new analyses moving
+  // the inferred Elo) the view follows it — unless the user was deliberately
+  // previewing another bracket, which then stays on screen. Adjusted during
+  // render rather than in an effect: React re-renders right away with the
+  // new state, so the stale bracket is never painted.
+  const [prevBracketId, setPrevBracketId] = useState<SkillBracket['id']>(bracket.id)
+  if (prevBracketId !== bracket.id) {
+    setPrevBracketId(bracket.id)
+    if (viewBracketId === prevBracketId) setViewBracketId(bracket.id)
+  }
   const viewBracket = BRACKETS.find(b => b.id === viewBracketId) ?? bracket
   const isPreview = viewBracket.id !== bracket.id
   const modules = modulesForBracket(viewBracket)
@@ -64,7 +74,7 @@ export default function RoadmapView({ analyses, onNavigate, embedded = false }: 
     <div className={embedded ? 'space-y-5' : 'p-4 lg:p-6 max-w-3xl mx-auto space-y-5'}>
       {!embedded && (
         <div>
-          <h2 className="text-2xl font-semibold">Roadmap d'apprentissage</h2>
+          <h2 className="text-2xl font-semibold">Mon niveau</h2>
           <p className="text-sm text-neutral-400">
             Les modules à maîtriser en priorité pour ton palier. Coche au fur et à mesure.
           </p>

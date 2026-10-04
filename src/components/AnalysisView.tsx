@@ -17,6 +17,10 @@ import ExplorerSection from './ExplorerSection'
 import MovesList from './MovesList'
 import StrategyPanel from './StrategyPanel'
 import GameStrategyCard, { MoveStrategyNotes } from './GameStrategyCard'
+import MistakeReview from './MistakeReview'
+import AnalysisMoveBar from './AnalysisMoveBar'
+import { retryItemsFor } from './retryItems'
+import type { AnalysisTabId } from './route'
 import { EMPTY_OVERLAY, OVERLAY_COLORS, type BoardOverlay } from './strategyBoard'
 import { reviewOf } from './useStrategyReviews'
 import { loadStrategyOverlays, saveStrategyOverlays } from '../storage/strategyPrefs'
@@ -31,6 +35,12 @@ interface Props {
   onBack: () => void
   /** Open directly at this ply (deep link), on the strategic reading. */
   initialPly?: number
+  /** Tab to open on (deep link / reload); defaults to Bilan. */
+  initialTab?: AnalysisTabId
+  /** Reports the move and tab shown, so the URL can follow (#/partie/…?coup=…). */
+  onRouteState?: (s: { ply: number; tab: AnalysisTabId }) => void
+  /** Open straight into "Revoir mes erreurs" (the home's last-game card). */
+  initialReviewing?: boolean
 }
 
 export default function AnalysisView({
@@ -42,12 +52,22 @@ export default function AnalysisView({
   onAnalysisComplete,
   onBack,
   initialPly,
+  initialTab,
+  onRouteState,
+  initialReviewing = false,
 }: Props) {
   const repertoireRoots = useMemo(() => buildRepertoire(allAnalyses), [allAnalyses])
   const [analysis, setAnalysis] = useState<GameAnalysis | null>(existingAnalysis)
   const [progress, setProgress] = useState<{ done: number; total: number; currentSan?: string } | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [currentPly, setCurrentPly] = useState(initialPly ?? 0) // 0 = start position
+  const [rawPly, setCurrentPly] = useState(initialPly ?? 0) // 0 = start position
+  // A deep link can point past the end of the game (?coup=999): once the
+  // analysis is known, land on a move that exists. The ply is clamped here so
+  // an impossible one is never rendered nor reaches the URL, and the state is
+  // brought back in line during render (it would otherwise keep counting down
+  // from 999).
+  const currentPly = analysis ? clampPly(rawPly, analysis.moves.length) : rawPly
+  if (currentPly !== rawPly) setCurrentPly(currentPly)
   const [flipped, setFlipped] = useState(false)
   // When non-null, the board shows the engine's PV starting from the
   // current ply's fenBefore — pvStep is how many half-moves into the PV.
@@ -56,7 +76,11 @@ export default function AnalysisView({
   // Board decorations requested by the strategic panel (squares, plan arrows).
   const [strategyOverlay, setStrategyOverlay] = useState<BoardOverlay>(EMPTY_OVERLAY)
   // Right-hand panel: the game review first, then move-by-move study.
-  const [tab, setTab] = useState<AnalysisTab>(initialPly !== undefined ? 'strategy' : 'review')
+  const [tab, setTab] = useState<AnalysisTab>(initialTab ?? (initialPly !== undefined ? 'strategy' : 'review'))
+  // Keep the URL on the move / tab being studied (replaces, no history entry).
+  useEffect(() => { onRouteState?.({ ply: currentPly, tab }) }, [currentPly, tab, onRouteState])
+  // "Revoir mes erreurs": replaces the board and panels while active.
+  const [reviewing, setReviewing] = useState(initialReviewing)
   const [engineArrow, setEngineArrow] = useState(() => loadStrategyOverlays().engineArrow)
   const toggleEngineArrow = () => setEngineArrow(v => {
     saveStrategyOverlays({ ...loadStrategyOverlays(), engineArrow: !v })
@@ -148,10 +172,12 @@ export default function AnalysisView({
     return [...plies].filter(p => p > 0).sort((a, b) => a - b)
   }, [analysis])
 
-  // Keyboard navigation (ignored while typing a note).
+  const retryCount = useMemo(() => (analysis ? retryItemsFor(analysis).length : 0), [analysis])
+
+  // Keyboard navigation (ignored while typing a note or reviewing mistakes).
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (!analysis) return
+      if (!analysis || reviewing) return
       const t = e.target as HTMLElement | null
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return
       if (e.metaKey || e.ctrlKey || e.altKey) return
@@ -170,7 +196,7 @@ export default function AnalysisView({
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [analysis, keyMoments])
+  }, [analysis, keyMoments, reviewing])
 
   if (error) {
     return (
@@ -210,6 +236,15 @@ export default function AnalysisView({
     ? buildBestMoveArrow(currentFen, nextMove.bestMoveSan)
     : []
   const nextKeyMoment = keyMoments.find(k => k > currentPly)
+  // Move navigation shared by the inline controls, the key-moment card and the
+  // phone bar (the keyboard shortcuts above do the same with their own state).
+  const lastPly = analysis.moves.length
+  const goStart = () => setCurrentPly(0)
+  const goPrev = () => setCurrentPly(p => Math.max(0, p - 1))
+  const goNext = () => setCurrentPly(p => Math.min(lastPly, p + 1))
+  const goEnd = () => setCurrentPly(lastPly)
+  const goNextKeyMoment = () => { if (nextKeyMoment) setCurrentPly(nextKeyMoment) }
+  const barLabel = pvStep !== null ? 'Aperçu moteur' : currentMove ? moveLabel(currentMove.ply, currentMove.san) : 'Départ'
   const result = RESULT_STYLE[analysis.result]
   const exportPgn = () => {
     const pgn = exportAnnotatedPgn(analysis)
@@ -222,59 +257,80 @@ export default function AnalysisView({
     setTimeout(() => URL.revokeObjectURL(url), 1000)
   }
 
-  return (
-    <div className="p-3 lg:p-5 max-w-[1400px] mx-auto">
-      <header className="flex flex-wrap items-center gap-x-3 gap-y-2 mb-4">
-        <button onClick={onBack} className="text-neutral-400 hover:text-white text-sm">← Retour aux parties</button>
-        <span className="text-neutral-700" aria-hidden>|</span>
-        <h2 className="text-base font-semibold">
+  const page = (
+    // Phones: room under the page for the pinned move bar.
+    <div className={`p-3 lg:p-5 max-w-[1400px] mx-auto ${reviewing ? '' : 'max-sm:pb-[calc(4.5rem_+_env(safe-area-inset-bottom))]'}`}>
+      {/* Phones: two lines (title + result, then opening · date · export); the top bar has the way up. */}
+      <header className="flex flex-wrap items-center gap-x-3 gap-y-2 mb-4 max-sm:gap-x-2 max-sm:gap-y-1 max-sm:mb-3">
+        <button onClick={onBack} className="max-sm:hidden text-neutral-400 hover:text-white text-sm">← Retour aux parties</button>
+        <span className="max-sm:hidden text-neutral-700" aria-hidden>|</span>
+        <h2 className="text-base font-semibold max-sm:min-w-0 max-sm:flex-1 max-sm:break-words">
           <span className="text-neutral-400 font-normal">{analysis.userColor === 'white' ? 'Blancs' : 'Noirs'} contre </span>
           {analysis.opponent}{analysis.opponentRating ? <span className="text-neutral-400 font-normal"> ({analysis.opponentRating})</span> : null}
         </h2>
         <span className={`text-xs px-2 py-0.5 rounded border ${result.cls}`}>{result.label}</span>
-        {analysis.opening && <span className="text-xs text-neutral-400 truncate max-w-[42ch]" title={analysis.opening}>{analysis.opening}</span>}
-        <span className="text-xs text-neutral-500">{analysis.timeClass} · {new Date(analysis.endTime * 1000).toLocaleDateString('fr-FR')}</span>
-        <button
-          onClick={exportPgn}
-          className="ml-auto text-xs px-2.5 py-1 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-200"
-          title="Exporter en PGN avec NAGs + commentaires moteur — compatible Lichess study"
-        >📤 Export PGN annoté</button>
+        {/* Wide screens: transparent, the three are items of the header row. Phones: their own line. */}
+        <div className="sm:contents max-sm:flex max-sm:min-w-0 max-sm:basis-full max-sm:items-center max-sm:gap-x-2">
+          {analysis.opening && <span className="text-xs text-neutral-400 truncate max-w-[42ch]" title={analysis.opening}>{analysis.opening}</span>}
+          <span className="text-xs text-neutral-500 max-sm:shrink-0">{analysis.timeClass} · {new Date(analysis.endTime * 1000).toLocaleDateString('fr-FR')}</span>
+          <button
+            onClick={exportPgn}
+            className="ml-auto text-xs px-2.5 py-1 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-200 max-sm:shrink-0 max-sm:bg-transparent max-sm:px-1.5 max-sm:text-[11px] max-sm:text-neutral-400"
+            title="Exporter en PGN avec NAGs + commentaires moteur — compatible Lichess study"
+          >📤 Export PGN annoté</button>
+        </div>
       </header>
 
-      <div className="grid gap-5 lg:grid-cols-[auto_minmax(360px,1fr)] items-start">
-        <section aria-label="Échiquier" className="lg:sticky lg:top-3">
-          <div className="flex gap-2 items-start">
-            <EvalBar evalCp={currentEvalWhite} heightClass="h-[min(84vw,560px)]" />
-            <div className="w-[min(84vw,560px)]">
-              <TrainingBoard
-                position={currentFen}
-                orientation={flipped
-                  ? (analysis.userColor === 'white' ? 'black' : 'white')
-                  : analysis.userColor}
-                allowDragging={false}
-                animationDurationInMs={150}
-                arrows={[...arrows, ...strategyOverlay.arrows]}
-                squareStyles={strategyOverlay.squareStyles}
-              />
+      {reviewing ? (
+        <MistakeReview
+          analysis={analysis}
+          engine={engine}
+          onExit={ply => {
+            setReviewing(false)
+            if (ply !== undefined) { setCurrentPly(ply); setTab('move') }
+          }}
+        />
+      ) : (
+      // Phones (< sm): one column ordered board → tabs → graph, key moment, move list. The two
+      // sections turn transparent (contents) so their blocks can be ordered across them; from sm
+      // up none of the max-sm classes apply and the sections keep the layout they always had.
+      <div className="grid gap-5 max-sm:grid-cols-1 max-sm:gap-y-3 lg:grid-cols-[auto_minmax(360px,1fr)] items-start">
+        <section aria-label="Échiquier" className="lg:sticky lg:top-3 max-sm:contents">
+          <div className="max-sm:order-1 max-sm:min-w-0">
+            <div className="flex gap-2 items-start">
+              <EvalBar evalCp={currentEvalWhite} heightClass="h-[min(84vw,560px)]" />
+              <div className="w-[min(84vw,560px)]">
+                <TrainingBoard
+                  position={currentFen}
+                  orientation={flipped
+                    ? (analysis.userColor === 'white' ? 'black' : 'white')
+                    : analysis.userColor}
+                  allowDragging={false}
+                  animationDurationInMs={150}
+                  arrows={[...arrows, ...strategyOverlay.arrows]}
+                  squareStyles={strategyOverlay.squareStyles}
+                />
+              </div>
+            </div>
+            {/* Phones: the move bar steps through the game; only the board flip and the engine arrow stay here. */}
+            <div className="flex items-center justify-between mt-2 text-sm pl-8">
+              <button onClick={goStart} className="max-sm:hidden px-2 py-1 hover:bg-neutral-800 rounded" aria-label="Début">⏮</button>
+              <button onClick={goPrev} className="max-sm:hidden px-2 py-1 hover:bg-neutral-800 rounded" aria-label="Coup précédent">◀</button>
+              <span className="max-sm:hidden text-neutral-400 text-xs">
+                {pvStep !== null ? 'Aperçu de la ligne du moteur' : currentMove ? `Coup ${moveLabel(currentMove.ply, currentMove.san)}` : 'Position initiale'}
+              </span>
+              <button onClick={goNext} className="max-sm:hidden px-2 py-1 hover:bg-neutral-800 rounded" aria-label="Coup suivant">▶</button>
+              <button onClick={goEnd} className="max-sm:hidden px-2 py-1 hover:bg-neutral-800 rounded" aria-label="Fin">⏭</button>
+              <button onClick={() => setFlipped(f => !f)} className="px-2 py-1 hover:bg-neutral-800 rounded ml-2 max-sm:ml-0 max-sm:min-h-10 max-sm:px-3" title="Retourner l'échiquier (F)" aria-label="Retourner l'échiquier">⇅</button>
+              <button
+                onClick={toggleEngineArrow}
+                aria-pressed={engineArrow}
+                className={`px-2 py-1 rounded text-xs max-sm:min-h-10 max-sm:px-3 ${engineArrow ? 'bg-neutral-800 text-emerald-300' : 'text-neutral-500 hover:bg-neutral-800'}`}
+                title="Flèche du meilleur coup du moteur (A)"
+              >➚ moteur</button>
             </div>
           </div>
-          <div className="flex items-center justify-between mt-2 text-sm pl-8">
-            <button onClick={() => setCurrentPly(0)} className="px-2 py-1 hover:bg-neutral-800 rounded" aria-label="Début">⏮</button>
-            <button onClick={() => setCurrentPly(p => Math.max(0, p - 1))} className="px-2 py-1 hover:bg-neutral-800 rounded" aria-label="Coup précédent">◀</button>
-            <span className="text-neutral-400 text-xs">
-              {pvStep !== null ? 'Aperçu de la ligne du moteur' : currentPly === 0 ? 'Position initiale' : `Coup ${Math.ceil(currentPly / 2)}${currentPly % 2 === 1 ? '.' : '...'} ${currentMove?.san}`}
-            </span>
-            <button onClick={() => setCurrentPly(p => Math.min(analysis.moves.length, p + 1))} className="px-2 py-1 hover:bg-neutral-800 rounded" aria-label="Coup suivant">▶</button>
-            <button onClick={() => setCurrentPly(analysis.moves.length)} className="px-2 py-1 hover:bg-neutral-800 rounded" aria-label="Fin">⏭</button>
-            <button onClick={() => setFlipped(f => !f)} className="px-2 py-1 hover:bg-neutral-800 rounded ml-2" title="Retourner l'échiquier (F)" aria-label="Retourner l'échiquier">⇅</button>
-            <button
-              onClick={toggleEngineArrow}
-              aria-pressed={engineArrow}
-              className={`px-2 py-1 rounded text-xs ${engineArrow ? 'bg-neutral-800 text-emerald-300' : 'text-neutral-500 hover:bg-neutral-800'}`}
-              title="Flèche du meilleur coup du moteur (A)"
-            >➚ moteur</button>
-          </div>
-          <div className="mt-3 pl-8">
+          <div className="mt-3 pl-8 max-sm:order-3 max-sm:mt-0 max-sm:min-w-0">
             <div className="flex items-baseline justify-between mb-1">
               <h3 className="text-xs uppercase tracking-wider text-neutral-500">Évaluation</h3>
               <span className="hidden sm:inline text-[11px] text-neutral-500">← → naviguer · N moment clé · F retourner · ? aide</span>
@@ -284,12 +340,13 @@ export default function AnalysisView({
               currentPly={currentPly}
               userColor={analysis.userColor}
               onClickPly={setCurrentPly}
+              keyMoments={keyMoments}
             />
           </div>
         </section>
 
-        <section aria-label="Analyse" className="min-w-0 space-y-3">
-          <div className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md px-3 py-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm min-h-[2.75rem]" aria-live="polite">
+        <section aria-label="Analyse" className="min-w-0 sm:space-y-3 max-sm:contents">
+          <div className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md px-3 py-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm min-h-[2.75rem] max-sm:order-4 max-sm:min-w-0" aria-live="polite">
             {pvStep !== null ? (
               <>
                 <span className="text-sky-300">Aperçu de la ligne du moteur — pas la partie</span>
@@ -310,14 +367,14 @@ export default function AnalysisView({
               <span className="text-neutral-400">Position initiale</span>
             )}
             <button
-              onClick={() => nextKeyMoment && setCurrentPly(nextKeyMoment)}
+              onClick={goNextKeyMoment}
               disabled={!nextKeyMoment}
               className="ml-auto text-xs px-2 py-1 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-200 disabled:opacity-40"
               title="Tes erreurs et moments stratégiques, dans l'ordre (N / Maj+N)"
             >Moment clé suivant →</button>
           </div>
 
-          <div className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-3">
+          <div className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-3 max-sm:order-5 max-sm:min-w-0">
             <div className="flex items-baseline justify-between mb-1.5">
               <h3 className="text-sm font-semibold">Liste des coups</h3>
               <span className="text-[11px] text-neutral-500">
@@ -334,7 +391,8 @@ export default function AnalysisView({
             />
           </div>
 
-          <div role="tablist" aria-label="Panneaux d'analyse" className="flex gap-1 border-b border-[var(--color-border)]">
+          {/* Phones: tablist and tabpanel share order 2 (so they stay together, in this order), right under the board. */}
+          <div role="tablist" aria-label="Panneaux d'analyse" className="flex gap-1 border-b border-[var(--color-border)] max-sm:order-2 max-sm:min-w-0">
             {TABS.map(t => (
               <button
                 key={t.id}
@@ -342,14 +400,14 @@ export default function AnalysisView({
                 aria-selected={tab === t.id}
                 onClick={() => setTab(t.id)}
                 title={`Raccourci : ${t.key}`}
-                className={`px-3 py-2 text-sm -mb-px border-b-2 transition-colors ${tab === t.id
+                className={`px-3 py-2 text-sm -mb-px border-b-2 transition-colors max-sm:flex-1 max-sm:px-1 max-sm:py-3 ${tab === t.id
                   ? 'border-[var(--color-accent)] text-white'
                   : 'border-transparent text-neutral-400 hover:text-neutral-200'}`}
               >{t.label}</button>
             ))}
           </div>
 
-          <div role="tabpanel" className="space-y-3">
+          <div role="tabpanel" className="space-y-3 max-sm:order-2 max-sm:min-w-0">
             {tab === 'review' && (
               <>
                 <div className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-4">
@@ -366,8 +424,14 @@ export default function AnalysisView({
                   </div>
                   <div className="mt-3 pt-3 border-t border-[var(--color-border)] flex flex-wrap items-start gap-3">
                     <button
+                      onClick={() => setReviewing(true)}
+                      disabled={retryCount === 0}
+                      title={retryCount === 0 ? 'Aucune erreur ni plan manqué de ta part dans cette partie' : 'Rejoue tes erreurs depuis la position de départ et cherche mieux'}
+                      className="text-xs px-2.5 py-1 rounded bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] text-white disabled:opacity-40"
+                    >🎯 Revoir mes erreurs ({retryCount})</button>
+                    <button
                       onClick={() => { setCurrentPly(1); setTab('move') }}
-                      className="text-xs px-2.5 py-1 rounded bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] text-white"
+                      className="text-xs px-2.5 py-1 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-100"
                     >▶ Revoir coup par coup</button>
                     <LlmAskBox
                       ctaLabel="✨ Revue complète de la partie (IA)"
@@ -460,11 +524,35 @@ export default function AnalysisView({
           </div>
         </section>
       </div>
+      )}
     </div>
+  )
+
+  return (
+    <>
+      {page}
+      {/* Phones: pinned move bar (hidden from sm up); the guided review has its own controls.
+          A sibling of the page rather than inside it: <main> fades its children in with a transform,
+          which for the length of that animation would make the page the bar's containing block (the
+          bar would sit off screen at the bottom of the page, then jump into place). */}
+      {!reviewing && (
+        <AnalysisMoveBar
+          label={barLabel}
+          canGoBack={currentPly > 0}
+          canGoForward={currentPly < lastPly}
+          canJumpToKeyMoment={nextKeyMoment !== undefined}
+          onStart={goStart}
+          onPrev={goPrev}
+          onNext={goNext}
+          onEnd={goEnd}
+          onNextKeyMoment={goNextKeyMoment}
+        />
+      )}
+    </>
   )
 }
 
-type AnalysisTab = 'review' | 'move' | 'strategy' | 'opening'
+type AnalysisTab = AnalysisTabId
 
 const TABS: { id: AnalysisTab; label: string; key: string }[] = [
   { id: 'review', label: 'Bilan', key: 'B' },
@@ -474,6 +562,16 @@ const TABS: { id: AnalysisTab; label: string; key: string }[] = [
 ]
 
 const TAB_KEYS: Record<string, AnalysisTab> = { b: 'review', c: 'move', s: 'strategy', o: 'opening' }
+
+/** A ply that exists in a game of `lastPly` moves (0 = start position). */
+function clampPly(ply: number, lastPly: number): number {
+  return Number.isFinite(ply) ? Math.min(Math.max(Math.trunc(ply), 0), lastPly) : 0
+}
+
+/** "12. Nf3" for a White move, "12... Rc8" for a Black one. */
+function moveLabel(ply: number, san: string): string {
+  return `${Math.ceil(ply / 2)}${ply % 2 === 1 ? '.' : '...'} ${san}`
+}
 
 const RESULT_STYLE: Record<GameAnalysis['result'], { label: string; cls: string }> = {
   win: { label: 'Victoire', cls: 'text-emerald-300 bg-emerald-500/10 border-emerald-500/30' },

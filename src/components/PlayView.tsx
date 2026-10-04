@@ -38,6 +38,9 @@ export default function PlayView({ engine }: Props) {
   const [outcome, setOutcome] = useState<Outcome | null>(null)
   const [error, setError] = useState<string | null>(null)
   const cancelRef = useRef(false)
+  // Each game, and leaving the view, gets a new id: a bot reply still in
+  // flight for an older game must not land on the new one.
+  const gameIdRef = useRef(0)
 
   const userIsWhite = userColor === 'white'
   const engineColor = userIsWhite ? 'b' : 'w'
@@ -56,8 +59,8 @@ export default function PlayView({ engine }: Props) {
 
   async function start() {
     cancelRef.current = false
+    gameIdRef.current++
     try {
-      await engine.setStrength(elo)
       const c = new Chess()
       setGame(c)
       setPosition(c.fen())
@@ -84,10 +87,12 @@ export default function PlayView({ engine }: Props) {
   // Ask the engine for its reply in `g` (engine to move) and play it. All
   // state updates land after the engine answers, in a single batch.
   const askEngine = useEffectEvent((g: Chess) => {
+    const id = gameIdRef.current
     async function reply() {
       try {
-        const r = await engine.evaluate(g.fen(), 18, movetimeForElo(elo))
-        if (cancelRef.current) return
+        // The cap travels with the request: the engine is shared with the analyses.
+        const r = await engine.evaluate(g.fen(), 18, movetimeForElo(elo), elo)
+        if (cancelRef.current || id !== gameIdRef.current) return
         if (!r.bestMoveUci) {
           setOutcome(checkTermination(g))
           return
@@ -109,9 +114,9 @@ export default function PlayView({ engine }: Props) {
           playSuccess()
         }
       } catch (e) {
-        setError(e instanceof Error ? e.message : String(e))
+        if (id === gameIdRef.current) setError(e instanceof Error ? e.message : String(e))
       } finally {
-        setEngineTurn(null)
+        if (id === gameIdRef.current) setEngineTurn(null)
       }
     }
     void reply()
@@ -120,6 +125,8 @@ export default function PlayView({ engine }: Props) {
   useEffect(() => {
     if (engineTurn) askEngine(engineTurn)
   }, [engineTurn])
+
+  useEffect(() => () => { gameIdRef.current++ }, [])
 
   function onPieceDrop({ sourceSquare, targetSquare, piece }: {
     sourceSquare: string; targetSquare: string | null; piece: { pieceType: string }

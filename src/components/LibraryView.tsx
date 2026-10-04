@@ -101,7 +101,7 @@ export default function LibraryView({ onOpenBook }: Props) {
               onClick={() => installBundledBook('books/lichess-sample.book.json', 'Lichess')}
               disabled={busy}
               className="px-3 py-1.5 text-sm rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-200 font-medium"
-              title="1000 puzzles Lichess (CC0), répartis sur 4 niveaux de rating"
+              title="1000 puzzles Lichess (CC0), répartis sur 4 niveaux d'Elo"
             >
               ♟ Pack Lichess (1000)
             </button>
@@ -148,7 +148,7 @@ export default function LibraryView({ onOpenBook }: Props) {
             Pour les PDFs avec diagrammes en images (ChessBase), repasse par un export PGN puis l'onglet "Parties".
           </p>
           <p>
-            <strong>Lichess Puzzle DB</strong> — télécharge{' '}
+            <strong>Base de puzzles Lichess</strong> — télécharge{' '}
             <a href="https://database.lichess.org/lichess_db_puzzle.csv.zst" className="underline text-neutral-200" target="_blank" rel="noopener">
               lichess_db_puzzle.csv.zst
             </a>{' '}(CC0, ~280 MB) puis :{' '}
@@ -156,7 +156,7 @@ export default function LibraryView({ onOpenBook }: Props) {
               scripts/import_lichess_puzzles.py lichess_db_puzzle.csv.zst --max 2000 --balanced-bands
             </code>.
             Tu obtiens un JSON à importer ici (par défaut 1000 puzzles répartis sur 4 niveaux). Tu peux filtrer par
-            thème (<code>--theme fork --theme pin</code>) ou rating (<code>--min-rating 1400</code>).
+            thème (<code>--theme fork --theme pin</code>) ou par Elo minimum (<code>--min-rating 1400</code>).
           </p>
         </div>
       </details>

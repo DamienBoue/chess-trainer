@@ -41,21 +41,21 @@ describe('PlanView with data', () => {
     expect(screen.getByText(/Bonjour @alice/i)).toBeTruthy()
   })
 
-  it('shows the two tabs Aujourd\'hui / Mon niveau', () => {
+  it('has no inner tabs: the level badge leads to Mon niveau in Progrès', () => {
     render(<PlanView analyses={corpus()} progress={{}} username="alice" onNavigate={navigate} />)
-    expect(screen.getByText("Aujourd'hui")).toBeTruthy()
-    expect(screen.getByText('Mon niveau')).toBeTruthy()
+    expect(screen.queryByText('Mon niveau')).toBeNull()
+    expect(screen.queryByText('Changer de compte')).toBeNull()
+    fireEvent.click(screen.getByTitle(/ouvrir la roadmap|Mon niveau/i))
+    expect(navigate).toHaveBeenCalledWith('roadmap')
   })
 
-  it('switches to the Mon niveau tab when clicked', () => {
+  it('puts forward the first step not done yet', () => {
     render(<PlanView analyses={corpus()} progress={{}} username="alice" onNavigate={navigate} />)
-    fireEvent.click(screen.getByText('Mon niveau'))
-    // RoadmapView's "Ton niveau" section appears.
-    expect(screen.getAllByText('Joueur loisir').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Commencer')).toHaveLength(1)
   })
 
   it('renders the plan items list with at least one item', () => {
     render(<PlanView analyses={corpus()} progress={{}} username="alice" onNavigate={navigate} />)
-    expect(screen.getAllByText(/Faire|Revoir/).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/Commencer|Faire|Revoir/).length).toBeGreaterThan(0)
   })
 })

@@ -48,26 +48,26 @@ export default function RepertoireView({ analyses, onGoToGames, onOpenLab }: Pro
     <div className="p-6 max-w-6xl mx-auto">
       <div className="flex items-baseline justify-between mb-2 flex-wrap gap-3">
         <div>
-          <h2 className="text-2xl font-semibold flex items-center gap-2 flex-wrap">
-            Répertoire
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="text-2xl font-semibold">Mon répertoire</h2>
             {onOpenLab && (
               <button
                 onClick={onOpenLab}
-                className="text-xs px-2 py-0.5 rounded bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 border border-purple-500/30"
-                title="Comparer tes lignes aux masters"
-              >🔬 Opening Lab</button>
+                className="text-xs px-2 py-0.5 rounded whitespace-nowrap bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 border border-purple-500/30"
+                title="Comparer tes lignes à celles des maîtres"
+              >🔬 Labo d'ouvertures</button>
             )}
-          </h2>
+          </div>
           <p className="text-sm text-neutral-400">
             Tes lignes principales par ouverture, construites à partir des parties analysées.
           </p>
         </div>
-        <div className="inline-flex rounded-md border border-[var(--color-border)] bg-[var(--color-panel)] p-0.5 text-sm">
+        <div className="inline-flex max-w-full overflow-x-auto rounded-md border border-[var(--color-border)] bg-[var(--color-panel)] p-0.5 text-sm">
           <TabBtn active={tab === 'lines'} onClick={() => setTab('lines')}>Lignes</TabBtn>
           <TabBtn active={tab === 'critiques'} onClick={() => setTab('critiques')}>
             Critiques {critiques.length > 0 && `(${critiques.length})`}
           </TabBtn>
-          <TabBtn active={tab === 'trainer'} onClick={() => setTab('trainer')}>Trainer</TabBtn>
+          <TabBtn active={tab === 'trainer'} onClick={() => setTab('trainer')}>S'entraîner</TabBtn>
           <TabBtn active={tab === 'srs'} onClick={() => setTab('srs')}>SRS</TabBtn>
           <TabBtn active={tab === 'explorer'} onClick={() => setTab('explorer')}>Explorer</TabBtn>
         </div>
@@ -142,7 +142,7 @@ function TabBtn({ children, active, onClick }: { children: React.ReactNode; acti
   return (
     <button
       onClick={onClick}
-      className={`px-3 py-1 rounded transition-colors ${
+      className={`px-3 py-1 rounded whitespace-nowrap transition-colors ${
         active ? 'bg-[var(--color-accent)] text-white' : 'text-neutral-300 hover:bg-neutral-800'
       }`}
     >
@@ -250,7 +250,7 @@ function SrsPanel({ roots }: { roots: RepertoireRoot[] }) {
   if (allCards.length === 0) {
     return (
       <div className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-6 text-sm text-neutral-400">
-        Pas assez de répétitions dans le répertoire pour générer un drill SRS. Analyse au moins 2-3 parties dans une même ouverture.
+        Pas assez de répétitions dans le répertoire pour générer des révisions SRS. Analyse au moins 2-3 parties dans une même ouverture.
       </div>
     )
   }
@@ -271,7 +271,7 @@ function SrsPanel({ roots }: { roots: RepertoireRoot[] }) {
           <button
             onClick={() => changeMode('improve')}
             className={`px-2 py-1 rounded ${mode === 'improve' ? 'bg-[var(--color-accent)] text-white' : 'text-neutral-300 hover:bg-neutral-800'}`}
-            title="Drille les corrections recommandées par Stockfish au lieu de tes habitudes"
+            title="Travaille les corrections recommandées par Stockfish au lieu de tes habitudes"
           >Améliorer</button>
         </div>
       </div>
@@ -288,7 +288,7 @@ function SrsPanel({ roots }: { roots: RepertoireRoot[] }) {
               {current.rootColor === 'white' ? '♔ Blancs' : '♚ Noirs'} · coup {current.depth} · {current.count} parties observées
             </span>
             {current.isSfRecommended && (
-              <span className="text-xs px-1.5 py-0.5 rounded bg-blue-900/40 text-blue-300">SF correction</span>
+              <span className="text-xs px-1.5 py-0.5 rounded bg-blue-900/40 text-blue-300">Correction SF</span>
             )}
           </div>
           {/* One board per card: a card change remounts it instead of
@@ -365,38 +365,43 @@ function RootDetail({ root }: { root: RepertoireRoot }) {
             const stockfishDisagrees = !!m.engineSuggestion && m.engineSuggestion.san !== m.san
             return (
               <li key={i} className="text-sm">
+                {/* On a phone the row does not fit on one line: every item (move,
+                    count, record, CPL, Stockfish hint, alternatives) is a unit that
+                    wraps as a whole, never in the middle of "O-O" or "⌀ 3 cp". */}
                 <button
-                  className="w-full text-left flex items-center gap-2 hover:bg-neutral-800/50 rounded px-2 py-1"
+                  className="w-full text-left flex items-baseline gap-2 hover:bg-neutral-800/50 rounded px-2 py-1"
                   onClick={() => setOpenAt(isOpen ? null : i)}
                 >
-                  <span className="text-neutral-500 w-7 text-right">{i + 1}.</span>
-                  <span className={`font-mono ${cpColor}`}>{m.san}</span>
-                  <span className="text-xs text-neutral-500">×{m.count}</span>
-                  <span className="text-xs text-neutral-500">{rollupString({ wins: m.w, losses: m.l, draws: m.d })}</span>
-                  <span className={`text-xs ${cpColor}`} title="CPL moyen sur tes parties — plus bas = plus précis">
-                    ⌀ {m.avgCpLoss.toFixed(0)} cp
+                  <span className="text-neutral-500 w-7 text-right shrink-0">{i + 1}.</span>
+                  <span className="flex-1 min-w-0 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                    <span className={`font-mono whitespace-nowrap ${cpColor}`}>{m.san}</span>
+                    <span className="text-xs text-neutral-500 whitespace-nowrap">×{m.count}</span>
+                    <span className="text-xs text-neutral-500 whitespace-nowrap">{rollupString({ wins: m.w, losses: m.l, draws: m.d })}</span>
+                    <span className={`text-xs whitespace-nowrap ${cpColor}`} title="CPL moyen sur tes parties — plus bas = plus précis">
+                      ⌀ {m.avgCpLoss.toFixed(0)} cp
+                    </span>
+                    {stockfishDisagrees && (
+                      <span className="text-xs text-orange-300 whitespace-nowrap" title={`Stockfish a préféré ${m.engineSuggestion!.san} ${m.engineSuggestion!.count}× dans tes parties`}>
+                        ⚠ SF préfère {m.engineSuggestion!.san}
+                      </span>
+                    )}
+                    {alts.length > 0 && (
+                      <span className="text-xs text-blue-400 whitespace-nowrap ml-auto">
+                        {isOpen ? '▾' : '▸'} {alts.length} alternative{alts.length > 1 ? 's' : ''}
+                      </span>
+                    )}
                   </span>
-                  {stockfishDisagrees && (
-                    <span className="text-xs text-orange-300" title={`Stockfish a préféré ${m.engineSuggestion!.san} ${m.engineSuggestion!.count}× dans tes parties`}>
-                      ⚠ SF préfère {m.engineSuggestion!.san}
-                    </span>
-                  )}
-                  {alts.length > 0 && (
-                    <span className="text-xs text-blue-400 ml-auto">
-                      {isOpen ? '▾' : '▸'} {alts.length} alternative{alts.length > 1 ? 's' : ''}
-                    </span>
-                  )}
                 </button>
                 {isOpen && alts.length > 0 && (
-                  <ul className="ml-12 mt-1 space-y-1">
+                  <ul className="ml-11 mt-1 space-y-1">
                     {alts.slice(0, 6).map(a => {
                       const aCp = a.count > 0 ? a.cpLossSum / a.count : 0
                       return (
-                        <li key={a.san} className="flex items-baseline gap-2 text-xs text-neutral-400">
-                          <span className={`font-mono ${qualityColor(aCp)}`}>{a.san}</span>
-                          <span className="text-neutral-500">×{a.count}</span>
-                          <span className="text-neutral-500">{rollupString(a)}</span>
-                          <span className={`${qualityColor(aCp)}`}>⌀ {aCp.toFixed(0)} cp</span>
+                        <li key={a.san} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-xs text-neutral-400">
+                          <span className={`font-mono whitespace-nowrap ${qualityColor(aCp)}`}>{a.san}</span>
+                          <span className="text-neutral-500 whitespace-nowrap">×{a.count}</span>
+                          <span className="text-neutral-500 whitespace-nowrap">{rollupString(a)}</span>
+                          <span className={`whitespace-nowrap ${qualityColor(aCp)}`}>⌀ {aCp.toFixed(0)} cp</span>
                         </li>
                       )
                     })}

@@ -63,13 +63,17 @@ export default function StatsView({ analyses, onDrillMotif, onGoToGames }: Props
     stats.byClass.blunder + stats.byClass.mistake + stats.byClass.inaccuracy
   const classOrder: (keyof typeof stats.byClass)[] = ['best', 'great', 'good', 'inaccuracy', 'mistake', 'blunder', 'book']
 
-  const titleSuffix = onlyColor === null
-    ? 'parties'
-    : onlyColor === 'white' ? 'parties avec les Blancs' : 'parties avec les Noirs'
+  const n = stats.gamesAnalyzed
+  const subtitle = `${n} partie${n > 1 ? 's' : ''} analysée${n > 1 ? 's' : ''}${
+    onlyColor === null ? '' : onlyColor === 'white' ? ' avec les Blancs' : ' avec les Noirs'
+  }`
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-5">
-      <h2 className="text-2xl font-semibold">Bilan ({stats.gamesAnalyzed} {titleSuffix})</h2>
+      <div>
+        <h2 className="text-2xl font-semibold">Statistiques</h2>
+        <p className="text-sm text-neutral-400">{subtitle}</p>
+      </div>
 
       {stats.gamesAnalyzed === 0 && (
         <p className="text-neutral-400 text-sm">Aucune partie ne correspond aux filtres actuels.</p>
@@ -553,8 +557,8 @@ function MotifRow({
         <button
           onClick={() => onDrill(stat.motif)}
           className="text-xs px-2 py-0.5 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-200"
-          title={`Drill les ${stat.missed} ${stat.label.toLowerCase()} ratés`}
-        >Drill</button>
+          title={`S'exercer sur tes ${stat.missed} motifs « ${stat.label.toLowerCase()} » manqués`}
+        >Réviser</button>
       )}
     </div>
   )

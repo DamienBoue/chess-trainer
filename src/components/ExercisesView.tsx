@@ -1,12 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { Chess } from 'chess.js'
 import TrainingBoard from './TrainingBoard'
 import type { GameAnalysis } from '../types'
 import {
   type Exercise,
-  type ExerciseCategory,
   type MotifTag,
-  type Difficulty,
   CATEGORY_LABELS,
   CATEGORY_DESCRIPTIONS,
   CATEGORY_COLORS,
@@ -22,6 +20,19 @@ import { playForMove, playSuccess, playWrong } from '../audio/sounds'
 import { exerciseToShareUrl } from '../api/share'
 import { evaluateMultiPV, topGapCp } from '../engine/multipv'
 import EmptyState from './EmptyState'
+import {
+  type CategoryFilter,
+  type DifficultyFilter,
+  type FilterCounts,
+  type MotifFilter,
+  type StatusFilter,
+  CATEGORY_KEYS,
+  DIFFICULTY_KEYS,
+  STATUS_OPTIONS,
+  exerciseCountLabel,
+  filtersSummary,
+} from './exerciseFilters'
+import { useIsPhone } from './useIsPhone'
 
 interface Props {
   analyses: GameAnalysis[]
@@ -34,16 +45,18 @@ interface Props {
   onGoToGames?: () => void
 }
 
-type StatusFilter = 'all' | 'due' | 'solved' | 'unseen'
-type CategoryFilter = 'all' | ExerciseCategory
-
 export default function ExercisesView({ analyses, progress, onAttempt, initialMotif, onGoToGames }: Props) {
   const exercises = useMemo(() => extractExercises(analyses), [analyses])
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('due')
-  const [motifFilter, setMotifFilter] = useState<MotifTag | 'all'>(initialMotif ?? 'all')
-  const [difficultyFilter, setDifficultyFilter] = useState<Difficulty | 'all'>('all')
+  const [motifFilter, setMotifFilter] = useState<MotifFilter>(initialMotif ?? 'all')
+  const [difficultyFilter, setDifficultyFilter] = useState<DifficultyFilter>('all')
   const [activeId, setActiveId] = useState<string | null>(null)
+  // Phones: the filter chips live behind a "Filtres" disclosure (closed by
+  // default so the board comes first). Wider screens always show them.
+  const isPhone = useIsPhone()
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const filtersPanelId = useId()
 
   // If the upstream changes `initialMotif` (e.g. user clicks another row in
   // the radar without leaving the app), follow it. Done during render
@@ -82,7 +95,7 @@ export default function ExercisesView({ analyses, progress, onAttempt, initialMo
     [activeId, exercises, filtered],
   )
 
-  const counts = useMemo(() => ({
+  const counts = useMemo<FilterCounts>(() => ({
     all: exercises.length,
     due: exercises.filter(e => isDue(progress[e.id])).length,
     solved: exercises.filter(e => (progress[e.id]?.successes ?? 0) > 0).length,
@@ -90,6 +103,9 @@ export default function ExercisesView({ analyses, progress, onAttempt, initialMo
     missed: exercises.filter(e => e.category === 'missed').length,
     punishment: exercises.filter(e => e.category === 'punishment').length,
     defense: exercises.filter(e => e.category === 'defense').length,
+    easy: exercises.filter(e => e.difficulty === 'easy').length,
+    medium: exercises.filter(e => e.difficulty === 'medium').length,
+    hard: exercises.filter(e => e.difficulty === 'hard').length,
   }), [exercises, progress])
 
   if (analyses.length === 0) {
@@ -139,61 +155,73 @@ export default function ExercisesView({ analyses, progress, onAttempt, initialMo
     downloadPgn(pgn, `chess-trainer-exercises-${Date.now()}.pgn`)
   }
 
-  return (
-    <div className="p-4 lg:p-6 max-w-7xl mx-auto">
-      <div className="flex flex-wrap items-baseline gap-3 mb-4">
-        <h2 className="text-2xl font-semibold">Exercices</h2>
-        <p className="text-sm text-neutral-400">Trouve le bon coup directement sur l'échiquier.</p>
-        <button
-          onClick={handleExport}
-          disabled={filtered.length === 0}
-          className="ml-auto px-3 py-1.5 text-sm bg-neutral-800 hover:bg-neutral-700 rounded disabled:opacity-40"
-          title="Télécharger un PGN importable comme étude Lichess"
-        >
-          ↓ Export Lichess (.pgn)
-        </button>
-      </div>
+  const filterRows = (
+    <FilterRows
+      status={statusFilter}
+      onStatus={setStatusFilter}
+      category={categoryFilter}
+      onCategory={setCategoryFilter}
+      difficulty={difficultyFilter}
+      onDifficulty={setDifficultyFilter}
+      motif={motifFilter}
+      onClearMotif={() => setMotifFilter('all')}
+      counts={counts}
+    />
+  )
 
-      {/* Status filter */}
-      <div className="flex gap-2 mb-2 flex-wrap text-xs">
-        <FilterPill active={statusFilter === 'due'} onClick={() => setStatusFilter('due')} count={counts.due}>À réviser</FilterPill>
-        <FilterPill active={statusFilter === 'unseen'} onClick={() => setStatusFilter('unseen')} count={counts.unseen}>Jamais vus</FilterPill>
-        <FilterPill active={statusFilter === 'solved'} onClick={() => setStatusFilter('solved')} count={counts.solved}>Déjà réussis</FilterPill>
-        <FilterPill active={statusFilter === 'all'} onClick={() => setStatusFilter('all')} count={counts.all}>Tous</FilterPill>
-      </div>
-      {/* Category filter */}
-      <div className="flex gap-2 mb-2 flex-wrap text-sm">
-        <FilterPill active={categoryFilter === 'all'} onClick={() => setCategoryFilter('all')} count={counts.all}>Toutes catégories</FilterPill>
-        <FilterPill active={categoryFilter === 'missed'} onClick={() => setCategoryFilter('missed')} count={counts.missed} color={CATEGORY_COLORS.missed}>{CATEGORY_LABELS.missed}</FilterPill>
-        <FilterPill active={categoryFilter === 'punishment'} onClick={() => setCategoryFilter('punishment')} count={counts.punishment} color={CATEGORY_COLORS.punishment}>{CATEGORY_LABELS.punishment}</FilterPill>
-        <FilterPill active={categoryFilter === 'defense'} onClick={() => setCategoryFilter('defense')} count={counts.defense} color={CATEGORY_COLORS.defense}>{CATEGORY_LABELS.defense}</FilterPill>
-      </div>
-      {/* Difficulty filter */}
-      <div className="flex gap-2 mb-2 flex-wrap text-xs">
-        <span className="text-neutral-500 self-center mr-1">Difficulté :</span>
-        <FilterPill active={difficultyFilter === 'all'} onClick={() => setDifficultyFilter('all')}>Toutes</FilterPill>
-        {(['easy', 'medium', 'hard'] as Difficulty[]).map(d => (
-          <FilterPill
-            key={d}
-            active={difficultyFilter === d}
-            onClick={() => setDifficultyFilter(d)}
-            color={DIFFICULTY_COLORS[d]}
-            count={exercises.filter(e => e.difficulty === d).length}
-          >{DIFFICULTY_LABELS[d]}</FilterPill>
-        ))}
-      </div>
-      {/* Motif filter — only shown when a motif is actively filtered or via Stats deep-link */}
-      {motifFilter !== 'all' && (
-        <div className="flex gap-2 mb-4 flex-wrap items-center text-xs">
-          <span className="text-neutral-500">Motif :</span>
-          <span className="px-2 py-1 rounded bg-[var(--color-accent)] text-white">
-            {MOTIF_LABELS[motifFilter]}
-          </span>
-          <button
-            onClick={() => setMotifFilter('all')}
-            className="text-neutral-400 hover:text-white underline"
-          >× Retirer le filtre motif</button>
-        </div>
+  return (
+    <div className="px-3 py-3 sm:p-4 lg:p-6 max-w-7xl mx-auto">
+      {isPhone ? (
+        <>
+          {/* Phone: a compact title row, then one "Filtres" line; the board comes right after. */}
+          <div className="flex items-baseline justify-between gap-2 mb-2">
+            <h2 className="text-xl font-semibold">Exercices</h2>
+            <span className="text-xs text-neutral-500">{counts.all} au total</span>
+          </div>
+          <div className="mb-3">
+            <FiltersToggle
+              open={filtersOpen}
+              onToggle={() => setFiltersOpen(o => !o)}
+              panelId={filtersPanelId}
+              summary={filtersSummary({
+                status: statusFilter,
+                category: categoryFilter,
+                difficulty: difficultyFilter,
+                motif: motifFilter,
+              })}
+              count={filtered.length}
+            />
+            {filtersOpen && (
+              <div
+                id={filtersPanelId}
+                className="mt-2 flex flex-col gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-panel)] p-3"
+              >
+                {filterRows}
+                {/* Export is secondary on a phone: it lives with the selection it exports. */}
+                <div className="mt-1 border-t border-[var(--color-border)] pt-3">
+                  <ExportButton
+                    onExport={handleExport}
+                    disabled={filtered.length === 0}
+                    className="w-full min-h-10 px-3 text-sm bg-neutral-800 hover:bg-neutral-700 rounded disabled:opacity-40"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="flex flex-wrap items-baseline gap-3 mb-4">
+            <h2 className="text-2xl font-semibold">Exercices</h2>
+            <p className="text-sm text-neutral-400">Trouve le bon coup directement sur l'échiquier.</p>
+            <ExportButton
+              onExport={handleExport}
+              disabled={filtered.length === 0}
+              className="ml-auto px-3 py-1.5 text-sm bg-neutral-800 hover:bg-neutral-700 rounded disabled:opacity-40"
+            />
+          </div>
+          {filterRows}
+        </>
       )}
 
       <div className="grid lg:grid-cols-[1fr_320px] gap-6">
@@ -214,7 +242,7 @@ export default function ExercisesView({ analyses, progress, onAttempt, initialMo
           <div className="text-neutral-500">Aucun exercice dans cette sélection.</div>
         )}
 
-        <aside className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-3 max-h-[80vh] overflow-auto">
+        <aside className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-3 max-h-64 sm:max-h-[80vh] overflow-auto">
           <h3 className="font-semibold text-sm mb-2 text-neutral-300">Liste ({filtered.length})</h3>
           <ul className="space-y-1">
             {filtered.map(e => {
@@ -248,6 +276,142 @@ export default function ExercisesView({ analyses, progress, onAttempt, initialMo
   )
 }
 
+interface FilterRowsProps {
+  status: StatusFilter
+  onStatus: (v: StatusFilter) => void
+  category: CategoryFilter
+  onCategory: (v: CategoryFilter) => void
+  difficulty: DifficultyFilter
+  onDifficulty: (v: DifficultyFilter) => void
+  motif: MotifFilter
+  onClearMotif: () => void
+  counts: FilterCounts
+}
+
+// The chip rows. Rendered as a fragment: on wide screens the rows sit directly
+// in the page (spacing via `sm:mb-*`), on phones the caller wraps them in the
+// "Filtres" panel, which spaces them with a flex gap instead.
+function FilterRows({
+  status, onStatus, category, onCategory, difficulty, onDifficulty, motif, onClearMotif, counts,
+}: FilterRowsProps) {
+  return (
+    <>
+      {/* Status filter */}
+      <div role="group" aria-label="Statut" className="flex gap-2 flex-wrap text-xs sm:mb-2">
+        {STATUS_OPTIONS.map(o => (
+          <FilterPill key={o.value} active={status === o.value} onClick={() => onStatus(o.value)} count={counts[o.value]}>
+            {o.label}
+          </FilterPill>
+        ))}
+      </div>
+      {/* Category filter */}
+      <div role="group" aria-label="Catégorie" className="flex gap-2 flex-wrap text-xs sm:text-sm sm:mb-2">
+        <FilterPill active={category === 'all'} onClick={() => onCategory('all')} count={counts.all}>Toutes catégories</FilterPill>
+        {CATEGORY_KEYS.map(c => (
+          <FilterPill
+            key={c}
+            active={category === c}
+            onClick={() => onCategory(c)}
+            count={counts[c]}
+            color={CATEGORY_COLORS[c]}
+          >{CATEGORY_LABELS[c]}</FilterPill>
+        ))}
+      </div>
+      {/* Difficulty filter */}
+      <div role="group" aria-label="Difficulté" className="flex gap-2 flex-wrap text-xs sm:mb-2">
+        <span className="text-neutral-500 self-center mr-1">Difficulté :</span>
+        <FilterPill active={difficulty === 'all'} onClick={() => onDifficulty('all')} count={counts.all}>Toutes</FilterPill>
+        {DIFFICULTY_KEYS.map(d => (
+          <FilterPill
+            key={d}
+            active={difficulty === d}
+            onClick={() => onDifficulty(d)}
+            color={DIFFICULTY_COLORS[d]}
+            count={counts[d]}
+          >{DIFFICULTY_LABELS[d]}</FilterPill>
+        ))}
+      </div>
+      {/* Motif filter — only shown when a motif is actively filtered or via Stats deep-link */}
+      {motif !== 'all' && (
+        <div className="flex gap-2 flex-wrap items-center text-xs sm:mb-4">
+          <span className="text-neutral-500">Motif :</span>
+          <span className="px-2 py-1 rounded bg-[var(--color-accent)] text-white">
+            {MOTIF_LABELS[motif]}
+          </span>
+          <button
+            onClick={onClearMotif}
+            className="text-neutral-400 hover:text-white underline py-2 sm:py-0"
+          >× Retirer le filtre motif</button>
+        </div>
+      )}
+    </>
+  )
+}
+
+// Phones only: one tappable line standing in for the three chip rows. The
+// summary stays visible while the panel is open, so choosing a chip gives
+// immediate feedback even when the exercise itself is scrolled out of view.
+function FiltersToggle({
+  open, onToggle, panelId, summary, count,
+}: {
+  open: boolean
+  onToggle: () => void
+  panelId: string
+  summary: string
+  count: number
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={open}
+      aria-controls={open ? panelId : undefined}
+      className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-panel)] px-3 py-2 text-left transition-colors active:bg-neutral-800"
+    >
+      <span className="flex items-center gap-2">
+        <span className="text-sm font-medium text-neutral-100">Filtres</span>
+        {' '}
+        <span className="ml-auto text-xs text-neutral-400">{exerciseCountLabel(count)}</span>
+        <svg
+          viewBox="0 0 24 24"
+          width="16"
+          height="16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+          className={`shrink-0 text-neutral-400 transition-transform ${open ? 'rotate-180' : ''}`}
+        >
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </span>
+      {' '}
+      <span className="mt-0.5 block truncate text-xs text-neutral-400" title={summary}>{summary}</span>
+    </button>
+  )
+}
+
+function ExportButton({
+  onExport, disabled, className,
+}: {
+  onExport: () => void
+  disabled: boolean
+  className: string
+}) {
+  return (
+    <button
+      onClick={onExport}
+      disabled={disabled}
+      className={className}
+      title="Télécharger un PGN importable comme étude Lichess"
+    >
+      ↓ Export Lichess (.pgn)
+    </button>
+  )
+}
+
 function FilterPill({
   children, active, onClick, count, color,
 }: {
@@ -260,7 +424,8 @@ function FilterPill({
   return (
     <button
       onClick={onClick}
-      className={`px-3 py-1.5 rounded-full border transition-colors ${
+      aria-pressed={active}
+      className={`px-2.5 py-3 sm:px-3 sm:py-1.5 rounded-full border transition-colors ${
         active
           ? 'bg-[var(--color-accent)] border-[var(--color-accent)] text-white'
           : 'border-[var(--color-border)] text-neutral-300 hover:bg-neutral-800'
@@ -269,7 +434,13 @@ function FilterPill({
       {color && !active && (
         <span className="inline-block w-2 h-2 rounded-full mr-1.5" style={{ backgroundColor: color }} />
       )}
-      {children} <span className="opacity-60">({count})</span>
+      {children}
+      {count !== undefined && (
+        <>
+          {' '}
+          <span className="opacity-60">({count})</span>
+        </>
+      )}
     </button>
   )
 }
@@ -293,6 +464,13 @@ interface AttemptHighlight {
   from: string
   to: string
 }
+
+// Prev / next buttons of the exercise nav row. Phone: filled 40×48 touch
+// targets with a bigger arrow; from `sm`: the original flat text buttons.
+const NAV_BUTTON =
+  'inline-flex shrink-0 items-center justify-center gap-1 min-h-10 min-w-12 px-3 rounded bg-neutral-800 text-lg '
+  + 'hover:bg-neutral-700 disabled:opacity-30 '
+  + 'sm:min-h-0 sm:min-w-0 sm:py-1 sm:bg-transparent sm:text-sm sm:hover:bg-neutral-800'
 
 function ExercisePractice({
   exercise, progress, onNext, onPrev, onAttempt, index, total, offList, canNavigate,
@@ -491,24 +669,47 @@ function ExercisePractice({
     : null
 
   return (
-    <div className="space-y-4">
-      {/* Nav row */}
-      <div className="flex items-center justify-between text-sm">
-        <button onClick={onPrev} disabled={!canNavigate || total <= 1} className="px-3 py-1 hover:bg-neutral-800 rounded disabled:opacity-30">← Précédent</button>
-        <span className="text-neutral-400 flex items-center gap-3">
-          {offList
-            ? <>✓ Hors filtre · {total} restant{total > 1 ? 's' : ''} dans la sélection</>
-            : <>Exercice {index + 1} / {total}</>}
+    <div className="space-y-3 sm:space-y-4">
+      {/* Nav row — always one line: on a phone the arrows are icon buttons (≥ 40px
+          tall) on each side of the counter, the text labels come back from `sm`. */}
+      <div className="flex items-center justify-between gap-2 text-sm">
+        <button
+          onClick={onPrev}
+          disabled={!canNavigate || total <= 1}
+          aria-label="Exercice précédent"
+          title="Exercice précédent (←)"
+          className={NAV_BUTTON}
+        >
+          <span aria-hidden="true">←</span>
+          <span className="hidden sm:inline">Précédent</span>
+        </button>
+        <div className="flex min-w-0 items-center gap-2 text-neutral-300 sm:gap-3 sm:text-neutral-400">
+          <span className="truncate tabular-nums">
+            {offList
+              ? <>✓ Hors filtre · {total} restant{total > 1 ? 's' : ''}<span className="hidden sm:inline"> dans la sélection</span></>
+              : <>Exercice {index + 1} / {total}</>}
+          </span>
           <ShareButton exercise={exercise} />
-        </span>
-        <button onClick={onNext} disabled={!canNavigate} className="px-3 py-1 hover:bg-neutral-800 rounded disabled:opacity-30">Suivant →</button>
+        </div>
+        <button
+          onClick={onNext}
+          disabled={!canNavigate}
+          aria-label="Exercice suivant"
+          title="Exercice suivant (→)"
+          className={NAV_BUTTON}
+        >
+          <span className="hidden sm:inline">Suivant</span>
+          <span aria-hidden="true">→</span>
+        </button>
       </div>
 
-      <div className="grid lg:grid-cols-[auto_1fr] gap-6">
-        {/* Board column */}
-        <div className="flex gap-2 items-start">
-          <EvalBar evalCp={exercise.evalBeforeWhite} />
-          <div className="w-[min(70vw,560px)]">
+      <div className="grid lg:grid-cols-[auto_1fr] gap-4 sm:gap-6">
+        {/* Board column: [eval bar | board] over [· | caption]. The eval bar
+            stretches to the height of the board's grid row. On a phone the
+            board takes all the width that is left; from `sm` it is capped. */}
+        <div className="grid grid-cols-[1.5rem_minmax(0,1fr)] gap-x-2 gap-y-2 self-start sm:grid-cols-[1.5rem_min(70vw,560px)]">
+          <EvalBar evalCp={exercise.evalBeforeWhite} heightClass="h-auto" />
+          <div className="min-w-0">
             <TrainingBoard
               position={position}
               orientation={exercise.userColor}
@@ -529,21 +730,22 @@ function ExercisePractice({
                 </>
               }
             />
-            <div className="text-xs text-neutral-500 text-center mt-2">
-              {status === 'completed' || status === 'revealed'
-                ? <>Ligne {hasContinuation ? `(${lineSans.length} coups)` : ''} affichée.</>
-                : !isUserTurn
-                  ? <>L'adversaire répond…</>
-                  : hasContinuation && linePly > 0
-                    ? <>Trouve le coup suivant ({userPliesDone + 1}/{userPliesTotal})</>
-                    : <>Trait aux {exercise.sideToMove === 'w' ? 'Blancs' : 'Noirs'} (toi).</>}
-            </div>
+          </div>
+          <div className="col-start-2 row-start-2 text-xs text-neutral-500 text-center">
+            {status === 'completed' || status === 'revealed'
+              ? <>Ligne {hasContinuation ? `(${lineSans.length} coups)` : ''} affichée.</>
+              : !isUserTurn
+                ? <>L'adversaire répond…</>
+                : hasContinuation && linePly > 0
+                  ? <>Trouve le coup suivant ({userPliesDone + 1}/{userPliesTotal})</>
+                  : <>Trait aux {exercise.sideToMove === 'w' ? 'Blancs' : 'Noirs'} (toi).</>}
           </div>
         </div>
 
-        {/* Right panel column */}
-        <div className="space-y-3">
-          <div className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-4">
+        {/* Right panel column. On a phone the actions come right under the
+            board and the descriptive card goes last (`order-*`, reset from `sm`). */}
+        <div className="flex flex-col gap-3">
+          <div className="order-4 sm:order-none bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-3 sm:p-4">
             <div className="flex items-center gap-2 flex-wrap mb-2">
               <span
                 className="px-2 py-1 rounded text-xs font-medium"
@@ -607,7 +809,7 @@ function ExercisePractice({
 
           {feedbackMessage && (
             <div
-              className="rounded-md p-3 text-sm font-medium"
+              className="order-1 sm:order-none rounded-md p-3 text-sm font-medium"
               style={{
                 backgroundColor:
                   (status === 'progress' || status === 'completed') ? 'rgba(95,160,82,0.15)'
@@ -628,26 +830,26 @@ function ExercisePractice({
             </div>
           )}
 
-          <div className="flex gap-2 flex-wrap">
+          <div className="order-2 sm:order-none flex gap-2 flex-wrap">
             {(status === 'wrong' || status === 'pending') && (
-              <button onClick={reveal} className="px-3 py-1.5 text-sm bg-neutral-800 hover:bg-neutral-700 rounded">
+              <button onClick={reveal} className="flex-1 min-h-10 sm:flex-none sm:min-h-0 px-3 py-1.5 text-sm bg-neutral-800 hover:bg-neutral-700 rounded">
                 Voir la solution
               </button>
             )}
             {status !== 'pending' && (
-              <button onClick={reset} className="px-3 py-1.5 text-sm bg-neutral-800 hover:bg-neutral-700 rounded">
+              <button onClick={reset} className="flex-1 min-h-10 sm:flex-none sm:min-h-0 px-3 py-1.5 text-sm bg-neutral-800 hover:bg-neutral-700 rounded">
                 Recommencer
               </button>
             )}
             {(status === 'completed' || status === 'revealed') && (
-              <button onClick={onNext} className="px-3 py-1.5 text-sm bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] text-white rounded">
+              <button onClick={onNext} className="flex-1 min-h-10 sm:flex-none sm:min-h-0 px-3 py-1.5 text-sm bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] text-white rounded">
                 Exercice suivant →
               </button>
             )}
           </div>
 
           {(status === 'completed' || status === 'revealed') && (
-            <div className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-3 space-y-2 text-sm">
+            <div className="order-3 sm:order-none bg-[var(--color-panel)] border border-[var(--color-border)] rounded-md p-3 space-y-2 text-sm">
               <div>
                 <span className="text-neutral-500">Coup recommandé : </span>
                 <span className="font-mono text-neutral-100">{exercise.bestMoveSan}</span>
@@ -698,14 +900,21 @@ function ShareButton({ exercise }: { exercise: Exercise }) {
       window.setTimeout(() => setCopied(false), 1500)
     }).catch(() => {})
   }
+  // Phone: an icon-only 40×40 button (the label comes back from `sm`). The
+  // visually hidden status line keeps the "link copied" feedback audible.
   return (
-    <button
-      onClick={copy}
-      className="text-xs text-neutral-500 hover:text-neutral-200 px-2 py-0.5 border border-[var(--color-border)] rounded"
-      title="Copier un lien partageable de cet exercice"
-    >
-      {copied ? '✓ Lien copié' : '🔗 Partager'}
-    </button>
+    <>
+      <button
+        onClick={copy}
+        aria-label="Partager cet exercice"
+        title="Copier un lien partageable de cet exercice"
+        className="inline-flex min-h-10 min-w-10 items-center justify-center gap-1 px-2 text-sm text-neutral-300 hover:text-neutral-100 border border-[var(--color-border)] rounded sm:min-h-0 sm:min-w-0 sm:py-0.5 sm:text-xs sm:text-neutral-500 sm:hover:text-neutral-200"
+      >
+        <span aria-hidden="true">{copied ? '✓' : '🔗'}</span>
+        <span className="hidden sm:inline">{copied ? 'Lien copié' : 'Partager'}</span>
+      </button>
+      <span role="status" className="sr-only">{copied ? 'Lien copié' : ''}</span>
+    </>
   )
 }
 

@@ -83,8 +83,8 @@ export default function ReverseDrillView({ analyses, onGoToGames }: Props) {
     return (
       <EmptyState
         icon="🪞"
-        title="Reverse-color drill"
-        description="Tu n'as pas encore de parties analysées. Importe ton historique pour générer un répertoire, puis reviens ici drill tes structures à l'envers."
+        title="Ouvertures en miroir"
+        description="Tu n'as pas encore de parties analysées. Importe ton historique pour générer un répertoire, puis reviens ici rejouer tes structures à l'envers."
         cta={onGoToGames ? { label: 'Voir mes parties', onClick: onGoToGames } : undefined}
       />
     )
@@ -93,7 +93,7 @@ export default function ReverseDrillView({ analyses, onGoToGames }: Props) {
     return (
       <EmptyState
         icon="🪞"
-        title="Reverse-color drill"
+        title="Ouvertures en miroir"
         description="Tu n'as pas encore au moins 2 parties dans une même ouverture pour générer une ligne miroir. Joue (et analyse) plus de parties dans la même ouverture."
         cta={onGoToGames ? { label: 'Voir mes parties', onClick: onGoToGames } : undefined}
       />
@@ -156,7 +156,7 @@ export default function ReverseDrillView({ analyses, onGoToGames }: Props) {
   return (
     <div className="p-4 lg:p-6 max-w-5xl mx-auto">
       <header className="mb-4 flex flex-wrap items-baseline gap-3">
-        <h2 className="text-2xl font-semibold">🪞 Reverse-color drill</h2>
+        <h2 className="text-2xl font-semibold">Ouvertures en miroir</h2>
         <p className="text-sm text-neutral-400">
           Rejoue tes ouvertures côté opposé pour mieux comprendre les structures sous-jacentes.
         </p>

@@ -85,9 +85,10 @@ export default function PlayersView() {
     <div className="p-6 max-w-6xl mx-auto space-y-5">
       <div className="flex items-baseline justify-between flex-wrap gap-3">
         <div>
-          <h2 className="text-2xl font-semibold">Joueurs (PGN / OTB)</h2>
+          <h2 className="text-2xl font-semibold">Joueurs (PGN)</h2>
           <p className="text-sm text-neutral-400">
-            Importe les parties d'un ou plusieurs joueurs via un fichier PGN (TWIC, pgnmentor, export ChessBase).
+            Importe les parties d'un ou plusieurs joueurs, y compris des parties OTB (« over the board », jouées sur
+            un vrai échiquier), via un fichier PGN (TWIC, PGN Mentor, export ChessBase).
             Coche deux profils pour les comparer.
           </p>
         </div>

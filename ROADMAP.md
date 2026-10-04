@@ -19,14 +19,10 @@ These were proposed and explicitly held off by the user. Don't drop them; pick t
 
 ## UX — next steps (from the 2026-10 ergonomics review)
 
-Benchmarked against Lichess, chess.com Game Review and En Croissant. Already shipped: 5-entry navigation from a single model, tabbed analysis view (verdict strip, compact move list, engine arrow, keyboard shortcuts, key moments), accessible move-quality colours, visible ⌘K search, account menu, home tiles.
+Benchmarked against Lichess, chess.com Game Review and En Croissant. Already shipped: five parts (Aujourd'hui · Parties · Entraînement · Théorie · Progrès) from a single model, hub pages instead of menus, phone top bar with the way up, filter chip + sheet, tabbed analysis view (verdict strip, compact move list, engine arrow, keyboard shortcuts, key moments) with a pinned move bar on phones, accessible move-quality colours, visible ⌘K search, account menu, home tiles, hash router (back/forward, deep links down to the move), "Revoir mes erreurs" guided mode, eval graph markers.
 
-- **Hash router** — `#/parties/{id}?ply=14&onglet=strategie`: browser back/forward, shareable deep links, reload without losing the position, breadcrumbs derived from the route.
-- **Mobile bottom bar** with the 5 entries (hamburger menus cut discoverability by ~20 % per NN/g), fixed board ≤ 42vh in the analysis view, swipeable tabs.
-- **"Revoir mes erreurs" guided mode** (Lichess "Learn from your mistakes"): interactive board, "find better than Cf3", solution / skip, your moves only, chronological, wired to the existing SRS.
-- **Hub pages** for S'entraîner / Progresser / Ouvertures (cards with what each mode fixes and progress), instead of dropdowns only.
-- **Filters as chips** in the page header (Progresser, Ouvertures, Parties) instead of a second header row.
-- **Eval graph markers** — dots for every negative move, phase boundaries, key-moment badges.
+- **Board tasks full screen on phones** (exercises, rush, drills) like the analysis: hide the tab bar, pinned contextual bar.
+- **Répertoire: at most 4 tabs** (fold Trainer and SRS together).
 - **Strategy panel in 2 levels** (3 bullets by default + "Détails"), Idée / Problème / Solution template (DecodeChess).
 - **"Brillant" (!!) class** — needs sacrifice detection; colour-blind palette toggle in Settings.
-
+- **Revoir mes erreurs → SRS**: send the positions you missed during a review to the exercise queue.

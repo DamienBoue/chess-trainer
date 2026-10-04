@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { ChessComGame, GameAnalysis } from '../types'
 import { listBooks } from '../library/storage'
 import type { Book } from '../library/types'
-import { allNavItems } from './navModel'
+import { NAV, allNavItems } from './navModel'
 import { OPEN_COMMAND_PALETTE as OPEN_EVENT } from './commandPaletteEvents'
 
 export type CommandTarget =
@@ -21,17 +21,17 @@ interface Props {
   onNavigate: (target: CommandTarget) => void
 }
 
-const NO_COUNTS = { analyses: 0, exercises: 0, due: 0 }
-
-// Same entries and labels as the navigation, grouped by section.
+// Same entries and labels as the navigation, grouped by part.
 const VIEW_ITEMS: { view: string; label: string; section: string; strategyTab?: string }[] = [
+  ...NAV.flatMap(e => (e.kind === 'group'
+    ? [{ view: e.group.hub, label: `${e.group.label} — vue d'ensemble`, section: 'Aller à' }]
+    : [])),
   ...allNavItems().map(({ item, group }) => ({
     view: item.target.view,
     strategyTab: item.target.strategyTab,
-    label: item.key === 'home' ? 'Aujourd\'hui — plan du jour' : item.label(NO_COUNTS),
+    label: item.key === 'home' ? 'Aujourd\'hui — plan du jour' : item.label,
     section: group ?? 'Aller à',
   })),
-  { view: 'daily', label: 'Puzzle quotidien', section: 'S\'entraîner' },
   { view: 'settings', label: 'Préférences', section: 'Aller à' },
 ]
 
