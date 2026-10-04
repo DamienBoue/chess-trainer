@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, within, waitFor } from '@testing-library/react'
 import type { ComponentProps } from 'react'
 import AnalysisView from './AnalysisView'
 import type { StockfishEngine } from '../engine/stockfish'
@@ -408,6 +408,7 @@ describe('AnalysisView (initial ply)', () => {
     expect(await screen.findByRole('group', BAR)).toBeTruthy()
     expect(bar().getByText('2. Nf3')).toBeTruthy()
     expect(plyShown(a)).toBe(3)
-    expect(onRouteState).toHaveBeenLastCalledWith({ ply: 3, tab: 'review' })
+    // The URL follows in an effect, which may run after the bar shows up.
+    await waitFor(() => expect(onRouteState).toHaveBeenLastCalledWith({ ply: 3, tab: 'review' }))
   })
 })
