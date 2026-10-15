@@ -10,6 +10,14 @@ const HREFS: Record<string, string> = {
   trainHub: '/entrainement',
   theoryHub: '/theorie',
   progressHub: '/progres',
+  concepts: '/concepts',
+  exercises: '/exercices',
+  daily: '/quotidien',
+  stats: '/statistiques',
+  roadmap: '/niveau',
+  'strategy:atlas': '/structures',
+  'strategy:trainer': '/strategie-entrainement',
+  'strategy:profile': '/strategie-profil',
 }
 
 export function hrefFor(target: NavTarget): Href | null {
