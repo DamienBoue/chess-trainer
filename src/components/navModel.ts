@@ -10,7 +10,7 @@
 // An entry that needs data explains why (with progress) instead of
 // silently greying out. A page's title is its entry's label, everywhere.
 
-import type { StrategyTab } from './StrategyView'
+import type { StrategyTab } from './strategyTabs'
 
 export interface NavCounts {
   analyses: number

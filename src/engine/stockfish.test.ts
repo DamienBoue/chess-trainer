@@ -21,7 +21,9 @@ describe('parseInfoScore', () => {
 
 // A UCI worker that answers instantly, recording what it was sent.
 class FakeWorker {
+  static last: FakeWorker | null = null
   sent: string[] = []
+  constructor() { FakeWorker.last = this }
   onmessage: ((e: MessageEvent) => void) | null = null
   onerror: ((e: ErrorEvent) => void) | null = null
   private listeners: ((e: MessageEvent) => void)[] = []
@@ -49,7 +51,7 @@ describe('StockfishEngine strength', () => {
     // A bot move and an analysis queued together, as when a batch analysis
     // runs during a game against the engine.
     await Promise.all([engine.evaluate(START, 1, 10, 1500), engine.evaluate(START, 1, 10), engine.evaluate(START, 1, 10, 900)])
-    const worker = (engine as unknown as { worker: FakeWorker }).worker
+    const worker = FakeWorker.last!
     const searches = worker.sent.filter(c => c.startsWith('setoption') || c.startsWith('go'))
     expect(searches).toEqual([
       'setoption name UCI_LimitStrength value true', 'setoption name UCI_Elo value 1500', 'go depth 1 movetime 10',

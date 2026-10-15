@@ -15,7 +15,8 @@ import StrategyTrainer from './StrategyTrainer'
 import StructureAtlas from './StructureAtlas'
 import { buildStrategyProfile } from '../strategy/profile'
 
-export type StrategyTab = 'profile' | 'trainer' | 'atlas'
+import type { StrategyTab } from './strategyTabs'
+export type { StrategyTab }
 
 interface Props {
   analyses: GameAnalysis[]

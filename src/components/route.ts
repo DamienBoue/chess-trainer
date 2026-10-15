@@ -3,7 +3,7 @@
 // are French and readable. `#share=…` (shared exercises) is owned by
 // SharedExerciseView and never parsed here.
 
-import type { StrategyTab } from './StrategyView'
+import type { StrategyTab } from './strategyTabs'
 
 export type AnalysisTabId = 'review' | 'move' | 'strategy' | 'opening'
 

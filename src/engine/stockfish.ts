@@ -2,6 +2,8 @@
 // in a Promise-friendly API. The engine is a long-lived Worker that processes
 // one evaluation at a time via a small queue.
 
+import { createTransport, type EngineTransport } from './transport'
+
 export interface EvalResult {
   scoreCp: number       // centipawns from the side to move's perspective (see toWhitePerspective); mate -> ±(100000 - mateInPliesAbs)
   bestMoveUci?: string
@@ -36,7 +38,7 @@ export function parseInfoScore(line: string): { scoreCp: number; isMate: boolean
 }
 
 export class StockfishEngine {
-  private worker: Worker
+  private transport: EngineTransport
   private readyPromise: Promise<void>
   private current: PendingEval | null = null
   private queue: PendingEval[] = []
@@ -50,17 +52,12 @@ export class StockfishEngine {
   })()
 
   constructor() {
-    // Use Vite's BASE_URL so the worker resolves correctly both in dev (/) and
-    // when deployed under a sub-path (e.g. GitHub Pages /chess-trainer/).
-    this.worker = new Worker(`${import.meta.env.BASE_URL}stockfish.js`)
-    this.worker.onerror = (e) => {
-      console.error('[stockfish] worker error', e.message || e.type, e)
-    }
-    this.worker.onmessage = (e) => {
-      const line = typeof e.data === 'string' ? e.data : String(e.data)
+    // A Web Worker on the web, a Worker in a hidden WebView on phones.
+    this.transport = createTransport()
+    this.transport.onLine(line => {
       if (this.debug) console.log('[sf <]', line)
       this.onMessage(line)
-    }
+    })
     this.readyPromise = new Promise((resolve, reject) => {
       let booted = false
       const timeout = setTimeout(() => {
@@ -69,18 +66,16 @@ export class StockfishEngine {
           reject(new Error('Stockfish ne répond pas. Ouvre /sf-test.html pour diagnostiquer.'))
         }
       }, 15000)
-      const handler = (e: MessageEvent) => {
-        const line = typeof e.data === 'string' ? e.data : String(e.data)
+      const off = this.transport.onLine(line => {
         if (line === 'uciok') {
           this.send('isready')
         } else if (line === 'readyok') {
           booted = true
           clearTimeout(timeout)
-          this.worker.removeEventListener('message', handler)
+          off()
           resolve()
         }
-      }
-      this.worker.addEventListener('message', handler)
+      })
       this.send('uci')
     })
   }
@@ -91,7 +86,7 @@ export class StockfishEngine {
 
   private send(cmd: string) {
     if (this.debug) console.log('[sf >]', cmd)
-    this.worker.postMessage(cmd)
+    this.transport.post(cmd)
   }
 
   private onMessage(line: string) {
@@ -172,7 +167,7 @@ export class StockfishEngine {
   }
 
   destroy() {
-    this.worker.terminate()
+    this.transport.terminate()
   }
 }
 

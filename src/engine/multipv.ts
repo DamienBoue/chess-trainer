@@ -4,6 +4,8 @@
 // margin). Runs in parallel with the main engine without interfering with its
 // queue.
 
+import { createTransport, type EngineTransport } from './transport'
+
 export interface EvalLine {
   scoreCp: number       // raw stockfish score from the side-to-move perspective
   isMate: boolean
@@ -22,9 +24,9 @@ export function evaluateMultiPV(
   movetimeMs: number = 400,
 ): Promise<EvalLine[]> {
   return new Promise((resolve, reject) => {
-    let worker: Worker
+    let engine: EngineTransport
     try {
-      worker = new Worker(`${import.meta.env.BASE_URL}stockfish.js`)
+      engine = createTransport()
     } catch (e) {
       reject(e instanceof Error ? e : new Error(String(e)))
       return
@@ -32,22 +34,17 @@ export function evaluateMultiPV(
 
     const lines = new Map<number, EvalLine>()
     let phase: 'init' | 'searching' = 'init'
-    const cleanup = () => { try { worker.terminate() } catch { /* */ } }
-    const timeout = window.setTimeout(() => { cleanup(); reject(new Error('multipv timeout')) }, TIMEOUT_MS)
+    const cleanup = () => { off(); try { engine.terminate() } catch { /* */ } }
+    const timeout = setTimeout(() => { cleanup(); reject(new Error('multipv timeout')) }, TIMEOUT_MS)
 
-    worker.onerror = (e) => {
-      window.clearTimeout(timeout); cleanup()
-      reject(new Error(e.message || 'multipv worker error'))
-    }
-    worker.onmessage = (e) => {
-      const line = typeof e.data === 'string' ? e.data : String(e.data)
+    const off = engine.onLine(line => {
       if (phase === 'init') {
-        if (line === 'uciok') worker.postMessage('isready')
+        if (line === 'uciok') engine.post('isready')
         else if (line === 'readyok') {
-          worker.postMessage(`setoption name MultiPV value ${n}`)
-          worker.postMessage('ucinewgame')
-          worker.postMessage(`position fen ${fen}`)
-          worker.postMessage(`go depth ${depth} movetime ${movetimeMs}`)
+          engine.post(`setoption name MultiPV value ${n}`)
+          engine.post('ucinewgame')
+          engine.post(`position fen ${fen}`)
+          engine.post(`go depth ${depth} movetime ${movetimeMs}`)
           phase = 'searching'
         }
         return
@@ -78,13 +75,13 @@ export function evaluateMultiPV(
           depth: depthMatch ? parseInt(depthMatch[1], 10) : 0,
         })
       } else if (line.startsWith('bestmove')) {
-        window.clearTimeout(timeout)
+        clearTimeout(timeout)
         cleanup()
         const sorted = Array.from(lines.entries()).sort((a, b) => a[0] - b[0]).map(([, v]) => v)
         resolve(sorted)
       }
-    }
-    worker.postMessage('uci')
+    })
+    engine.post('uci')
   })
 }
 
