@@ -29,3 +29,22 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run test:coverage
+
+  # The phone app (native/): types, including the shared code of src/, and
+  # the web bundle (Metro resolves @shared and the .native/.web variants).
+  native:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: '**/package-lock.json'
+      - run: npm ci
+      - run: npm ci
+        working-directory: native
+      - run: npx tsc --noEmit
+        working-directory: native
+      - run: npx expo export --platform web
+        working-directory: native

@@ -20,6 +20,8 @@ export default function RootLayout() {
             headerStyle: { backgroundColor: C.panel },
             headerTintColor: C.text,
             contentStyle: { backgroundColor: C.bg },
+            // Just the chevron: the previous screen is a tab, whose route name is "(tabs)".
+            headerBackButtonDisplayMode: 'minimal',
           }}
         >
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
