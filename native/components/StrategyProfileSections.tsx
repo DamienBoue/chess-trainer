@@ -3,7 +3,7 @@
 import { useMemo } from 'react'
 import { StyleSheet, View } from 'react-native'
 import { router, type Href } from 'expo-router'
-import { gameSlug } from '@shared/components/route'
+import { gameSlug } from '@shared/nav/gameSlug'
 import { buildStrategyProfile } from '@shared/strategy/profile'
 import type { GameAnalysis } from '@shared/types'
 import { Card, SectionLabel, T } from '@/components/ui'

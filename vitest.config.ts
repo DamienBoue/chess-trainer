@@ -1,28 +1,20 @@
 import { defineConfig } from 'vitest/config'
-import react from '@vitejs/plugin-react'
 
 export default defineConfig({
-  plugins: [react()],
   test: {
-    include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
-    // jsdom lets .test.tsx files render React components via Testing
-    // Library. Pure .test.ts files don't touch the DOM, so the small
-    // setup cost is negligible.
-    environment: 'jsdom',
+    include: ['src/**/*.test.ts'],
+    // The domain code is plain TypeScript: no DOM needed.
+    environment: 'node',
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],
-      // Coverage focuses on pure logic. Components (need React Testing
-      // Library) and network/worker layers (chesscom, stockfish, IDB
-      // stores) are tested differently.
+      // Coverage focuses on pure logic; network/worker layers (chesscom,
+      // stockfish, IDB stores) are tested differently.
       include: [
         'src/analysis/**/*.ts',
         'src/skill/**/*.ts',
         'src/storage/**/*.ts',
-        'src/api/share.ts',
         'src/api/lichess.ts',
-        'src/coach/config.ts',
-        'src/coach/coach.ts',
         'src/utils/**/*.ts',
       ],
       exclude: [
@@ -36,11 +28,8 @@ export default defineConfig({
         'src/storage/db.ts',
         'src/storage/games.ts',
         'src/storage/analyses.ts',
-        'src/storage/exportImport.ts',
         // Depends on the Stockfish Worker — not unit-testable in node.
         'src/analysis/analyze.ts',
-        // Network-only (HTTP wrappers); the dispatcher logic is too thin.
-        'src/coach/client.ts',
       ],
       thresholds: {
         lines:     80,

@@ -4,9 +4,10 @@ import type { WeekStats } from './timeline'
 
 function week(games: number, wins: number, draws: number, cpLossSum: number, userMoves: number, blunders: number, weekStart: string): WeekStats {
   return {
-    weekStart, games, wins, losses: games - wins - draws, draws,
-    userMoves, cpLossSum, blunders, mistakes: 0, inaccuracies: 0,
-  } as WeekStats
+    weekStart: Date.parse(weekStart), label: weekStart, games, wins, losses: games - wins - draws, draws,
+    userMoves, cpLossSum, avgUserCpLoss: userMoves ? cpLossSum / userMoves : 0,
+    blunders, mistakes: 0, inaccuracies: 0, rating: null,
+  }
 }
 
 describe('computeTrend', () => {

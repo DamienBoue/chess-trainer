@@ -1,54 +1,43 @@
 # Chess Trainer
 
-Web app to analyze your [chess.com](https://chess.com) games locally with Stockfish, identify mistakes, common patterns, and openings to study.
+App to analyse your [chess.com](https://chess.com) games with Stockfish, turn your mistakes into exercises and understand the strategy of your positions. One React Native (Expo) app for **iOS, Android and the web**.
 
-🌐 **Live demo: https://damienboue.github.io/chess-trainer/**
-
-Just open the link and type your chess.com username — no install, no account, nothing leaves your browser.
+🌐 **Web version: https://damienboue.github.io/chess-trainer/** — type your chess.com username, that's it: no account, nothing leaves your device. On a phone, "Add to Home Screen" installs it like an app.
 
 💬 **Feature requests, idées, discussions** : [Discussions du repo](https://github.com/DamienBoue/chess-trainer/discussions)
 
-## Features
+## What it does
 
-- Fetches your recent games from the chess.com public API (no auth needed)
-- Replays each game with a navigable board
-- Move-by-move Stockfish evaluation (single-threaded WASM, runs entirely in your browser — nothing is sent to a server)
-- Move classification: best / good / inaccuracy / mistake / blunder / book
-- Eval graph and per-move best line
-- Aggregate stats across analyzed games:
-  - Mistake distribution by phase (opening / middlegame / endgame)
-  - Average centipawn loss (you vs. opponents)
-  - Win rate by color and by opening
-  - Auto-derived strengths and weaknesses
-- **Strategic analysis** (deterministic, in-browser): pawn structure, strong/weak squares and outposts, centre type, pawn breaks with "is it the right moment?" and their structural consequences, 23 named structures (Carlsbad, IQP, Maróczy, Hedgehog, French, KID, Benoni, Stonewall…) with the plans of both sides, cross-checked against Stockfish's best move
-- Game-level strategic review (structure timeline, structural concessions, missed plans, lessons), a strategic profile across all your games, a positional trainer built from your own positions, and an atlas of pawn structures
+- Fetches your recent games from the chess.com public API and analyses them move by move with Stockfish (on your device).
+- Five parts: **Aujourd'hui** (the day's plan), **Parties** (analysis, "Revoir mes erreurs"), **Entraînement** (exercises from your mistakes in spaced repetition, daily puzzle, Puzzle Rush, blunder reflex, calculation, strategy trainer, play the engine), **Théorie** (repertoire, opening lab, mirror openings, pawn structures, concepts, books, opponent prep, PGN players), **Progrès** (level, statistics, strategic profile, compare with a friend).
+- **Strategic analysis**: pawn structure, strong/weak squares, centre type, pawn breaks and their timing, 23 named structures with the plans of both sides.
 
-## Stack
+See [FEATURES.md](FEATURES.md) for the details and [ARCHITECTURE.md](ARCHITECTURE.md) for how it is built.
 
-- **Vite + React + TypeScript**
-- **chess.js** — game logic, PGN parsing
-- **react-chessboard** — board UI
-- **Stockfish 18 (lite, single-threaded WASM)** — engine, loaded as a Web Worker
-- **Tailwind CSS v4** — styling
+## Layout
+
+- `native/` — the app (Expo SDK 58, Expo Router, React Native, react-native-web). See [native/README.md](native/README.md) to run it.
+- `src/` — the domain code the app imports as `@shared/…`: analysis, strategy, concepts, exercises, storage, engine transport. Plain TypeScript, unit-tested with Vitest.
+- `scripts/` — Python tools that build the bundled books (`native/public/books/`).
 
 ## Run
 
 ```bash
-npm install
-npm run dev
+npm install                 # domain code (src/) and its tests
+cd native && npm install    # the app
+npx expo start              # i: iOS simulator, a: Android, w: web — or scan the QR code with Expo Go
 ```
 
-Open http://localhost:5173, enter your chess.com username, and start analyzing.
-
-## Build
+## Check
 
 ```bash
-npm run build
-npm run preview
+npm run lint && npm run typecheck && npm test   # src/
+cd native && npx tsc --noEmit && npm run export:web
 ```
+
+The web build (`npm run export:web`) is what GitHub Pages serves, deployed on every push to `master`.
 
 ## Notes
 
-- The single-threaded Stockfish build avoids the COOP/COEP headers required by SharedArrayBuffer. Strength is sufficient for game review (depth 13 by default).
-- The chess.com public API is rate-limited; the app fetches the most recent month archive and walks back as needed up to the requested number of games.
-- Mobile: works in any modern mobile browser. A native wrapper (e.g. Capacitor) could be added later.
+- Stockfish 18 lite (single-threaded WASM, no COOP/COEP headers needed): a Web Worker on the web; on phones, a Worker inside a hidden WebView, with the engine bundled in the app (works offline).
+- The chess.com public API is rate-limited; the app fetches the most recent month archive and walks back as needed.

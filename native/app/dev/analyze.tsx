@@ -2,7 +2,7 @@
 // (chesstrainer://dev/analyze) — chess.com, Stockfish, storage, analysis.
 import { useEffect, useRef, useState } from 'react'
 import { Stack, router, type Href } from 'expo-router'
-import { gameSlug } from '@shared/components/route'
+import { gameSlug } from '@shared/nav/gameSlug'
 import { Screen, T } from '@/components/ui'
 import { useAppData } from '@/lib/appData'
 

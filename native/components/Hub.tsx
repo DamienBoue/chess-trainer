@@ -3,7 +3,7 @@
 import { useMemo } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { router } from 'expo-router'
-import { NAV, groupItems, type NavItemDef } from '@shared/components/navModel'
+import { NAV, groupItems, type NavItemDef } from '@shared/nav/navModel'
 import { extractExercises } from '@shared/analysis/exercises'
 import { isDue } from '@shared/storage/persist'
 import { Card, Pill, Screen, SectionLabel, T } from '@/components/ui'

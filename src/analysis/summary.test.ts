@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { generateGameSummary } from './summary'
+import { generateGameSummary, summarizeMoves } from './summary'
+import type { GameAnalysis } from '../types'
 import { buildGame } from './__fixtures__'
 
 describe('generateGameSummary', () => {
@@ -52,5 +53,22 @@ describe('generateGameSummary', () => {
     })
     expect(generateGameSummary(clean)).toContain('excellente')
     expect(generateGameSummary(sloppy)).toMatch(/à améliorer|correcte/)
+  })
+})
+
+describe('summarizeMoves', () => {
+  it('counts each side\'s errors and average loss, from the player\'s colour', () => {
+    const moves = [
+      { ply: 1, classification: 'blunder', cpLoss: 300 },
+      { ply: 2, classification: 'best', cpLoss: 0 },
+      { ply: 3, classification: 'mistake', cpLoss: 120 },
+      { ply: 4, classification: 'inaccuracy', cpLoss: 60 },
+      { ply: 5, classification: 'inaccuracy', cpLoss: 40 },
+    ] as GameAnalysis['moves']
+    const asWhite = summarizeMoves({ userColor: 'white', moves } as GameAnalysis)
+    expect(asWhite.user).toMatchObject({ blunders: 1, mistakes: 1, inaccuracies: 1, moves: 3, avgCpLoss: 460 / 3 })
+    expect(asWhite.opp).toMatchObject({ blunders: 0, inaccuracies: 1, moves: 2, avgCpLoss: 30 })
+    const asBlack = summarizeMoves({ userColor: 'black', moves: [] } as unknown as GameAnalysis)
+    expect(asBlack.user.avgCpLoss).toBe(0)
   })
 })

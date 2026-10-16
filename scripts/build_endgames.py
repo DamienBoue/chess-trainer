@@ -7,7 +7,7 @@ python-chess before emitting the book JSON, so a typo in the curated
 content will fail the build instead of shipping broken exercises.
 
 Run:
-    scripts/build_endgames.py -o public/books/endgames.book.json
+    scripts/build_endgames.py -o native/public/books/endgames.book.json
 """
 
 from __future__ import annotations
@@ -281,7 +281,7 @@ def make_book() -> dict:
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('-o', '--output', default='public/books/endgames.book.json')
+    ap.add_argument('-o', '--output', default='native/public/books/endgames.book.json')
     args = ap.parse_args()
     book = make_book()
     with open(args.output, 'w', encoding='utf-8') as f:

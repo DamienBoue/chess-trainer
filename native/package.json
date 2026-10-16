@@ -38,8 +38,8 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
-    "export:web": "expo export --platform web",
-    "sync:engine": "mkdir -p public assets/engine && cp ../public/stockfish.js ../public/stockfish.wasm public/ && cp ../public/stockfish.js assets/engine/stockfish.sfjs && cp ../public/stockfish.wasm assets/engine/stockfish.wasm",
+    "export:web": "expo export --platform web && node scripts/postexport-web.mjs",
+    "sync:engine": "mkdir -p assets/engine && cp public/stockfish.js assets/engine/stockfish.sfjs && cp public/stockfish.wasm assets/engine/stockfish.wasm",
     "postinstall": "npm run sync:engine"
   },
   "private": true

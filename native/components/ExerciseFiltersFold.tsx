@@ -7,7 +7,7 @@ import { CATEGORY_COLORS, CATEGORY_LABELS, DIFFICULTY_COLORS, DIFFICULTY_LABELS 
 import {
   type CategoryFilter, type DifficultyFilter, type FilterCounts, type StatusFilter,
   CATEGORY_KEYS, DIFFICULTY_KEYS, STATUS_OPTIONS, exerciseCountLabel, filtersSummary,
-} from '@shared/components/exerciseFilters'
+} from '@shared/analysis/exerciseFilters'
 import { T } from '@/components/ui'
 import { C, RADIUS, TOUCH } from '@/constants/theme'
 

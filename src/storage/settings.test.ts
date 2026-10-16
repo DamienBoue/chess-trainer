@@ -12,7 +12,7 @@ describe('board theme', () => {
   beforeEach(() => {
     vi.stubGlobal('localStorage', mockLocalStorage())
     vi.stubGlobal('window', { dispatchEvent: vi.fn(), addEventListener: vi.fn() })
-    vi.stubGlobal('CustomEvent', class { constructor(public type: string, public init?: object) {} })
+    vi.stubGlobal('CustomEvent', class { type: string; init?: object; constructor(type: string, init?: object) { this.type = type; this.init = init } })
   })
 
   it('defaults to green', () => {
@@ -41,7 +41,7 @@ describe('engine depth', () => {
   beforeEach(() => {
     vi.stubGlobal('localStorage', mockLocalStorage())
     vi.stubGlobal('window', { dispatchEvent: vi.fn() })
-    vi.stubGlobal('CustomEvent', class { constructor(public type: string, public init?: object) {} })
+    vi.stubGlobal('CustomEvent', class { type: string; init?: object; constructor(type: string, init?: object) { this.type = type; this.init = init } })
   })
 
   it('defaults to 12', () => {
@@ -69,7 +69,7 @@ describe('lichess token', () => {
   beforeEach(() => {
     vi.stubGlobal('localStorage', mockLocalStorage())
     vi.stubGlobal('window', { dispatchEvent: vi.fn() })
-    vi.stubGlobal('CustomEvent', class { constructor(public type: string, public init?: object) {} })
+    vi.stubGlobal('CustomEvent', class { type: string; init?: object; constructor(type: string, init?: object) { this.type = type; this.init = init } })
   })
 
   it('defaults to the empty string when nothing is stored', () => {

@@ -39,7 +39,8 @@
       "expo-asset"
     ],
     "experiments": {
-      "typedRoutes": false
+      "typedRoutes": false,
+      "baseUrl": "/chess-trainer"
     }
   }
 }

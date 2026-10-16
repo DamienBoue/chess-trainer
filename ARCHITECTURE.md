@@ -1,14 +1,14 @@
 # Architecture
 
-The codebase is small enough to keep a flat layout, but the *intent* follows DDD-style layering. This document maps current folders to layers and documents the dependency rules.
+One app — React Native / Expo in `native/` (iOS, Android and the web build served by GitHub Pages) — over a plain TypeScript domain in `src/`, imported as `@shared/…`. The domain keeps a flat layout whose *intent* follows DDD-style layering; this document maps folders to layers and documents the dependency rules.
 
 ## Layers
 
 | Layer | Rule | Current folders |
 |---|---|---|
-| **Domain** | Pure business logic. No DOM. No `fetch`. No `localStorage` (with one tolerated exception, see *Tech debt*). Tested with pure-function tests. | `src/analysis/`, `src/strategy/`, `src/skill/`, `src/concepts/`, `src/coach/` (prompt builders + config), `src/library/` (validation + types — but not `storage.ts`), `src/players/` |
-| **Infrastructure** | Adapters to external systems. Implements ports for the domain. | `src/api/` (chess.com + Lichess HTTP), `src/storage/` (IDB + localStorage), `src/engine/` (Stockfish worker), `src/coach/client.ts` (Anthropic/OpenAI HTTP), `src/library/storage.ts`, `src/players/storage.ts` |
-| **UI** | React components. May import from any layer; depends only on the domain's public types. | `src/components/`, `src/audio/` |
+| **Domain** | Pure business logic. No DOM. No `fetch`. No `localStorage` (with one tolerated exception, see *Tech debt*). Tested with pure-function tests. | `src/analysis/`, `src/strategy/`, `src/skill/`, `src/concepts/`, `src/nav/` (navigation model, game slugs), `src/library/` (validation + types — but not `storage.ts`), `src/players/` |
+| **Infrastructure** | Adapters to external systems. Implements ports for the domain. Platform variants as `x.ts` (web) / `x.native.ts` (iOS, Android), picked by Metro. | `src/api/` (chess.com + Lichess HTTP), `src/storage/` (IndexedDB or its `db.native.ts` stand-in + localStorage), `src/engine/` (Stockfish through a transport), `src/library/storage.ts`, `src/players/storage.ts` |
+| **UI** | React Native screens and components. May import from any layer. | `native/app/` (Expo Router screens), `native/components/`, `native/lib/` |
 | **Shared** | Truly cross-cutting helpers that don't fit any single domain. | `src/utils/`, `src/types.ts` |
 
 ## Dependency rules
@@ -65,8 +65,8 @@ Elo + bracket + roadmap. The trainer's "adaptive" layer. Pure logic.
 ### `src/concepts/` — knowledge base domain
 In-app chess theory dictionary (fork, IQP, Lucena, …). Pure data + lookup.
 
-### `src/coach/` — LLM-coach domain
-Prompt construction + config (BYO API key). Pure logic, except `client.ts` which is the HTTP adapter to Anthropic / OpenAI — that one is infrastructure.
+### `src/nav/` — navigation model
+`navModel.ts`: the five parts, their tools, labels, availability rules and "up" links — the app's tab bar and hub pages are generated from it. `gameSlug.ts`: short ids of games for routes.
 
 ### `src/library/` and `src/players/` — feature modules (mixed)
 Bigger feature modules that bundle a small domain (types, import validators) and their storage adapter. The storage file in each is infrastructure; the rest is domain.
@@ -74,28 +74,17 @@ Bigger feature modules that bundle a small domain (types, import validators) and
 ### `src/api/` — infrastructure (HTTP)
 - `chesscom.ts` — public API client (game fetch)
 - `lichess.ts` — Explorer + Tablebase
-- `share.ts` — share-URL encoding (browser-only, no network)
 
 ### `src/storage/` — infrastructure (persistence)
 - IDB-backed: `db.ts`, `games.ts`, `analyses.ts`
-- localStorage-backed: `daily.ts`, `notes.ts`, `plan.ts`, `settings.ts`, `persist.ts` (SRS), `json.ts` (shared helper)
+- localStorage-backed: `daily.ts`, `settings.ts`, `persist.ts` (SRS), `strategyPrefs.ts`, `json.ts` (shared helper). On phones `localStorage` is provided by SQLite (expo-sqlite), and `db.native.ts` replaces IndexedDB with the same `dbTx` contract.
 - `keys.ts` — central registry of every localStorage key the app uses (see below)
-- `ports.ts` — `Repos` / `ProgressRepo` / `PlanRepo` / `NotesRepo` / `DailyRepo` interfaces
-- `repos.ts` — `localRepos()` (production wiring) + `inMemoryRepos()` (test fake)
-- `exportImport.ts` — backup/restore JSON dump
 
 #### Key registry (`storage/keys.ts`)
 All localStorage keys live in one typed `KEYS` object. Two reasons: (1) prevents accidental collisions or typos at compile time, and (2) makes future migrations (renames, version bumps) a single edit. When you add a new key, register it here first.
 
-#### Repository ports (`storage/ports.ts`)
-Consumers that need to persist state can depend on the `Repos` interface (or one of its sub-ports) instead of the concrete modules. `localRepos()` wires the production implementation; `inMemoryRepos()` provides a JS-object fake for tests. The migration is incremental — new code is encouraged to use the ports; legacy callers keep working until they're touched.
-
-### `src/engine/` — infrastructure (worker)
-Stockfish 17 lite WASM wrapped in a Web Worker. Single port: `evaluate(fen, depth)`.
-
-### `src/components/` — UI (React)
-Tree of components. ~50 files. Imports from any layer.
-Navigation is data-driven: `navModel.ts` is the single source of truth for the header menus, the mobile sheet and the command palette (labels, grouping, availability rules).
+### `src/engine/` — infrastructure (engine)
+Stockfish 18 lite WASM behind `StockfishEngine` (`evaluate(fen, depth, movetime, elo?)`, strength per request). It talks UCI through a transport: `transport.ts` (web: a Web Worker under the site's base URL) or `transport.native.ts` (phones: one Worker per engine inside a hidden WebView, `native/components/EngineHost.tsx`, which boots the engine bundled with the app and restarts it if the OS kills the page).
 
 ### `src/utils/` — shared
 Tiny pure helpers (move normalization, date formatting). Could be a domain folder; lives in `shared/` because it's used by every layer.
@@ -108,14 +97,13 @@ Some domain modules currently call infrastructure directly. Fixing these require
 |---|---|---|
 | `src/analysis/plan.ts` | `import { isDue } from '../storage/persist'` | Pass `progress` map already loaded by caller — done; isDue takes the map. The import is just a pure helper using stored shape. **Acceptable** since `isDue` is logically pure. |
 | `src/skill/elo.ts`, `src/skill/roadmap.ts` | `loadJson/saveJson` from `storage/` | Move state mgmt to a repository port. **Defer** — small scope, low cost today. |
-| `src/coach/config.ts` | `loadJson/saveJson` | Same as skill. |
 | `src/concepts/lookup.ts` | None ✓ | Already clean. |
 
 `json.ts` is technically shared (a tiny `localStorage` adapter) — small enough that the leak is acceptable until the codebase grows.
 
 ## When to promote a module to its own layer
 
-- A folder has both pure-logic and I/O files (current: `library/`, `players/`, `coach/`) → split when the I/O grows past one file.
+- A folder has both pure-logic and I/O files (current: `library/`, `players/`) → split when the I/O grows past one file.
 - A pure-logic module starts pulling from `storage/` for state → introduce a repository port (`type StorageOf<T>`) and inject it.
 - Adding a second persistence backend (e.g. cloud sync) → mandatory port for the affected stores.
 
@@ -125,10 +113,10 @@ Some domain modules currently call infrastructure directly. Fixing these require
 |---|---|---|
 | Pure-function | `<module>.test.ts` next to the source | `aggregate.test.ts`, `motifs.test.ts` |
 | Catalog integrity | Static checks on data | `concepts/catalog.test.ts`, `library/import.test.ts` (audits bundled books) |
-| Storage roundtrip | Mock `localStorage` via `vi.stubGlobal` | `storage/daily.test.ts`, `storage/notes.test.ts` |
-| Network calls | Mock `fetch` via `vi.stubGlobal` | `coach/coach.test.ts` |
+| Storage roundtrip | Mock `localStorage` via `vi.stubGlobal` | `storage/daily.test.ts`, `storage/db.native.test.ts` |
+| Engine | Fake transport / Worker | `engine/stockfish.test.ts`, `engine/stockfish.reset.test.ts`, `engine/transport.native.test.ts` |
 
-Component tests not yet wired (React Testing Library out of scope so far).
+The app (`native/`) is checked by `tsc` and its web export in CI; screens are verified in the iOS simulator and in a browser.
 
 ## Why no full DDD reorg yet
 

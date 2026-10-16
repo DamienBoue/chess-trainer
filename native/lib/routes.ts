@@ -2,7 +2,7 @@
 // screens already ported. A tool not listed here shows "Bientôt sur mobile".
 // (strategy pages: 'strategy:<tab>')
 import type { Href } from 'expo-router'
-import type { NavTarget } from '@shared/components/navModel'
+import type { NavTarget } from '@shared/nav/navModel'
 
 const HREFS: Record<string, string> = {
   home: '/',

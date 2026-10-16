@@ -17,16 +17,14 @@ These were proposed and explicitly held off by the user. Don't drop them; pick t
 - Stockfish-bot mode: play against the engine at a configurable Elo (UCI_LimitStrength).
 - Shareable game URL with the analysis embedded (not just exercises).
 
-## Appli mobile (React Native, branche `react-native`) — next steps
+## App (React Native) — next steps
 
-Shipped on the branch: Expo app in `native/` sharing all the domain code of `src/`, every tool of the website ported, Stockfish in a hidden WebView on phones (checked on the iOS simulator: depth 12 in 3 s, full game analysis), storage on SQLite.
+The former Vite web app was replaced by the app's web build (one app for iOS, Android and the web). Shipped: every tool, Stockfish bundled and restarted when killed, summary of a game, phone-first navigation.
 
-- **Offline engine**: bundle the WASM with the app instead of loading it from GitHub Pages on first use.
-- **Engine recovery**: reload the WebView and recreate the workers if iOS kills its process.
-- **Builds**: EAS build + TestFlight / internal Android track (the app runs in Expo Go today).
+- **Builds**: EAS build + TestFlight / internal Android track (Expo Go today).
 - **Notifications**: daily reminder when exercises are due.
-- **Drag-to-move** on the board (tap-to-move only for now), promotion picker.
-- **Global colour / time-control filter** (the website's filter chip) — not ported yet.
+- **Bring back from the web app**: global colour / time-control filter, annotated PGN export, share links, sounds, data export/import, offline cache (service worker) for the web build.
+- **Board**: drag-to-move, promotion picker.
 
 ## UX — next steps (from the 2026-10 ergonomics review)
 

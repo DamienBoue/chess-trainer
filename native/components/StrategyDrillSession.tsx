@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native'
 import { router, type Href } from 'expo-router'
-import { gameSlug } from '@shared/components/route'
+import { gameSlug } from '@shared/nav/gameSlug'
 import { type Drill, type DrillKind, DRILL_LABELS, buildDrillSet, isCorrectSquare } from '@shared/strategy/trainer'
 import { sqName } from '@shared/strategy/board'
 import { loadTrainerScore, recordTrainerAnswer, type TrainerScore } from '@shared/storage/strategyPrefs'
