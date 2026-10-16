@@ -21,4 +21,8 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
   return context.resolveRequest(context, moduleName, platform)
 }
 
+// Stockfish ships inside the app (assets/engine, copied by `npm run sync:engine`):
+// the WASM and its loader (renamed .sfjs so Metro bundles it as a file, not code).
+config.resolver.assetExts.push('wasm', 'sfjs')
+
 module.exports = config

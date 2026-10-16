@@ -42,3 +42,6 @@ yarn-error.*
 
 # Stockfish for the web build, copied from ../public (npm run sync:engine)
 public/stockfish.*
+
+# Stockfish bundled in the app, copied from ../public (npm run sync:engine)
+assets/engine/

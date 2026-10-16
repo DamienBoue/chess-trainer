@@ -11,6 +11,7 @@ import Board, { type BoardArrow } from '@/components/Board'
 import EvalGraph from '@/components/EvalGraph'
 import MoveList from '@/components/MoveList'
 import StrategyNotes from '@/components/StrategyNotes'
+import GameSummaryCard from '@/components/GameSummaryCard'
 import { Button, Card, SectionLabel, T } from '@/components/ui'
 import { useAppData } from '@/lib/appData'
 import { keyMomentsOf, moveLabel, squaresOf } from '@/lib/analysis'
@@ -33,7 +34,8 @@ const RESULT_FR = { win: 'Victoire', loss: 'Défaite', draw: 'Nulle' } as const
 export default function AnalysisScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>()
   const { analyses } = useAppData()
-  const analysis = useMemo(() => findGameBySlug(Object.values(analyses), slug ?? ''), [analyses, slug])
+  const allAnalyses = useMemo(() => Object.values(analyses), [analyses])
+  const analysis = useMemo(() => findGameBySlug(allAnalyses, slug ?? ''), [allAnalyses, slug])
   const [ply, setPly] = useState(0)
   const [showBest, setShowBest] = useState(false)
   const { width } = useWindowDimensions()
@@ -83,9 +85,11 @@ export default function AnalysisScreen() {
           />
         </View>
 
+        {!m && <GameSummaryCard analysis={analysis} all={allAnalyses} />}
+
         <Card>
           {!m ? (
-            <T tone="muted">Position de départ. Avance avec ▶ ou touche un coup de la liste.</T>
+            <T tone="muted">Avance avec ▶, le drapeau va au moment clé suivant, ou touche un coup de la liste.</T>
           ) : (
             <>
               <T tone="strong" style={styles.bold}>

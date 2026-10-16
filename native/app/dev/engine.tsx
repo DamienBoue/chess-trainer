@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { Stack } from 'expo-router'
 import { Screen, T } from '@/components/ui'
 import { useAppData } from '@/lib/appData'
+import { engineStatus } from '@/lib/engineStatus'
 
 const START = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
 
@@ -13,7 +14,7 @@ export default function EngineDiagnostic() {
   useEffect(() => {
     const t0 = Date.now()
     engine().evaluate(START, 12, 800)
-      .then(r => setResult(`OK en ${Date.now() - t0} ms — profondeur ${r.depth}, meilleur coup ${r.bestMoveUci}, score ${r.scoreCp} cp`))
+      .then(r => setResult(`OK en ${Date.now() - t0} ms — profondeur ${r.depth}, meilleur coup ${r.bestMoveUci}, score ${r.scoreCp} cp — moteur ${engineStatus.source === 'bundled' ? 'embarqué' : engineStatus.source === 'website' ? 'du site' : 'web'}`))
       .catch(e => setResult(`Échec : ${e instanceof Error ? e.message : String(e)}`))
   }, [engine])
   return (

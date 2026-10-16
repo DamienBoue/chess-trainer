@@ -6,5 +6,8 @@ export interface EngineTransport {
   post(cmd: string): void
   /** Every line Stockfish prints; returns the unsubscribe function. */
   onLine(listener: (line: string) => void): () => void
+  /** Phones: Stockfish was restarted under us (the WebView's process died
+   *  and was reloaded) — a fresh engine that saw none of our commands. */
+  onReset?(listener: () => void): () => void
   terminate(): void
 }

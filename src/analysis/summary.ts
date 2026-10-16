@@ -82,3 +82,24 @@ export function generateGameSummary(a: GameAnalysis, repertoireRoots?: Repertoir
 
   return sentences.join(' ')
 }
+
+/** Errors and average loss of each side (the analysis summary). */
+export function summarizeMoves(a: GameAnalysis) {
+  const userIsWhite = a.userColor === 'white'
+  const counters = {
+    user: { blunders: 0, mistakes: 0, inaccuracies: 0, cpLossSum: 0, moves: 0, avgCpLoss: 0 },
+    opp: { blunders: 0, mistakes: 0, inaccuracies: 0, cpLossSum: 0, moves: 0, avgCpLoss: 0 },
+  }
+  for (const m of a.moves) {
+    const moverIsWhite = m.ply % 2 === 1
+    const bucket = moverIsWhite === userIsWhite ? counters.user : counters.opp
+    bucket.moves++
+    bucket.cpLossSum += m.cpLoss
+    if (m.classification === 'blunder') bucket.blunders++
+    else if (m.classification === 'mistake') bucket.mistakes++
+    else if (m.classification === 'inaccuracy') bucket.inaccuracies++
+  }
+  counters.user.avgCpLoss = counters.user.moves ? counters.user.cpLossSum / counters.user.moves : 0
+  counters.opp.avgCpLoss = counters.opp.moves ? counters.opp.cpLossSum / counters.opp.moves : 0
+  return counters
+}

@@ -46,6 +46,7 @@ export class StockfishEngine {
   // The strength last sent to the worker. It is engine-wide UCI state, so it
   // is set per search: a bot move and an analysis can share the queue.
   private appliedElo: number | null = null
+  private booted = false
 
   private debug = (() => {
     try { return localStorage.getItem('sf.debug') === '1' } catch { return false }
@@ -58,6 +59,7 @@ export class StockfishEngine {
       if (this.debug) console.log('[sf <]', line)
       this.onMessage(line)
     })
+    this.transport.onReset?.(() => this.restart())
     this.readyPromise = new Promise((resolve, reject) => {
       let booted = false
       const timeout = setTimeout(() => {
@@ -71,6 +73,7 @@ export class StockfishEngine {
           this.send('isready')
         } else if (line === 'readyok') {
           booted = true
+          this.booted = true
           clearTimeout(timeout)
           off()
           resolve()
@@ -78,6 +81,23 @@ export class StockfishEngine {
       })
       this.send('uci')
     })
+  }
+
+  // A fresh Stockfish replaced ours (phones, see EngineTransport.onReset):
+  // full strength, no handshake, no search — redo what it missed.
+  private restart() {
+    this.appliedElo = null
+    this.latest = null
+    if (!this.booted) {
+      this.send('uci')
+      return
+    }
+    const cur = this.current
+    if (cur) {
+      this.current = null
+      this.queue.unshift(cur)
+    }
+    this.processNext()
   }
 
   ready$(): Promise<void> {

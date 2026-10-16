@@ -81,6 +81,8 @@ export function evaluateMultiPV(
         resolve(sorted)
       }
     })
+    // Phones: a restarted engine starts over from the handshake.
+    engine.onReset?.(() => { phase = 'init'; lines.clear(); engine.post('uci') })
     engine.post('uci')
   })
 }

@@ -5,7 +5,7 @@ import type { ChessComGame, GameAnalysis, MoveAnalysis } from '../types'
 import { StockfishEngine } from '../engine/stockfish'
 import { analyzeGame } from '../analysis/analyze'
 import { CLASSIFICATION_COLORS, CLASSIFICATION_GLYPHS, CLASSIFICATION_LABELS } from '../analysis/classify'
-import { generateGameSummary } from '../analysis/summary'
+import { generateGameSummary, summarizeMoves } from '../analysis/summary'
 import { buildRepertoire } from '../analysis/repertoire'
 import { explainBlunder, reviewGame } from '../coach/coach'
 import LlmAskBox from './LlmAskBox'
@@ -230,7 +230,7 @@ export default function AnalysisView({
     )
   }
 
-  const summary = summarize(analysis)
+  const summary = summarizeMoves(analysis)
   const nextMove = pvStep === null ? analysis.moves[currentPly] : undefined
   const arrows = engineArrow && nextMove?.bestMoveSan
     ? buildBestMoveArrow(currentFen, nextMove.bestMoveSan)
@@ -651,26 +651,6 @@ function SummaryStat({ label, value, color }: { label: string; value: number; co
   )
 }
 
-
-function summarize(a: GameAnalysis) {
-  const userIsWhite = a.userColor === 'white'
-  const counters = {
-    user: { blunders: 0, mistakes: 0, inaccuracies: 0, cpLossSum: 0, moves: 0, avgCpLoss: 0 },
-    opp: { blunders: 0, mistakes: 0, inaccuracies: 0, cpLossSum: 0, moves: 0, avgCpLoss: 0 },
-  }
-  for (const m of a.moves) {
-    const moverIsWhite = m.ply % 2 === 1
-    const bucket = moverIsWhite === userIsWhite ? counters.user : counters.opp
-    bucket.moves++
-    bucket.cpLossSum += m.cpLoss
-    if (m.classification === 'blunder') bucket.blunders++
-    else if (m.classification === 'mistake') bucket.mistakes++
-    else if (m.classification === 'inaccuracy') bucket.inaccuracies++
-  }
-  counters.user.avgCpLoss = counters.user.moves ? counters.user.cpLossSum / counters.user.moves : 0
-  counters.opp.avgCpLoss = counters.opp.moves ? counters.opp.cpLossSum / counters.opp.moves : 0
-  return counters
-}
 
 /** Green arrow of the engine's preferred move in the displayed position. */
 function buildBestMoveArrow(fen: string, san: string): { startSquare: string; endSquare: string; color: string }[] {

@@ -59,11 +59,11 @@ export default function Today() {
       <T tone="muted">{list.length} parties analysées · précision moyenne {stats.avgCpLossUser.toFixed(0)} cp/coup</T>
 
       {last && (
-        <Card onPress={() => router.push(`/partie/${gameSlug(last.url)}` as Href)}>
+        <Card onPress={() => router.push((userErrors > 0 ? `/partie/revue/${gameSlug(last.url)}` : `/partie/${gameSlug(last.url)}`) as Href)}>
           <SectionLabel>Dernière partie</SectionLabel>
           <T>vs <T tone="strong">{last.opponent}</T> · {RESULT_FR[last.result]}</T>
           <T tone="muted">{userErrors === 0 ? 'Aucune erreur grave' : `${userErrors} erreur${userErrors > 1 ? 's' : ''} ou gaffe${userErrors > 1 ? 's' : ''}`}</T>
-          <T tone="accent">Revoir →</T>
+          <T tone="accent">{userErrors > 0 ? 'Revoir mes erreurs →' : 'Revoir →'}</T>
         </Card>
       )}
       <Card onPress={() => { const h = hrefFor({ view: 'exercises' }); if (h) router.push(h) }} highlight={due > 0}>
