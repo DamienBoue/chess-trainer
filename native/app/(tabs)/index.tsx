@@ -3,35 +3,40 @@
 import { useMemo } from 'react'
 import { StyleSheet, View } from 'react-native'
 import { router, type Href } from 'expo-router'
-import { buildPlan, totalMinutes } from '@shared/analysis/plan'
+import { assemblePlan, totalMinutes } from '@shared/analysis/plan'
 import { DAILY_EXERCISES } from '@shared/analysis/dailyQueue'
-import { aggregate } from '@shared/analysis/aggregate'
 import { loadRepertoireProgress } from '@shared/storage/persist'
 import { loadDaily, todayString } from '@shared/storage/daily'
 import { bracketForElo, effectiveElo, loadEloPreference } from '@shared/skill/elo'
 import { gameSlug } from '@shared/nav/gameSlug'
-import { Button, Card, H1, Pill, Screen, SectionLabel, T } from '@/components/ui'
+import { Button, Card, H1, Loading, Pill, Screen, SectionLabel, T } from '@/components/ui'
 import { useAppData } from '@/lib/appData'
 import { hrefFor } from '@/lib/routes'
 
 const RESULT_FR = { win: 'Victoire', loss: 'Défaite', draw: 'Nulle' } as const
 
+// Everything here comes from the stored today cache (lib/today): no game is
+// read to draw this screen. The plan is assembled with the live progress.
 export default function Today() {
-  const { username, analyses, progress, logout, daily } = useAppData()
-  const list = useMemo(() => Object.values(analyses), [analyses])
-  const last = useMemo(() => [...list].sort((a, b) => b.endTime - a.endTime)[0], [list])
-  const elo = effectiveElo(loadEloPreference(), list)
+  const { username, progress, logout, daily, today } = useAppData()
+  const home = today?.home
+  const elo = home ? effectiveElo(loadEloPreference(), home.ratings) : null
   const bracket = bracketForElo(elo)
-  const stats = useMemo(() => aggregate(list), [list])
+  const planInputs = today?.plan?.inputs
   const plan = useMemo(() => {
+    if (!planInputs) return []
     const puzzle = loadDaily()
     const dailyDone = puzzle?.date === todayString() && !!puzzle.solved
-    return buildPlan(list, progress, loadRepertoireProgress(), {
+    return assemblePlan(planInputs, loadRepertoireProgress(), {
       dailyDone, bracket, exercisesToday: { remaining: daily.remaining.length, total: daily.total },
     })
-  }, [list, progress, bracket, daily])
+  // `progress` in the deps: the repertoire reviews move with the day.
+  }, [planInputs, progress, bracket, daily]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (list.length === 0) {
+  // First launch after an update: the cache is being built.
+  if (!home) return <Loading label="Préparation de ta journée…" />
+
+  if (home.analysed === 0) {
     return (
       <Screen>
         <H1>Bonjour @{username}</H1>
@@ -47,9 +52,8 @@ export default function Today() {
     )
   }
 
-  const userErrors = last
-    ? last.moves.filter(m => (m.ply % 2 === 1) === (last.userColor === 'white') && (m.classification === 'blunder' || m.classification === 'mistake')).length
-    : 0
+  const last = home.last
+  const userErrors = last?.userErrors ?? 0
 
   return (
     <Screen>
@@ -57,7 +61,7 @@ export default function Today() {
         <H1>Bonjour @{username}</H1>
         <Pill label={`${bracket.label}${elo != null ? ` ${elo}` : ''}`} tone="muted" />
       </View>
-      <T tone="muted">{list.length} parties analysées · précision moyenne {stats.avgCpLossUser.toFixed(0)} cp/coup</T>
+      <T tone="muted">{home.analysed} parties analysées · précision moyenne {home.avgCpLossUser.toFixed(0)} cp/coup</T>
 
       {last && (
         <Card onPress={() => router.push((userErrors > 0 ? `/partie/revue/${gameSlug(last.url)}` : `/partie/${gameSlug(last.url)}`) as Href)}>
@@ -69,7 +73,9 @@ export default function Today() {
       )}
       <Card onPress={() => { const h = hrefFor({ view: 'exercises' }); if (h) router.push(h) }} highlight={daily.remaining.length > 0}>
         <SectionLabel>Exercices du jour</SectionLabel>
-        {daily.total === 0
+        {daily.preparing
+          ? <T tone="muted">Préparation de ta séance…</T>
+          : daily.total === 0
           ? <T>Rien à revoir : analyse tes dernières parties pour en créer.</T>
           : daily.remaining.length > 0
             ? <T><T tone="strong">{daily.remaining.length}</T> à faire · {daily.done}/{daily.total} faits</T>
@@ -77,7 +83,7 @@ export default function Today() {
         <T tone="faint" style={styles.small}>Tes erreurs récentes et tes révisions, {DAILY_EXERCISES} par jour au plus.</T>
       </Card>
 
-      <SectionLabel>Plan du jour · {plan.length} étapes · ≈ {totalMinutes(plan)} min</SectionLabel>
+      <SectionLabel>{planInputs ? `Plan du jour · ${plan.length} étapes · ≈ ${totalMinutes(plan)} min` : 'Plan du jour · en préparation…'}</SectionLabel>
       {plan.map(item => {
         const href = hrefFor({ view: item.target === 'strategy' ? 'strategy' : item.target, strategyTab: item.target === 'strategy' ? 'trainer' : undefined })
         return (

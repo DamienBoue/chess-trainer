@@ -12,8 +12,8 @@ import EvalGraph from '@/components/EvalGraph'
 import MoveList from '@/components/MoveList'
 import StrategyNotes from '@/components/StrategyNotes'
 import GameSummaryCard from '@/components/GameSummaryCard'
-import { Button, Card, SectionLabel, T } from '@/components/ui'
-import { useAppData } from '@/lib/appData'
+import { Button, Card, Loading, SectionLabel, T } from '@/components/ui'
+import { useAnalysis, useAppData } from '@/lib/appData'
 import { keyMomentsOf, moveLabel, squaresOf } from '@/lib/analysis'
 import { retryItemsFor } from '@/lib/retry'
 import Svg, { Path } from 'react-native-svg'
@@ -33,9 +33,11 @@ const RESULT_FR = { win: 'Victoire', loss: 'Défaite', draw: 'Nulle' } as const
 
 export default function AnalysisScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>()
-  const { analyses } = useAppData()
-  const allAnalyses = useMemo(() => Object.values(analyses), [analyses])
-  const analysis = useMemo(() => findGameBySlug(allAnalyses, slug ?? ''), [allAnalyses, slug])
+  const { digests, analyses } = useAppData()
+  const allAnalyses = useMemo(() => (analyses ? Object.values(analyses) : null), [analyses])
+  const url = useMemo(() => findGameBySlug(Object.values(digests), slug ?? '')?.url, [digests, slug])
+  // This game only, read from the device.
+  const analysis = useAnalysis(url)
   const [ply, setPly] = useState(0)
   const [showBest, setShowBest] = useState(false)
   const { width } = useWindowDimensions()
@@ -43,6 +45,7 @@ export default function AnalysisScreen() {
   const keyMoments = useMemo(() => (analysis ? keyMomentsOf(analysis) : []), [analysis])
   const retryCount = useMemo(() => (analysis ? retryItemsFor(analysis).length : 0), [analysis])
 
+  if (analysis === undefined) return <Loading label="Chargement de la partie…" />
   if (!analysis) {
     return (
       <View style={styles.root}>

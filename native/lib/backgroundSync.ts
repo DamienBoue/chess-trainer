@@ -1,13 +1,20 @@
 // Phones: a periodic background task checks chess.com for new games and
 // notifies you ("2 nouvelles parties"). The system decides when it runs
 // (15 minutes at the soonest, often overnight on iOS). The analysis itself
-// waits for the app to be opened (Stockfish needs it in the foreground).
+// waits for the app to be opened (Stockfish needs it in the foreground);
+// the day's exercise session is picked here when not done yet, so that the
+// app opens on it.
 // Defined at startup (index.js), as TaskManager requires.
 import * as BackgroundTask from 'expo-background-task'
 import * as TaskManager from 'expo-task-manager'
 import * as Notifications from 'expo-notifications'
 import { getResultForUser } from '@shared/analysis/pgn'
 import { syncNewGames } from './sync'
+import { staleParts } from '@shared/analysis/today'
+import { loadProgress } from '@shared/storage/persist'
+import { loadDailySession, saveDailySession } from '@shared/storage/dailyQueue'
+import { todayString } from '@shared/storage/daily'
+import { loadIndex, loadTodayCache, saveTodayCache, workOutDay } from './today'
 
 const SYNC_TASK = 'chess-trainer-new-games'
 const ENABLED_KEY = 'chess.notify.newGames'
@@ -22,6 +29,7 @@ TaskManager.defineTask(SYNC_TASK, async () => {
     const username = localStorage.getItem('chess.username')
     if (!username || !isBackgroundSyncEnabled()) return BackgroundTask.BackgroundTaskResult.Success
     const { added } = await syncNewGames(username)
+    await prepareDay(username)
     if (added.length > 0) {
       const me = username.toLowerCase()
       const lines = added.slice(0, 3).map(g => {
@@ -41,6 +49,17 @@ TaskManager.defineTask(SYNC_TASK, async () => {
     return BackgroundTask.BackgroundTaskResult.Failed
   }
 })
+
+/** The day's facts and session, when the app hasn't worked them out yet. */
+async function prepareDay(username: string): Promise<void> {
+  const cache = loadTodayCache(username)
+  const index = await loadIndex(username)
+  const today = todayString()
+  if (!cache || !index || !staleParts(cache, index, today).day) return
+  const { day, session } = await workOutDay(username, index, loadProgress(), loadDailySession(), today, Date.now())
+  saveDailySession(session)
+  saveTodayCache(username, { ...cache, day })
+}
 
 export function isBackgroundSyncEnabled(): boolean {
   return localStorage.getItem(ENABLED_KEY) === '1'

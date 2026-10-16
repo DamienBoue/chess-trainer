@@ -32,7 +32,8 @@ class Device implements LocalStore {
     this.docs = docs
   }
   state: SyncState = EMPTY_SYNC_STATE
-  analyses() { return this.games }
+  analysisIds() { return Object.keys(this.games) }
+  async loadAnalyses(ids: string[]) { return ids.flatMap(id => this.games[id] ?? []) }
   addAnalyses(list: GameAnalysis[]) { for (const a of list) this.games[a.url] = a }
   document(key: string) { return this.docs[key] }
   setDocument(key: string, value: unknown) { this.docs[key] = value }

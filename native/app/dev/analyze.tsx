@@ -4,20 +4,22 @@ import { useEffect, useRef, useState } from 'react'
 import { Stack, router, type Href } from 'expo-router'
 import { gameSlug } from '@shared/nav/gameSlug'
 import { Screen, T } from '@/components/ui'
-import { useAppData } from '@/lib/appData'
+import { useAppData, useGameRows } from '@/lib/appData'
 
 export default function DevAnalyze() {
-  const { games, hydrated, analyze, analyzing } = useAppData()
+  const { analyze, analyzing, getGame } = useAppData()
+  const games = useGameRows() ?? []
   const [error, setError] = useState<string | null>(null)
   const started = useRef(false)
   useEffect(() => {
-    if (!hydrated || started.current || games.length === 0) return
+    if (started.current || games.length === 0) return
     started.current = true
     const t0 = Date.now()
-    analyze(games[0])
+    getGame(games[0].url, games[0].end / 1000)
+      .then(g => { if (!g) throw new Error('partie introuvable'); return analyze(g) })
       .then(a => router.replace(`/partie/${gameSlug(a.url)}?ms=${Date.now() - t0}` as Href))
       .catch(e => setError(e instanceof Error ? e.message : String(e)))
-  }, [hydrated, games, analyze])
+  }, [games, analyze, getGame])
   return (
     <Screen>
       <Stack.Screen options={{ title: 'Analyse de test' }} />

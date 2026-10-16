@@ -10,8 +10,8 @@ import { CLASSIFICATION_LABELS } from '@shared/analysis/classify'
 import { attemptLossCp, judgeAttempt, type RetryVerdict } from '@shared/analysis/retry'
 import { toWhitePerspective } from '@shared/engine/stockfish'
 import Board from '@/components/Board'
-import { Button, Card, H1, Screen, T } from '@/components/ui'
-import { useAppData } from '@/lib/appData'
+import { Button, Card, H1, Loading, Screen, T } from '@/components/ui'
+import { useAnalysis, useAppData } from '@/lib/appData'
 import { moveLabel } from '@/lib/analysis'
 import { retryItemsFor } from '@/lib/retry'
 
@@ -20,8 +20,10 @@ type Outcome = 'first' | 'helped' | 'missed'
 
 export default function MistakeReviewScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>()
-  const { analyses, engine } = useAppData()
-  const analysis = useMemo(() => findGameBySlug(Object.values(analyses), slug ?? ''), [analyses, slug])
+  const { digests, engine } = useAppData()
+  const url = useMemo(() => findGameBySlug(Object.values(digests), slug ?? '')?.url, [digests, slug])
+  // This game only, read from the device.
+  const analysis = useAnalysis(url)
   const items = useMemo(() => (analysis ? retryItemsFor(analysis) : []), [analysis])
   const [index, setIndex] = useState(0)
   // The position after the player's attempt (null: the item's own position).
@@ -37,6 +39,7 @@ export default function MistakeReviewScreen() {
   const { width } = useWindowDimensions()
   const item = items[index]
 
+  if (analysis === undefined) return <Loading label="Chargement de la partie…" />
   if (!analysis || items.length === 0) {
     return (
       <Screen>

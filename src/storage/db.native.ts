@@ -9,6 +9,9 @@ const KEY_PATHS: Record<string, string> = {
   players: 'id',
   games: 'username',
   analyses: 'username',
+  gameMonths: 'key',
+  analysisItems: 'key',
+  derived: 'key',
 }
 
 const recordKey = (store: string, key: IDBValidKey) => `idb:${store}:${String(key)}`
@@ -61,6 +64,48 @@ export function dbTx<T>(
 ): Promise<T> {
   try {
     return Promise.resolve(run(objectStore(store)).result)
+  } catch (e) {
+    return Promise.reject(e)
+  }
+}
+
+/** Every record whose key starts with `prefix` ("<user>|"). */
+export function dbGetAllByPrefix<T extends { key: string }>(store: string, prefix: string): Promise<T[]> {
+  try {
+    if (!KEY_PATHS[store]) throw new Error(`Unknown store ${store}`)
+    const keys = keysOf(store).filter(k => k.startsWith(prefix))
+    return Promise.resolve(keys.map(k => read(store, k)).filter(v => v !== undefined) as T[])
+  } catch (e) {
+    return Promise.reject(e)
+  }
+}
+
+/** Writes several records, the key list once. */
+export function dbPutMany(store: string, values: unknown[]): Promise<void> {
+  try {
+    const keyPath = KEY_PATHS[store]
+    if (!keyPath) throw new Error(`Unknown store ${store}`)
+    const keys = new Set(keysOf(store))
+    for (const v of values as Record<string, unknown>[]) {
+      const key = String(v[keyPath])
+      localStorage.setItem(recordKey(store, key), JSON.stringify(v))
+      keys.add(key)
+    }
+    localStorage.setItem(indexKey(store), JSON.stringify([...keys]))
+    return Promise.resolve()
+  } catch (e) {
+    return Promise.reject(e)
+  }
+}
+
+/** Deletes several records, the key list once. */
+export function dbDeleteMany(store: string, keys: string[]): Promise<void> {
+  try {
+    if (!KEY_PATHS[store]) throw new Error(`Unknown store ${store}`)
+    for (const k of keys) localStorage.removeItem(recordKey(store, k))
+    const gone = new Set(keys)
+    localStorage.setItem(indexKey(store), JSON.stringify(keysOf(store).filter(k => !gone.has(k))))
+    return Promise.resolve()
   } catch (e) {
     return Promise.reject(e)
   }

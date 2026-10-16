@@ -30,7 +30,10 @@ export interface RemoteStore {
 }
 
 export interface LocalStore {
-  analyses(): Record<string, GameAnalysis>
+  /** Urls of the analyses on this device. */
+  analysisIds(): string[]
+  /** These analyses, read from the device (only the ones to push). */
+  loadAnalyses(ids: string[]): Promise<GameAnalysis[]>
   addAnalyses(list: GameAnalysis[]): void
   /** undefined when the device has no value for this key. */
   document(key: string): unknown
@@ -110,13 +113,13 @@ export async function syncOnce(remote: RemoteStore, local: LocalStore, state: Sy
 
   // Analyses: pull the new remote ones, then push the local ones the server lacks.
   const pulled = await remote.pullAnalyses(state.analysesCursor)
-  const mine = local.analyses()
-  const toAdd = pulled.filter(r => !mine[r.id]).map(r => r.data)
+  const mine = new Set(local.analysisIds())
+  const toAdd = pulled.filter(r => !mine.has(r.id)).map(r => r.data)
   if (toAdd.length > 0) local.addAnalyses(toAdd)
   for (const r of pulled) onServer.add(r.id)
-  const toPush = Object.values(mine).filter(a => !onServer.has(a.url))
+  const toPush = [...mine].filter(id => !onServer.has(id))
   for (let i = 0; i < toPush.length; i += PUSH_BATCH) {
-    const batch = toPush.slice(i, i + PUSH_BATCH)
+    const batch = await local.loadAnalyses(toPush.slice(i, i + PUSH_BATCH))
     await remote.pushAnalyses(batch.map(a => ({ id: a.url, data: a })))
     for (const a of batch) onServer.add(a.url)
   }

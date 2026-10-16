@@ -46,22 +46,38 @@ export interface Recency {
   positions: Set<string>
   /** Unix seconds: solved exercises from games before this retire. */
   retireBefore: number
+  /** Stored form (the day's snapshot): the exercises current by their game
+   *  or position, worked out once; `games` and `positions` are then unused. */
+  ids?: Set<string>
+}
+
+/** The recent games among these (url, end in unix seconds): the ones whose
+ *  analyses tell what is current. */
+export function recentGameUrls(games: { url: string; endTime: number }[], nowMs: number): string[] {
+  const nowS = nowMs / 1000
+  return [...games]
+    .sort((a, b) => b.endTime - a.endTime)
+    .filter((a, i) => i < RECENT_GAMES || a.endTime >= nowS - RECENT_DAYS * DAY_S)
+    .map(a => a.url)
 }
 
 export function recencyOf(analyses: GameAnalysis[], nowMs: number): Recency {
-  const nowS = nowMs / 1000
-  const byDate = [...analyses].sort((a, b) => b.endTime - a.endTime)
-  const recent = byDate.filter((a, i) => i < RECENT_GAMES || a.endTime >= nowS - RECENT_DAYS * DAY_S)
+  const recent = new Set(recentGameUrls(analyses, nowMs))
   const positions = new Set<string>()
-  for (const a of recent) for (const m of a.moves) positions.add(positionKey(m.fenBefore))
-  return { games: new Set(recent.map(a => a.url)), positions, retireBefore: nowS - RETIRE_DAYS * DAY_S }
+  for (const a of analyses) if (recent.has(a.url)) for (const m of a.moves) positions.add(positionKey(m.fenBefore))
+  return { games: recent, positions, retireBefore: nowMs / 1000 - RETIRE_DAYS * DAY_S }
 }
 
 /** Is this exercise still worth playing? (see the header) */
 export function isCurrent(e: Exercise, recency: Recency, progress: Record<string, ExerciseProgress>): boolean {
   const p = progress[e.id]
   if (p) return !(p.successes > 0 && e.context.endTime < recency.retireBefore)
-  return recency.games.has(e.context.gameUrl) || recency.positions.has(positionKey(e.fen))
+  return recency.ids ? recency.ids.has(e.id) : recency.games.has(e.context.gameUrl) || recency.positions.has(positionKey(e.fen))
+}
+
+/** The ids `isCurrent` accepts without progress, to store with the day. */
+export function currentIdsOf(exercises: Exercise[], recency: Recency): string[] {
+  return exercises.filter(e => isCurrent(e, recency, {})).map(e => e.id)
 }
 
 /** The next exercises to work on, best first, skipping `exclude`. */

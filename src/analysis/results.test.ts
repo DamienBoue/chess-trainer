@@ -41,7 +41,7 @@ function game(over: Partial<ChessComGame> & { me?: 'white' | 'black'; mine?: str
 
 const row = (over: Partial<GameRow> = {}): GameRow => ({
   url: 'u', end: 0, timeClass: 'blitz', rated: true, color: 'white', result: 'win', ending: 'resign',
-  rating: 1500, oppRating: 1500, opening: 'Italian Game', variation: 'Italian Game', moves: 30, ...over,
+  rating: 1500, oppRating: 1500, opponent: 'opp', rules: 'chess', opening: 'Italian Game', variation: 'Italian Game', moves: 30, ...over,
 })
 
 describe('formatCount', () => {
@@ -77,8 +77,8 @@ describe('toRow', () => {
     expect(toRow(game({ eco }), 'me')!.variation).toBe('Reti Opening Nimzo Larsen Variation')
   })
 
-  it('skips variants and games of someone else', () => {
-    expect(toRow(game({ rules: 'chess960' }), 'me')).toBeNull()
+  it('keeps the variant name, skips games of someone else', () => {
+    expect(toRow(game({ rules: 'chess960' }), 'me')).toMatchObject({ rules: 'chess960', opponent: 'opp' })
     expect(toRow(game({}), 'someone')).toBeNull()
   })
 

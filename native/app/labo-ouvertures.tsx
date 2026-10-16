@@ -7,14 +7,14 @@ import { buildRepertoire, type RepertoireRoot } from '@shared/analysis/repertoir
 import { mostPlayedLine } from '@shared/analysis/openingLine'
 import OpeningLabPly from '@/components/OpeningLabPly'
 import { OpeningChips, OpeningEmpty } from '@/components/OpeningKit'
-import { Card, H1, Screen, T } from '@/components/ui'
-import { useAppData } from '@/lib/appData'
+import { Card, H1, Loading, Screen, T } from '@/components/ui'
+import { useAnalyses } from '@/lib/appData'
 
 const keyOf = (r: RepertoireRoot) => `${r.parent}::${r.color}`
 
 export default function OpeningLabScreen() {
-  const { analyses } = useAppData()
-  const list = useMemo(() => Object.values(analyses), [analyses])
+  const analyses = useAnalyses()
+  const list = useMemo(() => Object.values(analyses ?? {}), [analyses])
   const roots = useMemo(() => buildRepertoire(list), [list])
   const [picked, setPicked] = useState<string | null>(null)
   // Until a pick, the most played opening; looked up in the current roots so
@@ -22,6 +22,7 @@ export default function OpeningLabScreen() {
   const shown = roots.find(r => keyOf(r) === picked) ?? roots[0] ?? null
   const line = useMemo(() => (shown ? mostPlayedLine(shown, { maxPlies: 8 }) : []), [shown])
 
+  if (!analyses) return <Loading />
   return (
     <Screen>
       <Stack.Screen options={{ title: "Labo d'ouvertures" }} />

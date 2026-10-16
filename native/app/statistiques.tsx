@@ -8,7 +8,7 @@ import { aggregate, deriveInsights, PHASE_LABELS, type AggregateStats } from '@s
 import { CLASSIFICATION_COLORS, CLASSIFICATION_LABELS } from '@shared/analysis/classify'
 import { extractExercises } from '@shared/analysis/exercises'
 import { computeMotifRadar } from '@shared/analysis/motifRadar'
-import { MIN_GAMES, computeResults, formatCount, historyRows, ratingsBefore, resultsInsights, scoreOf } from '@shared/analysis/results'
+import { MIN_GAMES, computeResults, formatCount, ratingsBefore, resultsInsights, scoreOf, standardRows } from '@shared/analysis/results'
 import {
   PERIODS,
   TIME_CLASS_LABELS,
@@ -28,8 +28,8 @@ import StatsBarRow from '@/components/StatsBarRow'
 import StatsOpeningsTab from '@/components/StatsOpeningsTab'
 import StatsResultsTab from '@/components/StatsResultsTab'
 import StatsSparkline from '@/components/StatsSparkline'
-import { Button, Card, H1, Screen, T } from '@/components/ui'
-import { useAppData } from '@/lib/appData'
+import { Button, Card, H1, Loading, Screen, T } from '@/components/ui'
+import { useAnalyses, useAppData, useGameRows } from '@/lib/appData'
 import { C, TOUCH } from '@/constants/theme'
 
 type Tab = 'results' | 'precision' | 'weaknesses' | 'openings'
@@ -46,13 +46,17 @@ function loadFilter(): StatsFilter {
 }
 
 export default function StatsScreen() {
-  const { analyses, games, username, history } = useAppData()
+  const { digests, history } = useAppData()
   const [stored, setStored] = useState(loadFilter)
   const [now] = useState(() => Date.now())
   const [tab, setTab] = useState<Tab>('results')
 
-  const rows = useMemo(() => historyRows(games, username), [games, username])
-  const allAnalyses = useMemo(() => Object.values(analyses), [analyses])
+  // Results read the games' rows; the precision tabs, every analysis, only
+  // once opened.
+  const loadedRows = useGameRows()
+  const rows = useMemo(() => standardRows(loadedRows ?? []), [loadedRows])
+  const analyses = useAnalyses(tab === 'precision' || tab === 'weaknesses')
+  const allAnalyses = useMemo(() => Object.values(analyses ?? {}), [analyses])
   const tcOptions = useMemo(() => timeClassOptions(rows.map(r => r.timeClass)), [rows])
   // A stored time control no longer played falls back to all of them.
   const filter: StatsFilter = tcOptions.includes(stored.timeClass) ? stored : { ...stored, timeClass: 'all' }
@@ -78,7 +82,8 @@ export default function StatsScreen() {
   const timeline = useMemo(() => buildTimeline(list), [list])
   const trend = useMemo(() => computeTrend(timeline), [timeline])
 
-  if (rows.length === 0 && allAnalyses.length === 0) {
+  if (!loadedRows) return <Loading />
+  if (rows.length === 0 && Object.keys(digests).length === 0) {
     return (
       <Screen>
         <Stack.Screen options={{ title: 'Statistiques' }} />
@@ -162,7 +167,10 @@ export default function StatsScreen() {
         </T>
       )}
 
-      {(tab === 'precision' || tab === 'weaknesses') && n === 0 && notAnalysed}
+      {(tab === 'precision' || tab === 'weaknesses') && !analyses && (
+        <Card><T tone="muted">Chargement des analyses…</T></Card>
+      )}
+      {(tab === 'precision' || tab === 'weaknesses') && analyses && n === 0 && notAnalysed}
       {(tab === 'precision' || tab === 'weaknesses') && n > 0 && (
         <T tone="muted" style={styles.small}>{n} partie{n > 1 ? 's' : ''} analysée{n > 1 ? 's' : ''} parmi les {formatCount(results.games)} jouée{results.games > 1 ? 's' : ''} {long}</T>
       )}

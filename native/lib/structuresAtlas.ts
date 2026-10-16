@@ -15,9 +15,9 @@ export const STRUCTURE_FAMILIES: { label: string; ids: string[] }[] = [
 ]
 
 /** Per-structure stats of the player's analysed games ([] when none). */
-export function useStructureStats(analyses: Record<string, GameAnalysis>): StructureStat[] {
+export function useStructureStats(analyses: Record<string, GameAnalysis> | null): StructureStat[] {
   return useMemo(() => {
-    const list = Object.values(analyses)
+    const list = Object.values(analyses ?? {})
     if (list.length === 0) return []
     try {
       // strategyReviewOf memoises per analysis; a failed review skips the game.

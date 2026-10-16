@@ -59,18 +59,77 @@ interface BuildPlanOptions {
   exercisesToday?: { remaining: number; total: number }
 }
 
+/** What the plan reads from the games: the costly part, computed once a
+ *  day (the app stores it), then assembled with the live progress. */
+export interface PlanInputs {
+  analysed: number
+  exercises: number
+  /** The most missed motif, when the signal is strong enough. */
+  worstMotif: { motif: MotifTag; missed: number; total: number; missRate: number } | null
+  topMistake: RecurringMistake | null
+  topHole: RepertoireHole | null
+  /** The phase markedly worse than the others. */
+  phaseFocus: { worst: Phase; best: Phase; worstCp: number; bestCp: number } | null
+  /** Ids of the repertoire drill cards (their due state is live). */
+  drillCards: string[]
+}
+
+export function planInputs(analyses: GameAnalysis[], exercises = extractExercises(analyses)): PlanInputs {
+  const radar = computeMotifRadar(exercises)
+  const worst = radar.find(m => m.missed >= 3 && m.missRate >= 0.5)
+  const recurring = findRecurringMistakes(analyses)
+  const roots = buildRepertoire(analyses)
+
+  let phaseFocus: PlanInputs['phaseFocus'] = null
+  if (analyses.length >= 5) {
+    const stats = aggregate(analyses)
+    const phases: Phase[] = ['opening', 'middlegame', 'endgame']
+    const active = phases.filter(p => stats.phases[p].userMoves >= 20)
+    if (active.length >= 2) {
+      const worstPhase = active.reduce((a, b) => stats.phases[a].avgCpLoss > stats.phases[b].avgCpLoss ? a : b)
+      const bestPhase = active.reduce((a, b) => stats.phases[a].avgCpLoss < stats.phases[b].avgCpLoss ? a : b)
+      const ratio = stats.phases[bestPhase].avgCpLoss > 0
+        ? stats.phases[worstPhase].avgCpLoss / stats.phases[bestPhase].avgCpLoss
+        : 0
+      if (ratio >= 1.5) {
+        phaseFocus = { worst: worstPhase, best: bestPhase, worstCp: stats.phases[worstPhase].avgCpLoss, bestCp: stats.phases[bestPhase].avgCpLoss }
+      }
+    }
+  }
+
+  return {
+    analysed: analyses.length,
+    exercises: exercises.length,
+    worstMotif: worst ? { motif: worst.motif, missed: worst.missed, total: worst.total, missRate: worst.missRate } : null,
+    topMistake: recurring.exact[0] ?? recurring.byOpening[0] ?? null,
+    topHole: findRepertoireHoles(roots)[0] ?? null,
+    phaseFocus,
+    drillCards: enumerateDrillCards(roots).map(c => c.id),
+  }
+}
+
 export function buildPlan(
   analyses: GameAnalysis[],
   progress: Record<string, ExerciseProgress>,
   repProgress: Record<string, ExerciseProgress>,
   opts: BuildPlanOptions,
 ): PlanItem[] {
+  const exercises = extractExercises(analyses)
+  const dueExercises = opts.exercisesToday ? 0 : exercises.filter(e => isDue(progress[e.id])).length
+  return assemblePlan(planInputs(analyses, exercises), repProgress, { ...opts, dueExercises })
+}
+
+/** The plan from its stored inputs and the live progress: cheap, at render. */
+export function assemblePlan(
+  inputs: PlanInputs,
+  repProgress: Record<string, ExerciseProgress>,
+  opts: BuildPlanOptions & { dueExercises?: number },
+): PlanItem[] {
   const items: PlanItem[] = []
-  const { dailyDone, maxSrsExercises = 5, maxSrsRepertoire = 5, bracket, exercisesToday } = opts
+  const { dailyDone, maxSrsExercises = 5, maxSrsRepertoire = 5, bracket, exercisesToday, dueExercises = 0 } = opts
 
   // 1. Daily puzzle (if not solved today)
-  const exercises = extractExercises(analyses)
-  if (exercises.length > 0 && !dailyDone) {
+  if (inputs.exercises > 0 && !dailyDone) {
     items.push({
       id: 'daily',
       kind: 'daily',
@@ -97,7 +156,6 @@ export function buildPlan(
       })
     }
   }
-  const dueExercises = exercisesToday ? 0 : exercises.filter(e => isDue(progress[e.id])).length
   if (dueExercises > 0) {
     const n = Math.min(dueExercises, maxSrsExercises)
     items.push({
@@ -114,9 +172,7 @@ export function buildPlan(
   }
 
   // 3. Repertoire drill cards due
-  const roots = buildRepertoire(analyses)
-  const drillCards = enumerateDrillCards(roots)
-  const dueRep = drillCards.filter(c => isDue(repProgress[c.id])).length
+  const dueRep = inputs.drillCards.filter(id => isDue(repProgress[id])).length
   if (dueRep > 0) {
     const n = Math.min(dueRep, maxSrsRepertoire)
     items.push({
@@ -132,9 +188,8 @@ export function buildPlan(
     })
   }
 
-  // 4. Motif drill — pick the most missed motif if signal is strong enough.
-  const radar = computeMotifRadar(exercises)
-  const worstMotif = radar.find(m => m.missed >= 3 && m.missRate >= 0.5)
+  // 4. Motif drill — the most missed motif if signal is strong enough.
+  const worstMotif = inputs.worstMotif
   if (worstMotif) {
     items.push({
       id: `motif:${worstMotif.motif}`,
@@ -149,8 +204,7 @@ export function buildPlan(
   }
 
   // 5. Top recurring mistake to study
-  const recurring = findRecurringMistakes(analyses)
-  const topMistake = recurring.exact[0] ?? recurring.byOpening[0] ?? null
+  const topMistake = inputs.topMistake
   if (topMistake) {
     items.push({
       id: `recurring:${topMistake.id}`,
@@ -170,8 +224,7 @@ export function buildPlan(
   }
 
   // 6. Top repertoire hole (less urgent at low Elo)
-  const holes = findRepertoireHoles(roots)
-  const topHole = holes[0]
+  const topHole = inputs.topHole
   if (topHole) {
     const topChoice = topHole.choices[0]
     items.push({
@@ -191,36 +244,24 @@ export function buildPlan(
 
   // 7. Phase focus — when one phase's avg cpLoss is markedly worse than
   // the others (≥ 1.5×) and we have a meaningful sample, surface it.
-  if (analyses.length >= 5) {
-    const stats = aggregate(analyses)
-    const phases: Phase[] = ['opening', 'middlegame', 'endgame']
-    const active = phases.filter(p => stats.phases[p].userMoves >= 20)
-    if (active.length >= 2) {
-      const worst = active.reduce((a, b) =>
-        stats.phases[a].avgCpLoss > stats.phases[b].avgCpLoss ? a : b)
-      const best = active.reduce((a, b) =>
-        stats.phases[a].avgCpLoss < stats.phases[b].avgCpLoss ? a : b)
-      const ratio = stats.phases[best].avgCpLoss > 0
-        ? stats.phases[worst].avgCpLoss / stats.phases[best].avgCpLoss
-        : 0
-      if (ratio >= 1.5) {
-        items.push({
-          id: `phase:${worst}`,
-          kind: 'phase-focus',
-          title: `Travaille tes ${PHASE_LABELS[worst].toLowerCase()}s`,
-          subtitle: `${stats.phases[worst].avgCpLoss.toFixed(0)} cp/coup en ${PHASE_LABELS[worst].toLowerCase()} vs ${stats.phases[best].avgCpLoss.toFixed(0)} en ${PHASE_LABELS[best].toLowerCase()}. Ouvre les stats pour voir le détail.`,
-          estMinutes: 3,
-          priority: 65,
-          target: 'stats',
-          phase: worst,
-          conceptId: worst === 'endgame' ? 'rook-endgame' : worst === 'opening' ? 'pawn-structure' : 'silmans-imbalances',
-        })
-      }
-    }
+  const focus = inputs.phaseFocus
+  if (focus) {
+    const { worst, best } = focus
+    items.push({
+      id: `phase:${worst}`,
+      kind: 'phase-focus',
+      title: `Travaille tes ${PHASE_LABELS[worst].toLowerCase()}s`,
+      subtitle: `${focus.worstCp.toFixed(0)} cp/coup en ${PHASE_LABELS[worst].toLowerCase()} vs ${focus.bestCp.toFixed(0)} en ${PHASE_LABELS[best].toLowerCase()}. Ouvre les stats pour voir le détail.`,
+      estMinutes: 3,
+      priority: 65,
+      target: 'stats',
+      phase: worst,
+      conceptId: worst === 'endgame' ? 'rook-endgame' : worst === 'opening' ? 'pawn-structure' : 'silmans-imbalances',
+    })
   }
 
   // Positional reading: strategy drills built from the player's own games.
-  if (analyses.length >= 3) {
+  if (inputs.analysed >= 3) {
     items.push({
       id: 'strategy',
       kind: 'strategy',

@@ -4,8 +4,8 @@
 
 import { loadJson, saveJson } from './json'
 import { KEYS } from './keys'
-export { loadGames, saveGames, clearGames } from './games'
-export { loadAnalyses, saveAnalyses, clearAnalyses } from './analyses'
+export { loadGames, addGames, clearGames, loadGamesMeta, type GamesMeta } from './games'
+export { loadAnalyses, loadAnalysesOf, saveAnalyses, clearAnalyses } from './analyses'
 
 const PROGRESS_KEY = KEYS.exerciseProgress
 

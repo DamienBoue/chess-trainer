@@ -40,9 +40,12 @@ export function saveEloPreference(pref: EloPreference): void {
   saveJson(ELO_KEY, pref)
 }
 
+/** What the Elo is inferred from: a full analysis or its digest. */
+export type RatedGame = Pick<GameAnalysis, 'endTime' | 'userRating'>
+
 /** Median Elo across the most recent N analyzed games' user ratings.
  *  Returns null if there aren't enough data points (< 3). */
-export function inferEloFromGames(analyses: GameAnalysis[], lookbackN = 20): number | null {
+export function inferEloFromGames(analyses: RatedGame[], lookbackN = 20): number | null {
   const ratings = analyses
     .slice()
     .sort((a, b) => b.endTime - a.endTime)
@@ -55,7 +58,7 @@ export function inferEloFromGames(analyses: GameAnalysis[], lookbackN = 20): num
 }
 
 /** Pick the effective Elo to use: declared if set, else inferred, else null. */
-export function effectiveElo(pref: EloPreference, analyses: GameAnalysis[]): number | null {
+export function effectiveElo(pref: EloPreference, analyses: RatedGame[]): number | null {
   if (pref.declared != null) return pref.declared
   return inferEloFromGames(analyses)
 }

@@ -2,12 +2,13 @@
 import { Stack } from 'expo-router'
 import { useMemo } from 'react'
 import ReflexDrillSession from '@/components/ReflexDrillSession'
-import { Screen } from '@/components/ui'
-import { useAppData } from '@/lib/appData'
+import { Loading, Screen } from '@/components/ui'
+import { useAnalyses } from '@/lib/appData'
 
 export default function ReflexScreen() {
-  const { analyses } = useAppData()
-  const list = useMemo(() => Object.values(analyses), [analyses])
+  const analyses = useAnalyses()
+  const list = useMemo(() => Object.values(analyses ?? {}), [analyses])
+  if (!analyses) return <Loading />
   return (
     <Screen>
       <Stack.Screen options={{ title: 'Réflexe anti-gaffe' }} />

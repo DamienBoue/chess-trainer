@@ -10,11 +10,12 @@ import { hrefFor } from '@/lib/routes'
 import { C } from '@/constants/theme'
 
 export default function Hub({ groupKey }: { groupKey: string }) {
-  const { analyses, exercises, daily } = useAppData()
-  // "Due" is today's session (see @shared/analysis/dailyQueue).
+  const { today, daily } = useAppData()
+  // "Due" is today's session (see @shared/analysis/dailyQueue); the counts
+  // come from the stored today cache, known at launch.
   const counts = useMemo(
-    () => ({ analyses: Object.keys(analyses).length, exercises: exercises.length, due: daily.remaining.length }),
-    [analyses, exercises, daily],
+    () => ({ analyses: today?.home.analysed ?? 0, exercises: today?.exercises ?? 0, due: daily.remaining.length }),
+    [today, daily],
   )
   const entry = NAV.find(e => e.kind === 'group' && e.group.key === groupKey)
   if (!entry || entry.kind !== 'group') return null

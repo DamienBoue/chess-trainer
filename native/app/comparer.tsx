@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { StyleSheet, TextInput } from 'react-native'
 import { Stack } from 'expo-router'
 import type { ChessComGame } from '@shared/types'
@@ -13,7 +13,14 @@ import { C, TOUCH } from '@/constants/theme'
 const COUNTS = [20, 30, 50, 100].map(n => ({ value: n, label: String(n) }))
 
 export default function ComparerScreen() {
-  const { username, games } = useAppData()
+  const { username, loadAllGames } = useAppData()
+  // Your games, read for this screen only.
+  const [games, setGames] = useState<ChessComGame[]>([])
+  useEffect(() => {
+    let cancelled = false
+    void loadAllGames().then(g => { if (!cancelled) setGames(g) })
+    return () => { cancelled = true }
+  }, [loadAllGames])
   const me = useMemo(() => profileFromGames(username, games), [username, games])
   const [name, setName] = useState('')
   const [count, setCount] = useState(30)

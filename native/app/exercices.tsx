@@ -6,33 +6,32 @@ import { useMemo, useState } from 'react'
 import { StyleSheet, View } from 'react-native'
 import { Stack, router } from 'expo-router'
 import type { CategoryFilter, DifficultyFilter, FilterCounts, StatusFilter } from '@shared/analysis/exerciseFilters'
-import { Button, Card, H1, Screen, T } from '@/components/ui'
+import { Button, Card, H1, Loading, Screen, T } from '@/components/ui'
 import ExerciseFiltersFold from '@/components/ExerciseFiltersFold'
 import ExerciseSolverPanel from '@/components/ExerciseSolverPanel'
 import { useAppData } from '@/lib/appData'
 
 export default function ExercisesScreen() {
-  const { analyses, progress, recordAttempt, exercises, daily, extendDaily } = useAppData()
+  const { today, ready, progress, recordAttempt, exercises, exerciseById, daily, extendDaily } = useAppData()
   const [status, setStatus] = useState<StatusFilter>('today')
   const [category, setCategory] = useState<CategoryFilter>('all')
   const [difficulty, setDifficulty] = useState<DifficultyFilter>('all')
   const [activeId, setActiveId] = useState<string | null>(null)
 
   const filtered = useMemo(() => {
-    const byId = new Map(exercises.map(e => [e.id, e]))
-    const pick = (ids: string[]) => ids.flatMap(id => byId.get(id) ?? [])
+    const pick = (ids: string[]) => ids.flatMap(id => exerciseById.get(id) ?? [])
     let list = status === 'today' ? pick(daily.remaining) : status === 'due' ? pick(daily.currentDue) : exercises
     if (category !== 'all') list = list.filter(e => e.category === category)
     if (difficulty !== 'all') list = list.filter(e => e.difficulty === difficulty)
     if (status === 'solved') list = list.filter(e => (progress[e.id]?.successes ?? 0) > 0)
     else if (status === 'unseen') list = list.filter(e => !progress[e.id])
     return list
-  }, [exercises, category, difficulty, status, progress, daily])
+  }, [exercises, exerciseById, category, difficulty, status, progress, daily])
 
   // The active exercise stays pinned even after it drops out of the filter
   // (solved today, it leaves the session): it would otherwise be replaced
   // at once by the next one, before the solved move is even seen.
-  const active = (activeId ? exercises.find(e => e.id === activeId) : null) ?? filtered[0] ?? null
+  const active = (activeId ? exerciseById.get(activeId) : null) ?? filtered[0] ?? null
   // Another filter: start from its first exercise.
   const pickFilter = <V,>(set: (v: V) => void) => (v: V) => { setActiveId(null); set(v) }
 
@@ -52,7 +51,11 @@ export default function ExercisesScreen() {
 
   const title = <Stack.Screen options={{ title: 'Exercices' }} />
 
-  if (Object.keys(analyses).length === 0) {
+  // The session plays at once; the other filters wait for the whole pool.
+  if (!today || (!ready && status !== 'today') || (status === 'today' && daily.preparing)) {
+    return <Loading label={daily.preparing ? 'Préparation de ta séance…' : 'Chargement des exercices…'} />
+  }
+  if (today.home.analysed === 0) {
     return (
       <Screen>
         {title}
@@ -63,7 +66,7 @@ export default function ExercisesScreen() {
       </Screen>
     )
   }
-  if (exercises.length === 0) {
+  if (ready && exercises.length === 0) {
     return (
       <Screen>
         {title}

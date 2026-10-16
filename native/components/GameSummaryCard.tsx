@@ -11,9 +11,11 @@ import { Card, SectionLabel, T } from '@/components/ui'
 import { strategyReviewOf } from '@/lib/analysis'
 import { C } from '@/constants/theme'
 
-export default function GameSummaryCard({ analysis, all }: { analysis: GameAnalysis; all: GameAnalysis[] }) {
+/** `all`: every analysis when already read (the summary then compares the
+ *  opening with the usual repertoire); not read just for this card. */
+export default function GameSummaryCard({ analysis, all }: { analysis: GameAnalysis; all: GameAnalysis[] | null }) {
   const text = useMemo(() => {
-    try { return generateGameSummary(analysis, buildRepertoire(all)) } catch { return null }
+    try { return generateGameSummary(analysis, all ? buildRepertoire(all) : undefined) } catch { return null }
   }, [analysis, all])
   const s = summarizeMoves(analysis)
   const review = strategyReviewOf(analysis)

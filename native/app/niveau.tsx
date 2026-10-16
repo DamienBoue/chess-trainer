@@ -9,8 +9,8 @@ import {
 } from '@shared/skill/elo'
 import { loadModuleProgress, modulesForBracket, toggleModuleDone, type ModuleArea, type RoadmapModule } from '@shared/skill/roadmap'
 import NiveauModuleRow from '@/components/NiveauModuleRow'
-import { Card, Screen, T } from '@/components/ui'
-import { useAppData } from '@/lib/appData'
+import { Card, Loading, Screen, T } from '@/components/ui'
+import { useAnalyses } from '@/lib/appData'
 import { C, TOUCH } from '@/constants/theme'
 
 const BRACKET_COLORS: Record<SkillBracket['id'], string> = {
@@ -27,8 +27,8 @@ const SURFACE_LABELS: Record<NonNullable<RoadmapModule['surface']>, string> = {
 }
 
 export default function NiveauScreen() {
-  const { analyses } = useAppData()
-  const list = useMemo(() => Object.values(analyses), [analyses])
+  const analyses = useAnalyses()
+  const list = useMemo(() => Object.values(analyses ?? {}), [analyses])
   const [pref, setPref] = useState(() => loadEloPreference())
   const [progress, setProgress] = useState(() => loadModuleProgress())
   const inferred = useMemo(() => inferEloFromGames(list), [list])
@@ -49,6 +49,7 @@ export default function NiveauScreen() {
     saveEloPreference(next)
   }
 
+  if (!analyses) return <Loading />
   return (
     <Screen>
       <Stack.Screen options={{ title: 'Mon niveau' }} />

@@ -55,6 +55,9 @@ export interface GameRow {
   ending: Ending
   rating: number
   oppRating: number
+  opponent: string
+  /** "chess", or a variant ("chess960"…), left out of the stats. */
+  rules: string
   /** Opening family (getParentOpening) and chess.com's line name. */
   opening: string
   variation: string
@@ -85,8 +88,8 @@ function lineName(ecoUrl: string | undefined): string {
   return words.join(' ')
 }
 
+/** The game seen from the user's side; null when the user didn't play it. */
 export function toRow(game: ChessComGame, username: string): GameRow | null {
-  if (game.rules !== 'chess') return null
   const me = username.toLowerCase()
   const color: Color | null =
     game.white.username.toLowerCase() === me ? 'white' : game.black.username.toLowerCase() === me ? 'black' : null
@@ -108,6 +111,8 @@ export function toRow(game: ChessComGame, username: string): GameRow | null {
     ending: ENDING_BY_CODE[code] ?? 'other',
     rating: mine.rating,
     oppRating: theirs.rating,
+    opponent: theirs.username,
+    rules: game.rules,
     opening: getParentOpening(eco, variation),
     variation: variation || 'Inconnue',
     moves: moveCount(game.pgn),
@@ -121,7 +126,12 @@ export function historyRows(games: ChessComGame[], username: string): GameRow[] 
     const r = toRow(g, username)
     if (r) rows.push(r)
   }
-  return rows.sort((a, b) => a.end - b.end)
+  return standardRows(rows)
+}
+
+/** The standard games (no variants), oldest first. */
+export function standardRows(rows: GameRow[]): GameRow[] {
+  return rows.filter(r => r.rules === 'chess').sort((a, b) => a.end - b.end)
 }
 
 /** "21061" → "21 061" (French thousands, narrow no-break space). */

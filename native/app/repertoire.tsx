@@ -8,18 +8,19 @@ import { OpeningEmpty, OpeningSegments } from '@/components/OpeningKit'
 import RepertoireCritiquesPanel from '@/components/RepertoireCritiquesPanel'
 import RepertoireDrillPanel from '@/components/RepertoireDrillPanel'
 import RepertoireLinesPanel from '@/components/RepertoireLinesPanel'
-import { Card, H1, Screen, T } from '@/components/ui'
-import { useAppData } from '@/lib/appData'
+import { Card, H1, Loading, Screen, T } from '@/components/ui'
+import { useAnalyses } from '@/lib/appData'
 
 type Tab = 'lines' | 'critiques' | 'train'
 
 export default function RepertoireScreen() {
-  const { analyses } = useAppData()
-  const list = useMemo(() => Object.values(analyses), [analyses])
+  const analyses = useAnalyses()
+  const list = useMemo(() => Object.values(analyses ?? {}), [analyses])
   const roots = useMemo(() => buildRepertoire(list), [list])
   const critiqueCount = useMemo(() => critiqueRepertoire(roots).length, [roots])
   const [tab, setTab] = useState<Tab>('lines')
 
+  if (!analyses) return <Loading />
   return (
     <Screen>
       <Stack.Screen options={{ title: 'Mon répertoire' }} />

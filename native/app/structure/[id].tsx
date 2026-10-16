@@ -8,8 +8,8 @@ import { STRUCTURES, detectStructures, structureRole } from '@shared/strategy/st
 import { STRUCTURE_SAMPLES, sampleFen } from '@shared/strategy/samples'
 import { findConcept } from '@shared/concepts/lookup'
 import Board, { type BoardArrow } from '@/components/Board'
-import { Button, Card, H1, Screen, SectionLabel, T } from '@/components/ui'
-import { useAppData } from '@/lib/appData'
+import { Button, Card, H1, Loading, Screen, SectionLabel, T } from '@/components/ui'
+import { useAnalyses } from '@/lib/appData'
 import { useStructureStats } from '@/lib/structuresAtlas'
 import { C, TOUCH } from '@/constants/theme'
 
@@ -18,7 +18,7 @@ const KEY_SQUARE = 'rgba(90, 165, 90, 0.5)'
 
 export default function StructureScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
-  const { analyses } = useAppData()
+  const analyses = useAnalyses()
   const stats = useStructureStats(analyses)
   const { width } = useWindowDimensions()
   const [side, setSide] = useState<Side>('w')
@@ -49,6 +49,7 @@ export default function StructureScreen() {
   const concept = pattern.conceptId ? findConcept(pattern.conceptId) : undefined
   const boardSize = Math.min(width - 32, 560)
 
+  if (!analyses) return <Loading />
   return (
     <Screen>
       <Stack.Screen options={{ title: pattern.name }} />

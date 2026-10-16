@@ -2,12 +2,13 @@
 import { Stack } from 'expo-router'
 import { useMemo } from 'react'
 import MirrorDrillSession from '@/components/MirrorDrillSession'
-import { H1, Screen, T } from '@/components/ui'
-import { useAppData } from '@/lib/appData'
+import { H1, Loading, Screen, T } from '@/components/ui'
+import { useAnalyses } from '@/lib/appData'
 
 export default function MirrorScreen() {
-  const { analyses } = useAppData()
-  const list = useMemo(() => Object.values(analyses), [analyses])
+  const analyses = useAnalyses()
+  const list = useMemo(() => Object.values(analyses ?? {}), [analyses])
+  if (!analyses) return <Loading />
   return (
     <Screen>
       <Stack.Screen options={{ title: 'Ouvertures en miroir' }} />

@@ -2,14 +2,15 @@
 // player has had in each.
 import { Stack, router, type Href } from 'expo-router'
 import { STRUCTURES } from '@shared/strategy/structures'
-import { Card, H1, Screen, SectionLabel, T } from '@/components/ui'
-import { useAppData } from '@/lib/appData'
+import { Card, H1, Loading, Screen, SectionLabel, T } from '@/components/ui'
+import { useAnalyses } from '@/lib/appData'
 import { STRUCTURE_FAMILIES, useStructureStats } from '@/lib/structuresAtlas'
 import { View, StyleSheet } from 'react-native'
 
 export default function StructuresScreen() {
-  const { analyses } = useAppData()
+  const analyses = useAnalyses()
   const stats = useStructureStats(analyses)
+  if (!analyses) return <Loading />
   return (
     <Screen>
       <Stack.Screen options={{ title: 'Structures de pions' }} />

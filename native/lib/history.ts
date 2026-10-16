@@ -22,7 +22,7 @@ export function loadHistoryStatus(username: string): HistoryStatus {
 /** Every month not downloaded yet, newest first; `onMonth` gets its games. */
 export async function downloadHistory(
   username: string,
-  onMonth: (games: ChessComGame[], status: HistoryStatus) => void,
+  onMonth: (games: ChessComGame[], status: HistoryStatus) => Promise<void>,
   signal?: AbortSignal,
 ): Promise<void> {
   const archives = await getArchives(username)
@@ -36,10 +36,12 @@ export async function downloadHistory(
     const month = archiveMonth(url)
     if (month && finished.has(month)) continue
     const games = await getArchive(url)
+    // Stored first: a month counts as done once its games are saved.
+    const doneAfter = finished.size + (month && month !== current && !finished.has(month) ? 1 : 0) + (month === current ? 1 : 0)
+    await onMonth(games, { done: doneAfter, total: archives.length })
     if (month && month !== current) {
       finished.add(month)
       localStorage.setItem(doneKey(username), JSON.stringify([...finished]))
     }
-    onMonth(games, { done: finished.size + (month === current ? 1 : 0), total: archives.length })
   }
 }

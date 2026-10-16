@@ -11,6 +11,16 @@ export function Screen({ children, scroll = true, style }: { children: React.Rea
   )
 }
 
+/** While a screen reads what it needs from the device (analyses, games). */
+export function Loading({ label = 'Chargement de tes parties…' }: { label?: string }) {
+  return (
+    <View style={[styles.screen, styles.pad, { alignItems: 'center', justifyContent: 'center' }]}>
+      <ActivityIndicator color={C.muted} />
+      <Text style={[styles.t, { color: C.muted, textAlign: 'center' }]}>{label}</Text>
+    </View>
+  )
+}
+
 export function H1({ children }: { children: React.ReactNode }) {
   return <Text style={styles.h1}>{children}</Text>
 }

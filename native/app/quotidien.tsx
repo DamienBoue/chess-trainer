@@ -7,13 +7,13 @@ import { Stack, router } from 'expo-router'
 import {
   type DailyState, todayString, loadDaily, saveDaily, pickDaily, bumpStreak, decayStreakIfMissed,
 } from '@shared/storage/daily'
-import { Button, Card, H1, Screen, T } from '@/components/ui'
+import { Button, Card, H1, Loading, Screen, T } from '@/components/ui'
 import ExerciseSolverPanel from '@/components/ExerciseSolverPanel'
 import { useAppData } from '@/lib/appData'
 import { C } from '@/constants/theme'
 
 export default function DailyPuzzleScreen() {
-  const { exercises } = useAppData()
+  const { exercises, ready } = useAppData()
   const today = todayString()
   const [saved, setSaved] = useState<DailyState | null>(() => decayStreakIfMissed(loadDaily(), today))
 
@@ -26,6 +26,8 @@ export default function DailyPuzzleScreen() {
   }, [exercises, saved, today])
 
   const title = <Stack.Screen options={{ title: 'Puzzle du jour' }} />
+
+  if (!ready) return <Loading label="Chargement des exercices…" />
 
   if (!exercise) {
     return (
