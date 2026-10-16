@@ -7,7 +7,8 @@ const projectRoot = __dirname
 const sharedRoot = path.resolve(projectRoot, '..', 'src')
 
 const config = getDefaultConfig(projectRoot)
-config.watchFolders = [sharedRoot]
+// Added to the defaults (the app itself must stay watched).
+config.watchFolders = [...(config.watchFolders ?? []), sharedRoot]
 
 // Packages imported by the shared code (chess.js…) resolve from this app, so
 // that the bundle holds a single copy of each.
