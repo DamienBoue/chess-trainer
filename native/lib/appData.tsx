@@ -20,6 +20,8 @@ import { loadDailySession, saveDailySession } from '@shared/storage/dailyQueue'
 import { todayString } from '@shared/storage/daily'
 import { isDue } from '@shared/storage/persist'
 import { lastSyncAt, syncNewGames } from './sync'
+import { downloadHistory as fetchHistory, loadHistoryStatus, type HistoryStatus } from './history'
+import { mergeGames } from '@shared/api/chesscom'
 import { syncOnce, type LocalStore } from '@shared/sync/engine'
 import { KEYS } from '@shared/storage/keys'
 import { supabase } from './supabase'
@@ -67,6 +69,10 @@ interface AppData {
   exercises: Exercise[]
   daily: DailyExercises
   cloud: CloudState
+  /** The whole chess.com history: months downloaded, and the download in progress. */
+  history: HistoryStatus & { running: boolean; added: number }
+  downloadHistory(): Promise<void>
+  stopHistory(): void
   /** Pulls and pushes the shared data now. */
   syncCloud(): Promise<void>
   /** "Encore": a few more exercises in today's session. */
@@ -104,6 +110,8 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const [syncing, setSyncing] = useState(false)
   const [lastSync, setLastSync] = useState(() => lastSyncAt())
   const [cloud, setCloud] = useState<CloudState>({ user: null, syncing: false, syncedAt: null, error: null })
+  const [history, setHistory] = useState(() => ({ ...loadHistoryStatus(username), running: false, added: 0 }))
+  const historyAbort = useRef<AbortController | null>(null)
   // Saving starts once the stored state is loaded, never over it.
   const loadedFor = useRef<string | null>(null)
 
@@ -226,6 +234,29 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     return { ids: session.ids, remaining: sp.remaining, done: sp.done, total: sp.total, reserve, currentDue, archived }
   }, [session, ready, exercises, progress, recency])
 
+  // ---- The whole history (Parties → "Télécharger tout l'historique") -----
+  const gamesRef = useRef(games)
+  useEffect(() => { gamesRef.current = games }, [games])
+  useEffect(() => { setHistory(h => ({ ...h, ...loadHistoryStatus(username) })) }, [username])
+  const downloadHistory = useCallback(async () => {
+    if (!username || historyAbort.current) return
+    const abort = new AbortController()
+    historyAbort.current = abort
+    setHistory(h => ({ ...h, running: true, added: 0 }))
+    try {
+      await fetchHistory(username, (monthGames, status) => {
+        const known = new Set(gamesRef.current.map(g => g.url))
+        const added = monthGames.filter(g => !known.has(g.url)).length
+        gamesRef.current = mergeGames(gamesRef.current, monthGames)
+        setGames(prev => mergeGames(prev, monthGames))
+        setHistory(h => ({ ...h, ...status, added: h.added + added }))
+      }, abort.signal)
+    } finally {
+      historyAbort.current = null
+      setHistory(h => ({ ...h, ...loadHistoryStatus(username), running: false }))
+    }
+  }, [username])
+
   // ---- Sharing with the account (Supabase): phone ↔ PC -------------------
   useEffect(() => {
     if (!supabase) return
@@ -307,6 +338,9 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     daily,
     cloud,
     syncCloud,
+    history,
+    downloadHistory,
+    stopHistory() { historyAbort.current?.abort() },
     extendDaily() {
       if (!session) return
       const next = extendDailySession(session, exercises, progress, recency, Date.now())
@@ -335,7 +369,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       setProgress(prev => ({ ...prev, [id]: updateProgressAfterAttempt(prev[id], outcome) }))
     },
     engine: getEngine,
-  }), [username, hydrated, games, analyses, progress, analyzing, syncing, lastSync, exercises, daily, session, recency, sync, analyze, cloud, syncCloud])
+  }), [username, hydrated, games, analyses, progress, analyzing, syncing, lastSync, exercises, daily, session, recency, sync, analyze, cloud, syncCloud, history, downloadHistory])
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

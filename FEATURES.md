@@ -30,7 +30,8 @@ Greeting with your level, the **last game** (straight into "Revoir mes erreurs" 
 
 ## Parties and analysis
 
-- Games list with results, opponents, openings; analyse one or all (progress shown).
+- Games list with results, opponents, openings, filters (all / to analyse / analysed); analyse one, or the 20 most recent ones at a time (progress shown).
+- **The whole history**: "Télécharger tout l'historique" fetches every chess.com monthly archive since you joined, newest first, month by month (resumable: a finished month is never fetched again). Games stay on each device (re-downloadable); analyses are shared through the sync.
 - **New games come by themselves**: at launch and whenever the app comes back to the foreground (the tab shown again on the web), the games played since the last one are fetched (only the chess.com archives of those months) and analysed automatically, one after the other. On phones, an optional background task checks chess.com periodically and notifies you of new games (the system picks the moment, at best hourly).
 - **Analysis**: board first; on the start position a **summary** (verdict text, your blunders / mistakes / inaccuracies, average loss of each side, main structure, lessons); for each move its quality, the loss, the engine's preferred move (shown as arrows on demand) and line; a **strategic reading** of the position; the **evaluation curve** with error dots (tap to go); the move list; a move bar pinned at the bottom (⏮ ◀ ▶ ⏭, next key moment).
 - **Revoir mes erreurs**: replay each of your mistakes (and missed plans) from the position before it, with hints; the engine judges alternatives (from the side to move's point of view); under-promotions playable; final tally.

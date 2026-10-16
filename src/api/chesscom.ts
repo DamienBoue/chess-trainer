@@ -56,3 +56,15 @@ export async function getGamesSince(username: string, since: number, max = 100):
 export async function getProfile(username: string): Promise<{ avatar?: string; name?: string; url: string }> {
   return fetchJson(`${BASE}/player/${encodeURIComponent(username.toLowerCase())}`)
 }
+
+/** "2026/10" for an archive URL (…/games/2026/10), or null. */
+export function archiveMonth(url: string): string | null {
+  return url.match(/(\d{4}\/\d{2})$/)?.[1] ?? null
+}
+
+/** Both lists, each game once (the incoming copy wins), newest first. */
+export function mergeGames(existing: ChessComGame[], incoming: ChessComGame[]): ChessComGame[] {
+  const byUrl = new Map(existing.map(g => [g.url, g]))
+  for (const g of incoming) byUrl.set(g.url, g)
+  return [...byUrl.values()].sort((a, b) => b.end_time - a.end_time)
+}
