@@ -27,6 +27,7 @@ export const KEYS = {
 
   // Domain state
   daily:           'chess.daily.v1',
+  dailyExercises:  'chess.daily-exercises.v1',   // today's exercise session
   plan:            'chess.plan.v1',
   notes:           'chess.notes.v1',
   exerciseProgress: 'chess.progress.v1',      // SRS data per exercise id

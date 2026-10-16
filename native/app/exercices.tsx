@@ -1,11 +1,10 @@
-// "Exercices": spaced-repetition drills taken from your own mistakes. Same
-// filters and rules as the website's ExercisesView; the board comes first,
+// "Exercices": spaced-repetition drills taken from your own mistakes. It
+// opens on today's session (20 at most, current mistakes and reviews, see
+// @shared/analysis/dailyQueue): a goal you can reach. The board comes first,
 // the filters sit behind one compact line.
 import { useMemo, useState } from 'react'
 import { StyleSheet, View } from 'react-native'
 import { Stack, router } from 'expo-router'
-import { extractExercises } from '@shared/analysis/exercises'
-import { isDue } from '@shared/storage/persist'
 import type { CategoryFilter, DifficultyFilter, FilterCounts, StatusFilter } from '@shared/analysis/exerciseFilters'
 import { Button, Card, H1, Screen, T } from '@/components/ui'
 import ExerciseFiltersFold from '@/components/ExerciseFiltersFold'
@@ -13,30 +12,31 @@ import ExerciseSolverPanel from '@/components/ExerciseSolverPanel'
 import { useAppData } from '@/lib/appData'
 
 export default function ExercisesScreen() {
-  const { analyses, progress, recordAttempt } = useAppData()
-  const exercises = useMemo(() => extractExercises(Object.values(analyses)), [analyses])
-  const [status, setStatus] = useState<StatusFilter>('due')
+  const { analyses, progress, recordAttempt, exercises, daily, extendDaily } = useAppData()
+  const [status, setStatus] = useState<StatusFilter>('today')
   const [category, setCategory] = useState<CategoryFilter>('all')
   const [difficulty, setDifficulty] = useState<DifficultyFilter>('all')
   const [activeId, setActiveId] = useState<string | null>(null)
 
   const filtered = useMemo(() => {
-    let list = exercises
+    const byId = new Map(exercises.map(e => [e.id, e]))
+    const pick = (ids: string[]) => ids.flatMap(id => byId.get(id) ?? [])
+    let list = status === 'today' ? pick(daily.remaining) : status === 'due' ? pick(daily.currentDue) : exercises
     if (category !== 'all') list = list.filter(e => e.category === category)
     if (difficulty !== 'all') list = list.filter(e => e.difficulty === difficulty)
-    if (status === 'due') list = list.filter(e => isDue(progress[e.id]))
-    else if (status === 'solved') list = list.filter(e => (progress[e.id]?.successes ?? 0) > 0)
+    if (status === 'solved') list = list.filter(e => (progress[e.id]?.successes ?? 0) > 0)
     else if (status === 'unseen') list = list.filter(e => !progress[e.id])
     return list
-  }, [exercises, category, difficulty, status, progress])
+  }, [exercises, category, difficulty, status, progress, daily])
 
   // The active exercise stays pinned even after it drops out of the filter
   // (solved under "À réviser"): it would otherwise look like an auto-advance.
   const active = (activeId ? exercises.find(e => e.id === activeId) : null) ?? filtered[0] ?? null
 
   const counts = useMemo<FilterCounts>(() => ({
+    today: daily.remaining.length,
     all: exercises.length,
-    due: exercises.filter(e => isDue(progress[e.id])).length,
+    due: daily.currentDue.length,
     solved: exercises.filter(e => (progress[e.id]?.successes ?? 0) > 0).length,
     unseen: exercises.filter(e => !progress[e.id]).length,
     missed: exercises.filter(e => e.category === 'missed').length,
@@ -45,7 +45,7 @@ export default function ExercisesScreen() {
     easy: exercises.filter(e => e.difficulty === 'easy').length,
     medium: exercises.filter(e => e.difficulty === 'medium').length,
     hard: exercises.filter(e => e.difficulty === 'hard').length,
-  }), [exercises, progress])
+  }), [exercises, progress, daily])
 
   const title = <Stack.Screen options={{ title: 'Exercices' }} />
 
@@ -88,6 +88,19 @@ export default function ExercisesScreen() {
         difficulty={difficulty} onDifficulty={setDifficulty}
         counts={counts} shown={filtered.length}
       />
+      {status === 'today' && daily.total > 0 && (
+        <T tone="muted" style={styles.session}>
+          Séance du jour · {daily.done}/{daily.total} faits{daily.archived > 0 ? ` · ${daily.archived} anciennes erreurs archivées` : ''}
+        </T>
+      )}
+      {status === 'today' && daily.total > 0 && daily.remaining.length === 0 && (
+        <Card highlight>
+          <T tone="win" style={styles.bold}>✓ Séance du jour terminée</T>
+          <T tone="muted">Reviens demain : tes erreurs récentes et tes révisions t'attendront.</T>
+          {daily.reserve > 0 && <Button label="Encore 10 exercices" onPress={extendDaily} />}
+          {daily.reserve > 0 && <Button label={`Voir la réserve (${daily.reserve})`} kind="secondary" onPress={() => setStatus('due')} />}
+        </Card>
+      )}
       {active ? (
         <>
           <View style={styles.nav}>
@@ -105,7 +118,7 @@ export default function ExercisesScreen() {
             onNext={() => step(1)}
           />
         </>
-      ) : (
+      ) : !(status === 'today' && daily.total > 0) && (
         <Card><T tone="muted">Aucun exercice dans cette sélection.</T></Card>
       )}
     </Screen>
@@ -116,4 +129,6 @@ const styles = StyleSheet.create({
   nav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   arrow: { minWidth: 56 },
   count: { flex: 1, textAlign: 'center' },
+  session: { fontSize: 13 },
+  bold: { fontWeight: '600' },
 })

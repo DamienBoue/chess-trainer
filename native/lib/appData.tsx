@@ -11,10 +11,32 @@ import {
 import { analyzeGame } from '@shared/analysis/analyze'
 import { StockfishEngine } from '@shared/engine/stockfish'
 import { getEngineDepth } from '@shared/storage/settings'
+import { extractExercises, type Exercise } from '@shared/analysis/exercises'
+import {
+  extendDailySession, isCurrent, recencyOf, resolveDailySession, sessionProgress, type DailySession,
+} from '@shared/analysis/dailyQueue'
+import { loadDailySession, saveDailySession } from '@shared/storage/dailyQueue'
+import { todayString } from '@shared/storage/daily'
+import { isDue } from '@shared/storage/persist'
 
 type Outcome = Parameters<typeof updateProgressAfterAttempt>[1]
 
 export interface AnalyzeState { url: string; done: number; total: number }
+
+/** Today's exercise session (see @shared/analysis/dailyQueue). */
+export interface DailyExercises {
+  /** Ids in play order; `remaining` are the ones not attempted today. */
+  ids: string[]
+  remaining: string[]
+  done: number
+  total: number
+  /** Current exercises due but not in today's session. */
+  reserve: number
+  /** Every current exercise that is due (today's remaining + the reserve). */
+  currentDue: string[]
+  /** Exercises no longer current (old mistakes), out of every count. */
+  archived: number
+}
 
 interface AppData {
   username: string
@@ -24,6 +46,10 @@ interface AppData {
   analyses: Record<string, GameAnalysis>
   progress: Record<string, ExerciseProgress>
   analyzing: AnalyzeState | null
+  exercises: Exercise[]
+  daily: DailyExercises
+  /** "Encore": a few more exercises in today's session. */
+  extendDaily(): void
   login(username: string): Promise<void>
   logout(): void
   reloadGames(): Promise<void>
@@ -74,6 +100,42 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => { if (username && loadedFor.current === username) void saveGames(username, games) }, [games, username])
   useEffect(() => { saveProgress(progress) }, [progress])
 
+  // Today's session: frozen for the day, picked again once the games are
+  // loaded (never from the empty state before them).
+  const list = useMemo(() => Object.values(analyses), [analyses])
+  const exercises = useMemo(() => extractExercises(list), [list])
+  const today = todayString()
+  // `today` in the deps: "recent" moves on with the calendar, not only with the games.
+  const recency = useMemo(() => recencyOf(list, Date.now()), [list, today])
+  const [storedSession, setStoredSession] = useState<DailySession | null>(() => loadDailySession())
+  const ready = !!username && hydrated
+  const session = useMemo(
+    () => (ready ? resolveDailySession(storedSession, exercises, progress, recency, today, Date.now()) : storedSession),
+    [ready, storedSession, exercises, progress, recency, today],
+  )
+  useEffect(() => {
+    if (session && session !== storedSession) {
+      saveDailySession(session)
+      setStoredSession(session)
+    }
+  }, [session, storedSession])
+  const daily = useMemo<DailyExercises>(() => {
+    if (!session || !ready) return { ids: [], remaining: [], done: 0, total: 0, reserve: 0, currentDue: [], archived: 0 }
+    const startOfDay = new Date().setHours(0, 0, 0, 0)
+    const sp = sessionProgress(session, progress, startOfDay)
+    const inSession = new Set(session.ids)
+    let reserve = 0
+    let archived = 0
+    const currentDue: string[] = []
+    for (const e of exercises) {
+      if (!isCurrent(e, recency, progress)) { archived++; continue }
+      if (!isDue(progress[e.id])) continue
+      currentDue.push(e.id)
+      if (!inSession.has(e.id)) reserve++
+    }
+    return { ids: session.ids, remaining: sp.remaining, done: sp.done, total: sp.total, reserve, currentDue, archived }
+  }, [session, ready, exercises, progress, recency])
+
   const value = useMemo<AppData>(() => ({
     username,
     hydrated: !username || hydrated,
@@ -81,6 +143,14 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     analyses,
     progress,
     analyzing,
+    exercises,
+    daily,
+    extendDaily() {
+      if (!session) return
+      const next = extendDailySession(session, exercises, progress, recency, Date.now())
+      saveDailySession(next)
+      setStoredSession(next)
+    },
     async login(name) {
       const clean = name.trim()
       const fetched = await getRecentGames(clean)
@@ -123,7 +193,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       setProgress(prev => ({ ...prev, [id]: updateProgressAfterAttempt(prev[id], outcome) }))
     },
     engine: getEngine,
-  }), [username, hydrated, games, analyses, progress, analyzing])
+  }), [username, hydrated, games, analyses, progress, analyzing, exercises, daily, session, recency])
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

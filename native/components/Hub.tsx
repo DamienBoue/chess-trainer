@@ -4,20 +4,18 @@ import { useMemo } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { router } from 'expo-router'
 import { NAV, groupItems, type NavItemDef } from '@shared/nav/navModel'
-import { extractExercises } from '@shared/analysis/exercises'
-import { isDue } from '@shared/storage/persist'
 import { Card, Pill, Screen, SectionLabel, T } from '@/components/ui'
 import { useAppData } from '@/lib/appData'
 import { hrefFor } from '@/lib/routes'
 import { C } from '@/constants/theme'
 
 export default function Hub({ groupKey }: { groupKey: string }) {
-  const { analyses, progress } = useAppData()
-  const counts = useMemo(() => {
-    const list = Object.values(analyses)
-    const exercises = extractExercises(list)
-    return { analyses: list.length, exercises: exercises.length, due: exercises.filter(e => isDue(progress[e.id])).length }
-  }, [analyses, progress])
+  const { analyses, exercises, daily } = useAppData()
+  // "Due" is today's session (see @shared/analysis/dailyQueue).
+  const counts = useMemo(
+    () => ({ analyses: Object.keys(analyses).length, exercises: exercises.length, due: daily.remaining.length }),
+    [analyses, exercises, daily],
+  )
   const entry = NAV.find(e => e.kind === 'group' && e.group.key === groupKey)
   if (!entry || entry.kind !== 'group') return null
   const group = entry.group

@@ -1,10 +1,7 @@
 // The five parts of the app, as on the website's phone layout.
-import { useMemo } from 'react'
 import { Pressable } from 'react-native'
 import { Tabs, router } from 'expo-router'
 import Svg, { Circle, Path } from 'react-native-svg'
-import { extractExercises } from '@shared/analysis/exercises'
-import { isDue } from '@shared/storage/persist'
 import TabIcon, { type TabIconName } from '@/components/TabIcon'
 import Login from '@/components/Login'
 import { useAppData } from '@/lib/appData'
@@ -19,11 +16,9 @@ const TABS: { name: string; title: string; icon: TabIconName }[] = [
 ]
 
 export default function TabLayout() {
-  const { username, analyses, progress } = useAppData()
-  const due = useMemo(
-    () => extractExercises(Object.values(analyses)).filter(e => isDue(progress[e.id])).length,
-    [analyses, progress],
-  )
+  const { username, daily } = useAppData()
+  // Today's session only: a thousand due exercises would discourage.
+  const due = daily.remaining.length
   if (!username) return <Login />
   return (
     <Tabs

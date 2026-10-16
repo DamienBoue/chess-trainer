@@ -54,6 +54,9 @@ interface BuildPlanOptions {
   maxSrsRepertoire?: number
   /** Used to bias the plan ordering toward what matters at this level. */
   bracket?: SkillBracket
+  /** Today's exercise session (analysis/dailyQueue.ts): when given, the
+   *  exercises step is that session instead of every due exercise. */
+  exercisesToday?: { remaining: number; total: number }
 }
 
 export function buildPlan(
@@ -63,7 +66,7 @@ export function buildPlan(
   opts: BuildPlanOptions,
 ): PlanItem[] {
   const items: PlanItem[] = []
-  const { dailyDone, maxSrsExercises = 5, maxSrsRepertoire = 5, bracket } = opts
+  const { dailyDone, maxSrsExercises = 5, maxSrsRepertoire = 5, bracket, exercisesToday } = opts
 
   // 1. Daily puzzle (if not solved today)
   const exercises = extractExercises(analyses)
@@ -79,8 +82,22 @@ export function buildPlan(
     })
   }
 
-  // 2. SRS exercises due
-  const dueExercises = exercises.filter(e => isDue(progress[e.id])).length
+  // 2. Exercises: today's session when there is one, else the SRS due ones.
+  if (exercisesToday) {
+    const { remaining, total } = exercisesToday
+    if (remaining > 0) {
+      items.push({
+        id: 'srs-exercises',
+        kind: 'srs-exercises',
+        title: `Exercices du jour · ${remaining}${total > remaining ? `/${total}` : ''}`,
+        subtitle: `Tes erreurs récentes et tes révisions : ${total - remaining} faite${total - remaining > 1 ? 's' : ''} sur ${total}.`,
+        estMinutes: Math.max(2, Math.min(15, Math.round(remaining * 0.7))),
+        priority: 100,
+        target: 'exercises',
+      })
+    }
+  }
+  const dueExercises = exercisesToday ? 0 : exercises.filter(e => isDue(progress[e.id])).length
   if (dueExercises > 0) {
     const n = Math.min(dueExercises, maxSrsExercises)
     items.push({

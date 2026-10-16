@@ -4,9 +4,9 @@ import { useMemo } from 'react'
 import { StyleSheet, View } from 'react-native'
 import { router, type Href } from 'expo-router'
 import { buildPlan, totalMinutes } from '@shared/analysis/plan'
+import { DAILY_EXERCISES } from '@shared/analysis/dailyQueue'
 import { aggregate } from '@shared/analysis/aggregate'
-import { extractExercises } from '@shared/analysis/exercises'
-import { isDue, loadRepertoireProgress } from '@shared/storage/persist'
+import { loadRepertoireProgress } from '@shared/storage/persist'
 import { loadDaily, todayString } from '@shared/storage/daily'
 import { bracketForElo, effectiveElo, loadEloPreference } from '@shared/skill/elo'
 import { gameSlug } from '@shared/nav/gameSlug'
@@ -17,18 +17,19 @@ import { hrefFor } from '@/lib/routes'
 const RESULT_FR = { win: 'Victoire', loss: 'Défaite', draw: 'Nulle' } as const
 
 export default function Today() {
-  const { username, analyses, progress, logout } = useAppData()
+  const { username, analyses, progress, logout, daily } = useAppData()
   const list = useMemo(() => Object.values(analyses), [analyses])
   const last = useMemo(() => [...list].sort((a, b) => b.endTime - a.endTime)[0], [list])
-  const due = useMemo(() => extractExercises(list).filter(e => isDue(progress[e.id])).length, [list, progress])
   const elo = effectiveElo(loadEloPreference(), list)
   const bracket = bracketForElo(elo)
   const stats = useMemo(() => aggregate(list), [list])
   const plan = useMemo(() => {
-    const daily = loadDaily()
-    const dailyDone = daily?.date === todayString() && !!daily.solved
-    return buildPlan(list, progress, loadRepertoireProgress(), { dailyDone, bracket })
-  }, [list, progress, bracket])
+    const puzzle = loadDaily()
+    const dailyDone = puzzle?.date === todayString() && !!puzzle.solved
+    return buildPlan(list, progress, loadRepertoireProgress(), {
+      dailyDone, bracket, exercisesToday: { remaining: daily.remaining.length, total: daily.total },
+    })
+  }, [list, progress, bracket, daily])
 
   if (list.length === 0) {
     return (
@@ -66,9 +67,14 @@ export default function Today() {
           <T tone="accent">{userErrors > 0 ? 'Revoir mes erreurs →' : 'Revoir →'}</T>
         </Card>
       )}
-      <Card onPress={() => { const h = hrefFor({ view: 'exercises' }); if (h) router.push(h) }} highlight={due > 0}>
-        <SectionLabel>À réviser</SectionLabel>
-        <T>{due > 0 ? `${due} exercice${due > 1 ? 's' : ''} dû${due > 1 ? 's' : ''} aujourd'hui` : 'Rien à réviser : tout est à jour'}</T>
+      <Card onPress={() => { const h = hrefFor({ view: 'exercises' }); if (h) router.push(h) }} highlight={daily.remaining.length > 0}>
+        <SectionLabel>Exercices du jour</SectionLabel>
+        {daily.total === 0
+          ? <T>Rien à revoir : analyse tes dernières parties pour en créer.</T>
+          : daily.remaining.length > 0
+            ? <T><T tone="strong">{daily.remaining.length}</T> à faire · {daily.done}/{daily.total} faits</T>
+            : <T tone="win">✓ Séance du jour terminée ({daily.total}/{daily.total})</T>}
+        <T tone="faint" style={styles.small}>Tes erreurs récentes et tes révisions, {DAILY_EXERCISES} par jour au plus.</T>
       </Card>
 
       <SectionLabel>Plan du jour · {plan.length} étapes · ≈ {totalMinutes(plan)} min</SectionLabel>

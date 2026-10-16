@@ -102,3 +102,13 @@ describe('buildPlan', () => {
     if (srs) expect(srs.estMinutes).toBeLessThanOrEqual(8)
   })
 })
+
+describe('buildPlan with today\'s exercise session', () => {
+  it('shows the session, not every due exercise', () => {
+    const items = buildPlan([], {}, {}, { dailyDone: true, exercisesToday: { remaining: 12, total: 20 } })
+    const srs = items.find(i => i.id === 'srs-exercises')!
+    expect(srs.title).toBe('Exercices du jour · 12/20')
+    expect(srs.subtitle).toContain('8 faites sur 20')
+    expect(buildPlan([], {}, {}, { dailyDone: true, exercisesToday: { remaining: 0, total: 20 } }).find(i => i.id === 'srs-exercises')).toBeUndefined()
+  })
+})

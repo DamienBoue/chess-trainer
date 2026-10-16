@@ -32,7 +32,8 @@ Greeting with your level, the **last game** (straight into "Revoir mes erreurs" 
 
 ## Entraînement
 
-- **Exercices**: your own mistakes in spaced repetition (status, category and difficulty filters folded under one line), solve the whole engine line by tapping, reveal, results recorded.
+- **Exercices du jour**: a session of 20 at most that you can finish (Chessable-style daily goal), frozen for the day. Reviews first (SM-2), then new mistakes from your recent games (last 30 days, at least your 20 last games), the costliest first, two per game before a third. An older mistake comes back only if you reach its position again in a recent game; solved mistakes older than 6 months retire. The rest waits in reserve ("Encore 10" once the session is done), old ones are archived out of every count.
+- **Exercices**: your own mistakes in spaced repetition (session, status, category and difficulty filters folded under one line), solve the whole engine line by tapping, reveal, results recorded.
 - **Puzzle du jour** with its streak, **Puzzle Rush** (modes, clock, lives), **Réflexe anti-gaffe** (spot the threatened piece against the clock), **Calcul de séquence** (type the forced line without moving pieces).
 - **Entraîneur stratégique**: "Quel plan ?", "Case forte" (tap the square), "Nomme la structure", from your games (reference positions when you have few).
 - **Jouer contre Stockfish**: colour, strength 1320–2850, all game endings (repetition included).

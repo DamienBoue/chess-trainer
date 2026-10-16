@@ -12,12 +12,14 @@ import {
   MOTIF_LABELS,
 } from './exercises'
 
-export type StatusFilter = 'all' | 'due' | 'solved' | 'unseen'
+/** `today`: the day's session (analysis/dailyQueue.ts). */
+export type StatusFilter = 'today' | 'all' | 'due' | 'solved' | 'unseen'
 export type CategoryFilter = 'all' | ExerciseCategory
 export type DifficultyFilter = 'all' | Difficulty
 export type MotifFilter = 'all' | MotifTag
 
 const STATUS_LABELS: Record<StatusFilter, string> = {
+  today: 'Séance du jour',
   due: 'À réviser',
   unseen: 'Jamais vus',
   solved: 'Déjà réussis',
@@ -26,7 +28,7 @@ const STATUS_LABELS: Record<StatusFilter, string> = {
 
 /** Status chips, in display order. */
 export const STATUS_OPTIONS: ReadonlyArray<{ value: StatusFilter; label: string }> =
-  (['due', 'unseen', 'solved', 'all'] as const).map(value => ({ value, label: STATUS_LABELS[value] }))
+  (['today', 'due', 'unseen', 'solved', 'all'] as const).map(value => ({ value, label: STATUS_LABELS[value] }))
 
 export const CATEGORY_KEYS: readonly ExerciseCategory[] = ['missed', 'punishment', 'defense']
 export const DIFFICULTY_KEYS: readonly Difficulty[] = ['easy', 'medium', 'hard']
@@ -34,7 +36,7 @@ export const DIFFICULTY_KEYS: readonly Difficulty[] = ['easy', 'medium', 'hard']
 /** Number of exercises behind each chip (over the whole pool, independent of
  *  the other filters). `all` is shared by the three rows. */
 export type FilterCounts = Record<
-  'all' | 'due' | 'solved' | 'unseen' | ExerciseCategory | Difficulty,
+  'today' | 'all' | 'due' | 'solved' | 'unseen' | ExerciseCategory | Difficulty,
   number
 >
 

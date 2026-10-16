@@ -42,8 +42,8 @@ describe('exerciseCountLabel', () => {
 
 describe('option lists', () => {
   it('keeps the status chips in display order, with "Tous" last', () => {
-    expect(STATUS_OPTIONS.map(o => o.value)).toEqual(['due', 'unseen', 'solved', 'all'])
-    expect(STATUS_OPTIONS.map(o => o.label)).toEqual(['À réviser', 'Jamais vus', 'Déjà réussis', 'Tous'])
+    expect(STATUS_OPTIONS.map(o => o.value)).toEqual(['today', 'due', 'unseen', 'solved', 'all'])
+    expect(STATUS_OPTIONS.map(o => o.label)).toEqual(['Séance du jour', 'À réviser', 'Jamais vus', 'Déjà réussis', 'Tous'])
   })
 
   it('covers every category and difficulty', () => {
