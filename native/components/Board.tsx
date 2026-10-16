@@ -36,11 +36,12 @@ function squareXY(square: string, flipped: boolean): [number, number] {
 }
 
 function renderNode(n: SvgNode, key: number): React.ReactNode {
-  const props = { key, ...n.a } as Record<string, unknown>
+  // key passed on its own: React 19 warns when it travels inside a spread.
+  const props = n.a as Record<string, unknown>
   const kids = n.c.map(renderNode)
-  if (n.t === 'g') return <G {...props}>{kids}</G>
-  if (n.t === 'circle') return <Circle {...props} />
-  return <Path {...props} />
+  if (n.t === 'g') return <G key={key} {...props}>{kids}</G>
+  if (n.t === 'circle') return <Circle key={key} {...props} />
+  return <Path key={key} {...props} />
 }
 
 const Piece = memo(function Piece({ code, x, y }: { code: PieceCode; x: number; y: number }) {

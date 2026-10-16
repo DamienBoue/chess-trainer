@@ -15,7 +15,17 @@ import { Button, Card, SectionLabel, T } from '@/components/ui'
 import { useAppData } from '@/lib/appData'
 import { keyMomentsOf, moveLabel, squaresOf } from '@/lib/analysis'
 import { retryItemsFor } from '@/lib/retry'
+import Svg, { Path } from 'react-native-svg'
 import { C, TOUCH } from '@/constants/theme'
+
+// Drawn icons: iOS shows ⏮ and ⏭ as blue emoji.
+const ICONS = {
+  start: 'M6 5v14M19 5l-10 7 10 7z',
+  prev: 'M17 5l-11 7 11 7z',
+  next: 'M7 5l11 7-11 7z',
+  end: 'M18 5v14M5 5l10 7-10 7z',
+  key: 'M6 21V4M6 4h11l-2.5 4 2.5 4H6',
+} as const
 
 const START = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
 const RESULT_FR = { win: 'Victoire', loss: 'Défaite', draw: 'Nulle' } as const
@@ -111,18 +121,18 @@ export default function AnalysisScreen() {
       </ScrollView>
 
       <View style={[styles.bar, { paddingBottom: insets.bottom }]}>
-        <BarButton label="⏮" a11y="Début" onPress={() => go(0)} disabled={ply === 0} />
-        <BarButton label="◀" a11y="Coup précédent" onPress={() => go(ply - 1)} disabled={ply === 0} />
+        <BarButton icon="start" a11y="Début" onPress={() => go(0)} disabled={ply === 0} />
+        <BarButton icon="prev" a11y="Coup précédent" onPress={() => go(ply - 1)} disabled={ply === 0} />
         <Text style={styles.barLabel} numberOfLines={1}>{m ? moveLabel(m.ply, m.san) : 'Départ'}</Text>
-        <BarButton label="▶" a11y="Coup suivant" onPress={() => go(ply + 1)} disabled={ply === n} />
-        <BarButton label="⏭" a11y="Fin" onPress={() => go(n)} disabled={ply === n} />
-        <BarButton label="⚑" a11y="Moment clé suivant" onPress={() => nextKey && go(nextKey)} disabled={!nextKey} accent />
+        <BarButton icon="next" a11y="Coup suivant" onPress={() => go(ply + 1)} disabled={ply === n} />
+        <BarButton icon="end" a11y="Fin" onPress={() => go(n)} disabled={ply === n} />
+        <BarButton icon="key" a11y="Moment clé suivant" onPress={() => nextKey && go(nextKey)} disabled={!nextKey} accent />
       </View>
     </View>
   )
 }
 
-function BarButton({ label, a11y, onPress, disabled, accent }: { label: string; a11y: string; onPress: () => void; disabled?: boolean; accent?: boolean }) {
+function BarButton({ icon, a11y, onPress, disabled, accent }: { icon: keyof typeof ICONS; a11y: string; onPress: () => void; disabled?: boolean; accent?: boolean }) {
   return (
     <Pressable
       onPress={onPress}
@@ -131,7 +141,9 @@ function BarButton({ label, a11y, onPress, disabled, accent }: { label: string; 
       accessibilityLabel={a11y}
       style={({ pressed }) => [styles.barBtn, pressed && { opacity: 0.6 }, disabled && { opacity: 0.3 }]}
     >
-      <Text style={[styles.barIcon, accent && { color: C.accentHover }]}>{label}</Text>
+      <Svg width={24} height={24} viewBox="0 0 24 24" fill={icon === 'key' ? 'none' : accent ? C.accentHover : C.text} stroke={accent ? C.accentHover : C.text} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round">
+        <Path d={ICONS[icon]} />
+      </Svg>
     </Pressable>
   )
 }
@@ -147,6 +159,5 @@ const styles = StyleSheet.create({
     backgroundColor: C.panel, borderTopWidth: 1, borderTopColor: C.border, paddingHorizontal: 4,
   },
   barBtn: { minWidth: TOUCH, height: 52, alignItems: 'center', justifyContent: 'center' },
-  barIcon: { color: C.text, fontSize: 22 },
   barLabel: { flex: 1, textAlign: 'center', color: C.strong, fontFamily: 'Menlo', fontSize: 15 },
 })

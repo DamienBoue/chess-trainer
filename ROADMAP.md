@@ -17,6 +17,17 @@ These were proposed and explicitly held off by the user. Don't drop them; pick t
 - Stockfish-bot mode: play against the engine at a configurable Elo (UCI_LimitStrength).
 - Shareable game URL with the analysis embedded (not just exercises).
 
+## Appli mobile (React Native, branche `react-native`) — next steps
+
+Shipped on the branch: Expo app in `native/` sharing all the domain code of `src/`, every tool of the website ported, Stockfish in a hidden WebView on phones (checked on the iOS simulator: depth 12 in 3 s, full game analysis), storage on SQLite.
+
+- **Offline engine**: bundle the WASM with the app instead of loading it from GitHub Pages on first use.
+- **Engine recovery**: reload the WebView and recreate the workers if iOS kills its process.
+- **Builds**: EAS build + TestFlight / internal Android track (the app runs in Expo Go today).
+- **Notifications**: daily reminder when exercises are due.
+- **Drag-to-move** on the board (tap-to-move only for now), promotion picker.
+- **Global colour / time-control filter** (the website's filter chip) — not ported yet.
+
 ## UX — next steps (from the 2026-10 ergonomics review)
 
 Benchmarked against Lichess, chess.com Game Review and En Croissant. Already shipped: five parts (Aujourd'hui · Parties · Entraînement · Théorie · Progrès) from a single model, hub pages instead of menus, phone top bar with the way up, filter chip + sheet, tabbed analysis view (verdict strip, compact move list, engine arrow, keyboard shortcuts, key moments) with a pinned move bar on phones, accessible move-quality colours, visible ⌘K search, account menu, home tiles, hash router (back/forward, deep links down to the move), "Revoir mes erreurs" guided mode, eval graph markers.
