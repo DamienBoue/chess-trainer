@@ -1,33 +1,75 @@
-// Statistiques, as stacked cards: overview, phases, tactical motifs, openings.
-// Ported from the website's StatsView; the heatmap, recurring-mistakes boards
-// and study recommendations are left out (they need the DOM boards).
+// Statistiques. A window (7 days … always) and a time control apply to every
+// tab: recent games say how you play now. "Résultats" and "Ouvertures" read
+// every game played; "Précision" and "Faiblesses" the analysed ones.
 import { useMemo, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
-import { Stack } from 'expo-router'
+import { Stack, router } from 'expo-router'
 import { aggregate, deriveInsights, PHASE_LABELS, type AggregateStats } from '@shared/analysis/aggregate'
 import { CLASSIFICATION_COLORS, CLASSIFICATION_LABELS } from '@shared/analysis/classify'
 import { extractExercises } from '@shared/analysis/exercises'
 import { computeMotifRadar } from '@shared/analysis/motifRadar'
+import { MIN_GAMES, computeResults, formatCount, historyRows, ratingsBefore, resultsInsights, scoreOf } from '@shared/analysis/results'
+import {
+  PERIODS,
+  TIME_CLASS_LABELS,
+  filterAnalyses,
+  parseFilter,
+  periodLong,
+  periodStart,
+  timeClassOptions,
+  type StatsFilter,
+} from '@shared/analysis/statsFilter'
 import { buildStrengths } from '@shared/analysis/strengths'
 import { buildTimeline } from '@shared/analysis/timeline'
 import { computeTrend, trendDirection, type TrendDelta } from '@shared/analysis/trend'
+import { KEYS } from '@shared/storage/keys'
+import Segmented from '@/components/Segmented'
 import StatsBarRow from '@/components/StatsBarRow'
+import StatsOpeningsTab from '@/components/StatsOpeningsTab'
+import StatsResultsTab from '@/components/StatsResultsTab'
 import StatsSparkline from '@/components/StatsSparkline'
-import { Card, H1, Screen, SectionLabel, T } from '@/components/ui'
+import { Button, Card, H1, Screen, T } from '@/components/ui'
 import { useAppData } from '@/lib/appData'
 import { C, TOUCH } from '@/constants/theme'
 
-type Tab = 'overview' | 'weaknesses' | 'openings'
+type Tab = 'results' | 'precision' | 'weaknesses' | 'openings'
 const TABS: { id: Tab; label: string }[] = [
-  { id: 'overview', label: 'Aperçu' },
+  { id: 'results', label: 'Résultats' },
+  { id: 'precision', label: 'Précision' },
   { id: 'weaknesses', label: 'Faiblesses' },
   { id: 'openings', label: 'Ouvertures' },
 ]
 const CLASS_ORDER = ['best', 'great', 'good', 'inaccuracy', 'mistake', 'blunder', 'book'] as const
 
+function loadFilter(): StatsFilter {
+  try { return parseFilter(localStorage.getItem(KEYS.statsFilter)) } catch { return parseFilter(null) }
+}
+
 export default function StatsScreen() {
-  const { analyses } = useAppData()
-  const list = useMemo(() => Object.values(analyses), [analyses])
+  const { analyses, games, username, history } = useAppData()
+  const [stored, setStored] = useState(loadFilter)
+  const [now] = useState(() => Date.now())
+  const [tab, setTab] = useState<Tab>('results')
+
+  const rows = useMemo(() => historyRows(games, username), [games, username])
+  const allAnalyses = useMemo(() => Object.values(analyses), [analyses])
+  const tcOptions = useMemo(() => timeClassOptions(rows.map(r => r.timeClass)), [rows])
+  // A stored time control no longer played falls back to all of them.
+  const filter: StatsFilter = tcOptions.includes(stored.timeClass) ? stored : { ...stored, timeClass: 'all' }
+  const setFilter = (next: StatsFilter) => {
+    setStored(next)
+    try { localStorage.setItem(KEYS.statsFilter, JSON.stringify(next)) } catch { /* kept for this visit only */ }
+  }
+
+  const start = periodStart(filter.period, now)
+  const tcRows = useMemo(() => (filter.timeClass === 'all' ? rows : rows.filter(r => r.timeClass === filter.timeClass)), [rows, filter.timeClass])
+  const windowRows = useMemo(() => (start === null ? tcRows : tcRows.filter(r => r.end >= start)), [tcRows, start])
+  const results = useMemo(() => computeResults(windowRows, { before: ratingsBefore(tcRows, start) }), [windowRows, tcRows, start])
+  const before = useMemo(() => (start === null ? null : computeResults(tcRows.filter(r => r.end < start))), [tcRows, start])
+  const usual = before && before.games >= 30 ? before : null
+  const highlights = useMemo(() => resultsInsights(results, before), [results, before])
+
+  const list = useMemo(() => filterAnalyses(allAnalyses, filter, now), [allAnalyses, filter.period, filter.timeClass, now]) // eslint-disable-line react-hooks/exhaustive-deps
   const stats = useMemo(() => aggregate(list), [list])
   const insights = useMemo(() => deriveInsights(stats), [stats])
   const exercises = useMemo(() => extractExercises(list), [list])
@@ -35,27 +77,51 @@ export default function StatsScreen() {
   const strengths = useMemo(() => buildStrengths({ stats, exercises }), [stats, exercises])
   const timeline = useMemo(() => buildTimeline(list), [list])
   const trend = useMemo(() => computeTrend(timeline), [timeline])
-  const [tab, setTab] = useState<Tab>('overview')
 
-  if (list.length === 0) {
+  if (rows.length === 0 && allAnalyses.length === 0) {
     return (
       <Screen>
         <Stack.Screen options={{ title: 'Statistiques' }} />
         <H1>Pas encore de stats</H1>
         <Card>
-          <T tone="muted">Les stats sont calculées depuis tes parties analysées par Stockfish. Analyse au moins une partie pour débloquer cette page.</T>
+          <T tone="muted">Les stats se calculent sur tes parties chess.com. Récupère-les dans Parties pour débloquer cette page.</T>
         </Card>
+        <Button label="Voir mes parties" onPress={() => router.push('/parties')} />
       </Screen>
     )
   }
 
+  const long = periodLong(filter.period)
+  const fullHistory = history.total > 0 && history.done >= history.total - 1
+  const oldest = rows[0]?.end
+
   const n = stats.gamesAnalyzed
   const totalMistakes = stats.byClass.blunder + stats.byClass.mistake + stats.byClass.inaccuracy
+
+  const notAnalysed = (
+    <Card style={styles.gap}>
+      <T tone="muted">Aucune partie analysée {long}{filter.timeClass !== 'all' ? ` en ${TIME_CLASS_LABELS[filter.timeClass].toLowerCase()}` : ''}. La précision et les faiblesses viennent de l'analyse Stockfish de tes parties.</T>
+      <Button label="Analyser mes parties récentes" onPress={() => router.push('/parties')} />
+    </Card>
+  )
 
   return (
     <Screen>
       <Stack.Screen options={{ title: 'Statistiques' }} />
-      <T tone="muted">{n} partie{n > 1 ? 's' : ''} analysée{n > 1 ? 's' : ''}</T>
+      <Segmented
+        label="Période"
+        options={PERIODS.map(p => ({ value: p.id, label: p.label }))}
+        value={filter.period}
+        onChange={period => setFilter({ ...filter, period })}
+      />
+      {tcOptions.length > 0 && (
+        <Segmented
+          label="Cadence"
+          options={tcOptions.map(c => ({ value: c, label: TIME_CLASS_LABELS[c] }))}
+          value={filter.timeClass}
+          onChange={timeClass => setFilter({ ...filter, timeClass })}
+        />
+      )}
 
       <View style={styles.tabs}>
         {TABS.map(t => (
@@ -64,14 +130,44 @@ export default function StatsScreen() {
             onPress={() => setTab(t.id)}
             accessibilityRole="tab"
             accessibilityState={{ selected: tab === t.id }}
+            aria-selected={tab === t.id}
             style={[styles.tab, tab === t.id && styles.tabActive]}
           >
-            <Text style={[styles.tabText, tab === t.id && { color: C.strong }]}>{t.label}</Text>
+            <Text style={[styles.tabText, tab === t.id && { color: C.strong }]} numberOfLines={1}>{t.label}</Text>
           </Pressable>
         ))}
       </View>
 
-      {tab === 'overview' && (
+      {tab === 'results' && (results.games === 0 ? (
+        <Card style={styles.gap}>
+          <T tone="muted">Aucune partie {long}.</T>
+          {filter.period !== 'all' && <Button label="Voir depuis toujours" kind="secondary" onPress={() => setFilter({ ...filter, period: 'all' })} />}
+        </Card>
+      ) : (
+        <>
+          {results.games < MIN_GAMES && <T tone="faint" style={styles.small}>Moins de {MIN_GAMES} parties {long} : élargis la période pour des tendances fiables.</T>}
+          <StatsResultsTab stats={results} usual={usual} insights={highlights} periodLong={long} />
+        </>
+      ))}
+
+      {tab === 'openings' && (results.games === 0 ? (
+        <Card><T tone="muted">Aucune partie {long}.</T></Card>
+      ) : (
+        <StatsOpeningsTab openings={results.openings} average={scoreOf(results.all)} />
+      ))}
+
+      {(tab === 'results' || tab === 'openings') && oldest !== undefined && !fullHistory && (
+        <T tone="faint" style={styles.small}>
+          Calculé sur les {formatCount(rows.length)} parties récupérées (depuis le {new Date(oldest).toLocaleDateString('fr-FR')}). Pour remonter plus loin : Parties → Historique complet.
+        </T>
+      )}
+
+      {(tab === 'precision' || tab === 'weaknesses') && n === 0 && notAnalysed}
+      {(tab === 'precision' || tab === 'weaknesses') && n > 0 && (
+        <T tone="muted" style={styles.small}>{n} partie{n > 1 ? 's' : ''} analysée{n > 1 ? 's' : ''} parmi les {formatCount(results.games)} jouée{results.games > 1 ? 's' : ''} {long}</T>
+      )}
+
+      {tab === 'precision' && n > 0 && (
         <>
           {strengths.length > 0 && (
             <Card style={styles.good}>
@@ -104,11 +200,6 @@ export default function StatsScreen() {
             <T tone="faint" style={styles.small}>~20-30 maître · 30-60 solide · 60-100 club · 100+ à améliorer</T>
           </Card>
 
-          <Card style={styles.gap}>
-            <T tone="strong" style={styles.bold}>Résultats par couleur</T>
-            {(['white', 'black'] as const).map(color => <ResultBar key={color} color={color} r={stats.resultsByColor[color]} />)}
-          </Card>
-
           {trend && (
             <Card style={styles.gap}>
               <T tone="strong" style={styles.bold}>Tendance récente</T>
@@ -134,7 +225,7 @@ export default function StatsScreen() {
         </>
       )}
 
-      {tab === 'weaknesses' && (
+      {tab === 'weaknesses' && n > 0 && (
         <>
           <Card style={styles.gap}>
             <T tone="strong" style={styles.bold}>Motifs tactiques les plus ratés</T>
@@ -174,27 +265,7 @@ export default function StatsScreen() {
         </>
       )}
 
-      {tab === 'openings' && <OpeningsCard groups={stats.openingGroups} />}
     </Screen>
-  )
-}
-
-function ResultBar({ color, r }: { color: 'white' | 'black'; r: { w: number; l: number; d: number } }) {
-  const total = r.w + r.l + r.d
-  return (
-    <View style={{ gap: 4 }}>
-      <View style={styles.between}>
-        <T>{color === 'white' ? 'Blancs' : 'Noirs'}</T>
-        <T tone="muted" style={styles.small}>{r.w}V / {r.l}D / {r.d}N</T>
-      </View>
-      {total > 0 && (
-        <View style={styles.stack}>
-          <View style={{ flex: r.w, backgroundColor: '#22c55e' }} />
-          <View style={{ flex: r.d, backgroundColor: '#737373' }} />
-          <View style={{ flex: r.l, backgroundColor: '#ef4444' }} />
-        </View>
-      )}
-    </View>
   )
 }
 
@@ -244,54 +315,6 @@ function PhasesCard({ stats, totalMistakes }: { stats: AggregateStats; totalMist
   )
 }
 
-function OpeningsCard({ groups }: { groups: AggregateStats['openingGroups'] }) {
-  const [open, setOpen] = useState<Set<string>>(new Set())
-  const toggle = (name: string) => setOpen(prev => {
-    const next = new Set(prev)
-    if (next.has(name)) next.delete(name)
-    else next.add(name)
-    return next
-  })
-  return (
-    <>
-      <SectionLabel>Ouvertures jouées</SectionLabel>
-      {groups.length === 0 ? (
-        <Card><T tone="muted">Pas encore de données.</T></Card>
-      ) : (
-        groups.map(g => {
-          const multi = g.variations.length > 1
-          const isOpen = open.has(g.name)
-          return (
-            <Card key={g.name} onPress={multi ? () => toggle(g.name) : undefined} style={styles.gap}>
-              <View style={styles.between}>
-                <T tone="strong" style={[styles.bold, { flex: 1 }]}>{multi ? (isOpen ? '▾ ' : '▸ ') : ''}{g.name}</T>
-                <WinRate wins={g.wins} played={g.played} />
-              </View>
-              {multi && !isOpen && <T tone="faint" style={styles.small}>{g.variations.length} variations</T>}
-              {isOpen && g.variations.map(v => (
-                <View key={v.name} style={[styles.between, styles.variation]}>
-                  <T tone="muted" style={[styles.small, { flex: 1 }]}>{v.name}{v.ecoCode ? ` · ${v.ecoCode}` : ''}</T>
-                  <WinRate wins={v.wins} played={v.played} small />
-                </View>
-              ))}
-            </Card>
-          )
-        })
-      )}
-    </>
-  )
-}
-
-function WinRate({ wins, played, small }: { wins: number; played: number; small?: boolean }) {
-  const rate = played ? (wins / played) * 100 : 0
-  const color = rate >= 50 ? C.win : rate >= 33 ? C.text : C.danger
-  return (
-    <Text style={{ color, fontSize: small ? 12 : 14 }}>
-      {rate.toFixed(0)}% <Text style={{ color: C.faint, fontSize: 11 }}>({wins}/{played})</Text>
-    </Text>
-  )
-}
-
 const styles = StyleSheet.create({
   bold: { fontWeight: '600' },
   small: { fontSize: 12, lineHeight: 17 },
@@ -305,10 +328,7 @@ const styles = StyleSheet.create({
   col: { flex: 1 },
   big: { fontSize: 32, fontWeight: '700' },
   unit: { fontSize: 14, fontWeight: '400', color: C.faint },
-  between: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 },
-  stack: { flexDirection: 'row', height: 8, borderRadius: 4, overflow: 'hidden', backgroundColor: '#171717' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   cell: { flexBasis: '48%', flexGrow: 1, backgroundColor: '#1f1f1f', borderRadius: 8, padding: 10, gap: 2 },
   cellValue: { color: C.strong, fontSize: 22, fontWeight: '700' },
-  variation: { paddingLeft: 12, paddingVertical: 4, borderTopWidth: 1, borderTopColor: C.border },
 })

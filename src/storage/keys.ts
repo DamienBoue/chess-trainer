@@ -18,6 +18,7 @@ export const KEYS = {
   sounds:          'chess.sounds',
   filterTimeClass: 'chess.filter.tc',
   filterColor:     'chess.filter.color',
+  statsFilter:     'chess.stats.filter.v1',   // period + time control of Statistiques
   debugStockfish:  'sf.debug',
   strategyOverlays: 'chess.strategy.overlays.v1',
   strategyTrainer: 'chess.strategy.trainer.v1',

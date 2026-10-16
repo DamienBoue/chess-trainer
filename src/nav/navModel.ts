@@ -147,7 +147,7 @@ export const NAV: NavEntry[] = [
           items: [
             { key: 'roadmap', label: 'Mon niveau', icon: '🏔️', description: 'Ta tranche Elo et les modules à valider pour la suivante.', target: { view: 'roadmap' } },
             {
-              key: 'stats', label: 'Statistiques', icon: '📊', description: 'Précision, phases, motifs tactiques, ouvertures.', target: { view: 'stats' },
+              key: 'stats', label: 'Statistiques', icon: '📊', description: 'Résultats, classement, ouvertures et précision, sur 7 jours à toujours.', target: { view: 'stats' },
               status: c => (c.analyses > 0 ? `${c.analyses} partie${c.analyses > 1 ? 's' : ''}` : null), unavailable: needGames(1),
             },
             { key: 'strategy-profile', label: 'Profil stratégique', icon: '🧩', description: 'Tes structures, tes types de centre, tes plans manqués.', target: { view: 'strategy', strategyTab: 'profile' }, unavailable: needGames(1) },
