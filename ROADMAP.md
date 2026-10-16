@@ -22,7 +22,8 @@ These were proposed and explicitly held off by the user. Don't drop them; pick t
 The former Vite web app was replaced by the app's web build (one app for iOS, Android and the web). Shipped: every tool, Stockfish bundled and restarted when killed, summary of a game, phone-first navigation.
 
 - **Builds**: EAS build + TestFlight / internal Android track (Expo Go today).
-- **Notifications**: daily reminder when exercises are due.
+- **Notifications**: new games are notified in the background on phones; a daily reminder when the exercise session isn't done yet is next.
+- **Sync across devices (Supabase)**: account by email code, analyses, exercise progress and settings shared between phone and PC.
 - **Bring back from the web app**: global colour / time-control filter, annotated PGN export, share links, sounds, data export/import, offline cache (service worker) for the web build.
 - **Board**: drag-to-move, promotion picker.
 

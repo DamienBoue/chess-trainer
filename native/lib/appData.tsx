@@ -1,7 +1,8 @@
 // The app's data, as on the website (src/App.tsx): the chess.com account,
 // its games and analyses (persisted per user), the exercise progress and
 // the shared Stockfish engine.
-import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { AppState } from 'react-native'
 import type { ChessComGame, GameAnalysis } from '@shared/types'
 import { getRecentGames } from '@shared/api/chesscom'
 import {
@@ -18,6 +19,7 @@ import {
 import { loadDailySession, saveDailySession } from '@shared/storage/dailyQueue'
 import { todayString } from '@shared/storage/daily'
 import { isDue } from '@shared/storage/persist'
+import { lastSyncAt, syncNewGames } from './sync'
 
 type Outcome = Parameters<typeof updateProgressAfterAttempt>[1]
 
@@ -46,12 +48,17 @@ interface AppData {
   analyses: Record<string, GameAnalysis>
   progress: Record<string, ExerciseProgress>
   analyzing: AnalyzeState | null
+  /** Checking chess.com for new games. */
+  syncing: boolean
+  /** When the games were last checked (ms). */
+  lastSync: number
   exercises: Exercise[]
   daily: DailyExercises
   /** "Encore": a few more exercises in today's session. */
   extendDaily(): void
   login(username: string): Promise<void>
   logout(): void
+  /** Fetches the games played since the last one (and analyses them). */
   reloadGames(): Promise<void>
   analyze(game: ChessComGame): Promise<GameAnalysis>
   recordAttempt(id: string, outcome: Outcome): void
@@ -67,6 +74,10 @@ function getEngine(): StockfishEngine {
 }
 
 const USERNAME_KEY = 'chess.username'
+/** New games are analysed on their own, this many at a time at most. */
+const AUTO_ANALYSE_MAX = 10
+/** Back to the foreground: check again after this long. */
+const SYNC_EVERY_MS = 2 * 60_000
 
 export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const [username, setUsername] = useState(() => localStorage.getItem(USERNAME_KEY) ?? '')
@@ -75,6 +86,8 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const [progress, setProgress] = useState<Record<string, ExerciseProgress>>(() => loadProgress())
   const [hydrated, setHydrated] = useState(false)
   const [analyzing, setAnalyzing] = useState<AnalyzeState | null>(null)
+  const [syncing, setSyncing] = useState(false)
+  const [lastSync, setLastSync] = useState(() => lastSyncAt())
   // Saving starts once the stored state is loaded, never over it.
   const loadedFor = useRef<string | null>(null)
 
@@ -98,6 +111,66 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => { if (username && loadedFor.current === username) void saveAnalyses(username, analyses) }, [analyses, username])
   useEffect(() => { if (username && loadedFor.current === username) void saveGames(username, games) }, [games, username])
+
+  // The latest analyses, for the automatic ones (never analyse a game twice).
+  const analysesRef = useRef(analyses)
+  useEffect(() => { analysesRef.current = analyses }, [analyses])
+
+  // One analysis at a time (taps and automatic ones share the engine).
+  const chain = useRef<Promise<unknown>>(Promise.resolve())
+  const analyze = useCallback((game: ChessComGame): Promise<GameAnalysis> => {
+    const run = async () => {
+      setAnalyzing({ url: game.url, done: 0, total: 0 })
+      try {
+        const result = await analyzeGame(getEngine(), game, username, {
+          depth: getEngineDepth(),
+          movetimeMs: 600,
+          onProgress: p => setAnalyzing({ url: game.url, done: p.done, total: p.total }),
+        })
+        setAnalyses(prev => ({ ...prev, [result.url]: result }))
+        return result
+      } finally {
+        setAnalyzing(null)
+      }
+    }
+    const next = chain.current.then(run, run)
+    chain.current = next.catch(() => undefined)
+    return next
+  }, [username])
+
+  // New games since the last check, then their analysis: at launch, and
+  // when the app comes back to the foreground (the page shown again, on the
+  // web). Phones also check in the background (lib/backgroundSync.ts).
+  const syncingRef = useRef(false)
+  const sync = useCallback(async () => {
+    if (!username || syncingRef.current) return
+    syncingRef.current = true
+    setSyncing(true)
+    try {
+      const { games: merged, added } = await syncNewGames(username)
+      setGames(prev => {
+        const known = new Set(merged.map(g => g.url))
+        return [...merged, ...prev.filter(g => !known.has(g.url))]
+      })
+      setLastSync(lastSyncAt())
+      const toAnalyse = added.filter(g => !analysesRef.current[g.url]).slice(0, AUTO_ANALYSE_MAX)
+      for (const g of toAnalyse) void analyze(g).catch(() => undefined)
+    } catch {
+      // Offline or chess.com down: the next foreground will try again.
+    } finally {
+      syncingRef.current = false
+      setSyncing(false)
+    }
+  }, [username, analyze])
+
+  useEffect(() => {
+    if (!hydrated || !username) return
+    void sync()
+    const sub = AppState.addEventListener('change', state => {
+      if (state === 'active' && Date.now() - lastSyncAt() > SYNC_EVERY_MS) void sync()
+    })
+    return () => sub.remove()
+  }, [hydrated, username, sync])
   useEffect(() => { saveProgress(progress) }, [progress])
 
   // Today's session: frozen for the day, picked again once the games are
@@ -143,6 +216,8 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     analyses,
     progress,
     analyzing,
+    syncing,
+    lastSync,
     exercises,
     daily,
     extendDaily() {
@@ -167,33 +242,13 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       setAnalyses({})
       setHydrated(false)
     },
-    async reloadGames() {
-      if (!username) return
-      const fetched = await getRecentGames(username)
-      setGames(prev => {
-        const seen = new Set(fetched.map(g => g.url))
-        return [...fetched, ...prev.filter(g => !seen.has(g.url))]
-      })
-    },
-    async analyze(game) {
-      setAnalyzing({ url: game.url, done: 0, total: 0 })
-      try {
-        const result = await analyzeGame(getEngine(), game, username, {
-          depth: getEngineDepth(),
-          movetimeMs: 600,
-          onProgress: p => setAnalyzing({ url: game.url, done: p.done, total: p.total }),
-        })
-        setAnalyses(prev => ({ ...prev, [result.url]: result }))
-        return result
-      } finally {
-        setAnalyzing(null)
-      }
-    },
+    reloadGames: sync,
+    analyze,
     recordAttempt(id, outcome) {
       setProgress(prev => ({ ...prev, [id]: updateProgressAfterAttempt(prev[id], outcome) }))
     },
     engine: getEngine,
-  }), [username, hydrated, games, analyses, progress, analyzing, exercises, daily, session, recency])
+  }), [username, hydrated, games, analyses, progress, analyzing, syncing, lastSync, exercises, daily, session, recency, sync, analyze])
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

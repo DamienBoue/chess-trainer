@@ -13,7 +13,7 @@ import { C } from '@/constants/theme'
 const RESULT = { win: { label: 'Victoire', tone: 'win' }, loss: { label: 'Défaite', tone: 'loss' }, draw: { label: 'Nulle', tone: 'muted' } } as const
 
 export default function Games() {
-  const { username, games, analyses, analyzing, analyze, reloadGames } = useAppData()
+  const { username, games, analyses, analyzing, analyze, reloadGames, syncing, lastSync } = useAppData()
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const pending = games.filter(g => !analyses[g.url])
@@ -45,6 +45,7 @@ export default function Games() {
       ListHeaderComponent={
         <View style={styles.header}>
           <T tone="muted">{games.length} parties récentes · {games.length - pending.length} analysée{games.length - pending.length > 1 ? 's' : ''}</T>
+          <T tone="faint" style={styles.small}>{syncing ? 'Recherche de nouvelles parties…' : lastSync ? `À jour ${sinceLabel(lastSync)} · tire vers le bas pour vérifier` : 'Tire vers le bas pour chercher tes nouvelles parties'}</T>
           {analyzing && <T tone="accent">Analyse en cours… {analyzing.total ? `${analyzing.done}/${analyzing.total} coups` : ''}</T>}
           {error && <T tone="danger">{error}</T>}
           {pending.length > 0 && !analyzing && <Button label={`Tout analyser (${pending.length})`} onPress={analyzeAll} />}
@@ -72,6 +73,15 @@ export default function Games() {
       ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
     />
   )
+}
+
+/** "il y a 5 min", "à l'instant"… */
+function sinceLabel(ms: number): string {
+  const min = Math.round((Date.now() - ms) / 60_000)
+  if (min < 1) return 'à l\'instant'
+  if (min < 60) return `il y a ${min} min`
+  const h = Math.round(min / 60)
+  return h < 24 ? `il y a ${h} h` : `il y a ${Math.round(h / 24)} j`
 }
 
 const styles = StyleSheet.create({
