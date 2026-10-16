@@ -4,7 +4,6 @@
 import { useMemo, useState } from 'react'
 import { StyleSheet, View } from 'react-native'
 import { Stack, router } from 'expo-router'
-import { extractExercises } from '@shared/analysis/exercises'
 import {
   type DailyState, todayString, loadDaily, saveDaily, pickDaily, bumpStreak, decayStreakIfMissed,
 } from '@shared/storage/daily'
@@ -14,8 +13,7 @@ import { useAppData } from '@/lib/appData'
 import { C } from '@/constants/theme'
 
 export default function DailyPuzzleScreen() {
-  const { analyses } = useAppData()
-  const exercises = useMemo(() => extractExercises(Object.values(analyses)), [analyses])
+  const { exercises } = useAppData()
   const today = todayString()
   const [saved, setSaved] = useState<DailyState | null>(() => decayStreakIfMissed(loadDaily(), today))
 

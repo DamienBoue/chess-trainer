@@ -115,6 +115,7 @@ export function extractExercises(
         && move.cpLoss >= minMissedCpLoss
         && move.bestMoveSan !== move.san
       ) {
+        const motifs = detectMotifs(move)
         fromGame.push({
           id: `${game.url}#${move.ply}-missed`,
           category: 'missed',
@@ -128,8 +129,8 @@ export function extractExercises(
           cpSwing: move.cpLoss,
           evalBeforeWhite: move.evalBefore,
           evalAfterPlayedWhite: move.evalAfter,
-          motifs: detectMotifs(move),
-          difficulty: gradeDifficulty(move.bestMoveSan, move.bestLineSan, detectMotifs(move), move.cpLoss),
+          motifs,
+          difficulty: gradeDifficulty(move.bestMoveSan, move.bestLineSan, motifs, move.cpLoss),
           context: ctx,
         })
         continue
@@ -143,6 +144,7 @@ export function extractExercises(
         && prev.cpLoss >= minOpponentCpLoss
         && (move.classification === 'best' || move.classification === 'great')
       ) {
+        const motifs = detectMotifs(move)
         fromGame.push({
           id: `${game.url}#${move.ply}-punishment`,
           category: 'punishment',
@@ -156,8 +158,8 @@ export function extractExercises(
           cpSwing: prev.cpLoss,
           evalBeforeWhite: move.evalBefore,
           evalAfterPlayedWhite: move.evalAfter,
-          motifs: detectMotifs(move),
-          difficulty: gradeDifficulty(move.bestMoveSan, move.bestLineSan, detectMotifs(move), move.cpLoss),
+          motifs,
+          difficulty: gradeDifficulty(move.bestMoveSan, move.bestLineSan, motifs, move.cpLoss),
           context: ctx,
         })
         continue
@@ -169,6 +171,7 @@ export function extractExercises(
         userEvalBefore <= defenseEvalCeiling
         && (move.classification === 'best' || move.classification === 'great')
       ) {
+        const motifs = detectMotifs(move)
         fromGame.push({
           id: `${game.url}#${move.ply}-defense`,
           category: 'defense',
@@ -182,8 +185,8 @@ export function extractExercises(
           cpSwing: Math.abs(userEvalBefore),
           evalBeforeWhite: move.evalBefore,
           evalAfterPlayedWhite: move.evalAfter,
-          motifs: detectMotifs(move),
-          difficulty: gradeDifficulty(move.bestMoveSan, move.bestLineSan, detectMotifs(move), move.cpLoss),
+          motifs,
+          difficulty: gradeDifficulty(move.bestMoveSan, move.bestLineSan, motifs, move.cpLoss),
           context: ctx,
         })
         continue

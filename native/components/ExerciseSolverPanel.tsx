@@ -19,6 +19,7 @@ export type SolveOutcome = 'first-try' | 'after-retry' | 'failed' | 'revealed'
 type Status = 'pending' | 'wrong' | 'progress' | 'completed' | 'revealed'
 
 const BAD = 'rgba(208, 74, 74, 0.6)'
+const GOOD = 'rgba(74, 222, 128, 0.55)'
 
 interface Props {
   exercise: Exercise
@@ -55,6 +56,8 @@ export default function ExerciseSolverPanel({ exercise, progress, singleMove, in
   const [attempts, setAttempts] = useState(0)
   const [lastMove, setLastMove] = useState<{ from: string; to: string } | null>(null)
   const [wrongSquares, setWrongSquares] = useState<{ from: string; to: string } | null>(null)
+  // The right move just played, tinted green until the reply.
+  const [goodMove, setGoodMove] = useState<{ from: string; to: string } | null>(null)
   const [reported, setReported] = useState(!!initialSolved)
   const wrongTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => () => { if (wrongTimer.current) clearTimeout(wrongTimer.current) }, [])
@@ -74,6 +77,7 @@ export default function ExerciseSolverPanel({ exercise, progress, singleMove, in
       if (!mv) { setLinePly(lineSans.length); return }
       setPosition(chess.current.fen())
       setLastMove({ from: mv.from, to: mv.to })
+      setGoodMove(null)
       const next = linePly + 1
       setLinePly(next)
       if (next >= lineSans.length && status === 'progress') setStatus('completed')
@@ -96,6 +100,7 @@ export default function ExerciseSolverPanel({ exercise, progress, singleMove, in
     if (attempt.san === lineSans[linePly]) {
       setPosition(chess.current.fen())
       setLastMove({ from, to })
+      setGoodMove({ from, to })
       setWrongSquares(null)
       if (linePly === 0) report(attempts === 0 ? 'first-try' : 'after-retry')
       const next = linePly + 1
@@ -132,6 +137,7 @@ export default function ExerciseSolverPanel({ exercise, progress, singleMove, in
     setLinePly(0)
     setAttempts(0)
     setLastMove(null)
+    setGoodMove(null)
     setWrongSquares(null)
     setReported(false)
   }
@@ -139,7 +145,7 @@ export default function ExerciseSolverPanel({ exercise, progress, singleMove, in
   const over = status === 'completed' || status === 'revealed'
   const highlights: Record<string, string> = wrongSquares
     ? { [wrongSquares.from]: BAD, [wrongSquares.to]: BAD }
-    : {}
+    : goodMove ? { [goodMove.from]: GOOD, [goodMove.to]: GOOD } : {}
   const userPliesTotal = Math.ceil(lineSans.length / 2)
   const userPliesDone = Math.ceil(linePly / 2)
 

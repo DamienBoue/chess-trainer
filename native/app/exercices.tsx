@@ -30,8 +30,11 @@ export default function ExercisesScreen() {
   }, [exercises, category, difficulty, status, progress, daily])
 
   // The active exercise stays pinned even after it drops out of the filter
-  // (solved under "À réviser"): it would otherwise look like an auto-advance.
+  // (solved today, it leaves the session): it would otherwise be replaced
+  // at once by the next one, before the solved move is even seen.
   const active = (activeId ? exercises.find(e => e.id === activeId) : null) ?? filtered[0] ?? null
+  // Another filter: start from its first exercise.
+  const pickFilter = <V,>(set: (v: V) => void) => (v: V) => { setActiveId(null); set(v) }
 
   const counts = useMemo<FilterCounts>(() => ({
     today: daily.remaining.length,
@@ -83,9 +86,9 @@ export default function ExercisesScreen() {
     <Screen>
       {title}
       <ExerciseFiltersFold
-        status={status} onStatus={setStatus}
-        category={category} onCategory={setCategory}
-        difficulty={difficulty} onDifficulty={setDifficulty}
+        status={status} onStatus={pickFilter(setStatus)}
+        category={category} onCategory={pickFilter(setCategory)}
+        difficulty={difficulty} onDifficulty={pickFilter(setDifficulty)}
         counts={counts} shown={filtered.length}
       />
       {status === 'today' && daily.total > 0 && (
@@ -98,7 +101,7 @@ export default function ExercisesScreen() {
           <T tone="win" style={styles.bold}>✓ Séance du jour terminée</T>
           <T tone="muted">Reviens demain : tes erreurs récentes et tes révisions t'attendront.</T>
           {daily.reserve > 0 && <Button label="Encore 10 exercices" onPress={extendDaily} />}
-          {daily.reserve > 0 && <Button label={`Voir la réserve (${daily.reserve})`} kind="secondary" onPress={() => setStatus('due')} />}
+          {daily.reserve > 0 && <Button label={`Voir la réserve (${daily.reserve})`} kind="secondary" onPress={() => pickFilter(setStatus)('due')} />}
         </Card>
       )}
       {active ? (
@@ -106,7 +109,7 @@ export default function ExercisesScreen() {
           <View style={styles.nav}>
             <Button label="←" onPress={() => step(-1)} disabled={filtered.length <= 1} kind="secondary" style={styles.arrow} />
             <T tone="muted" style={styles.count}>
-              {offList ? `✓ Hors filtre · ${filtered.length} restant${filtered.length > 1 ? 's' : ''}` : `Exercice ${idx + 1} / ${filtered.length}`}
+              {offList ? `✓ Fait · encore ${filtered.length}` : `Exercice ${idx + 1} / ${filtered.length}`}
             </T>
             <Button label="→" onPress={() => step(1)} disabled={filtered.length === 0} kind="secondary" style={styles.arrow} />
           </View>
@@ -114,7 +117,7 @@ export default function ExercisesScreen() {
             key={active.id}
             exercise={active}
             progress={progress[active.id]}
-            onOutcome={o => recordAttempt(active.id, o)}
+            onOutcome={o => { setActiveId(active.id); recordAttempt(active.id, o) }}
             onNext={() => step(1)}
           />
         </>

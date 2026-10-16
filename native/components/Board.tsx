@@ -1,7 +1,7 @@
 // The chessboard: one SVG for squares, highlights, pieces and arrows, under
 // 64 touch targets (tap a piece, then its destination — the phone way,
 // with the legal squares dotted). Same colours as the website's board.
-import { memo, useMemo, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Pressable, StyleSheet, View } from 'react-native'
 import Svg, { Circle, G, Line, Path, Polygon, Rect, Text as SvgText } from 'react-native-svg'
 import { Chess, type Square } from 'chess.js'
@@ -44,6 +44,50 @@ function renderNode(n: SvgNode, key: number): React.ReactNode {
   return <Path key={key} {...props} />
 }
 
+// The squares and their coordinates: drawn once (per orientation), never on
+// a tap or a move.
+const Background = memo(function Background() {
+  return (
+    <>
+      {Array.from({ length: 64 }, (_, i) => {
+        const x = i % 8, y = Math.floor(i / 8)
+        return <Rect key={i} x={x} y={y} width={1} height={1} fill={(x + y) % 2 === 0 ? LIGHT : DARK} />
+      })}
+    </>
+  )
+})
+
+const Coordinates = memo(function Coordinates({ flipped }: { flipped: boolean }) {
+  return (
+    <>
+      {Array.from({ length: 8 }, (_, i) => (
+        <G key={`c${i}`}>
+          <SvgText x={0.04} y={i + 0.2} fontSize={0.17} fill={i % 2 === 0 ? DARK : LIGHT} fontWeight="600">
+            {flipped ? i + 1 : 8 - i}
+          </SvgText>
+          <SvgText x={i + 0.96} y={7.95} fontSize={0.17} fill={i % 2 === 0 ? LIGHT : DARK} fontWeight="600" textAnchor="end">
+            {FILES[flipped ? 7 - i : i]}
+          </SvgText>
+        </G>
+      ))}
+    </>
+  )
+})
+
+// One touch target; re-rendered only when what it holds changes.
+const TapSquare = memo(function TapSquare({ square, label, left, top, cell, onTap }: {
+  square: string; label: string; left: number; top: number; cell: number; onTap: (square: string) => void
+}) {
+  return (
+    <Pressable
+      onPress={() => onTap(square)}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      style={{ position: 'absolute', left, top, width: cell, height: cell }}
+    />
+  )
+})
+
 const Piece = memo(function Piece({ code, x, y }: { code: PieceCode; x: number; y: number }) {
   return <G transform={`translate(${x} ${y}) scale(${1 / 45})`}>{PIECES[code].map(renderNode)}</G>
 })
@@ -65,6 +109,11 @@ export default function Board({ fen, size, orientation = 'white', lastMove, arro
   const pieces: { code: PieceCode; square: string }[] = []
   board.forEach(row => row.forEach(p => { if (p) pieces.push({ code: `${p.color}${p.type.toUpperCase()}` as PieceCode, square: p.square }) }))
 
+  // The touch targets call the latest tap() through a stable function.
+  const tapRef = useRef<(square: string) => void>(() => undefined)
+  const onTap = useCallback((square: string) => tapRef.current(square), [])
+  useEffect(() => { tapRef.current = tap })
+
   function tap(square: string) {
     if (!onMove || !chess) return
     const piece = chess.get(square as Square)
@@ -81,10 +130,7 @@ export default function Board({ fen, size, orientation = 'white', lastMove, arro
   return (
     <View style={{ width: size, height: size }}>
       <Svg width={size} height={size} viewBox="0 0 8 8" pointerEvents="none">
-        {Array.from({ length: 64 }, (_, i) => {
-          const x = i % 8, y = Math.floor(i / 8)
-          return <Rect key={i} x={x} y={y} width={1} height={1} fill={(x + y) % 2 === 0 ? LIGHT : DARK} />
-        })}
+        <Background />
         {lastMove && [lastMove.from, lastMove.to].map(sq => {
           const [x, y] = squareXY(sq, flipped)
           return <Rect key={`lm${sq}`} x={x} y={y} width={1} height={1} fill={LAST_MOVE} />
@@ -97,16 +143,7 @@ export default function Board({ fen, size, orientation = 'white', lastMove, arro
           const [x, y] = squareXY(sel, flipped)
           return <Rect x={x} y={y} width={1} height={1} fill={SELECTED} />
         })()}
-        {Array.from({ length: 8 }, (_, i) => (
-          <G key={`c${i}`}>
-            <SvgText x={0.04} y={i + 0.2} fontSize={0.17} fill={i % 2 === 0 ? DARK : LIGHT} fontWeight="600">
-              {flipped ? i + 1 : 8 - i}
-            </SvgText>
-            <SvgText x={i + 0.96} y={7.95} fontSize={0.17} fill={i % 2 === 0 ? LIGHT : DARK} fontWeight="600" textAnchor="end">
-              {FILES[flipped ? 7 - i : i]}
-            </SvgText>
-          </G>
-        ))}
+        <Coordinates flipped={flipped} />
         {pieces.map(p => {
           const [x, y] = squareXY(p.square, flipped)
           return <Piece key={`${p.code}${p.square}`} code={p.code} x={x} y={y} />
@@ -127,12 +164,14 @@ export default function Board({ fen, size, orientation = 'white', lastMove, arro
             const square = flipped ? `${FILES[7 - x]}${y + 1}` : `${FILES[x]}${8 - y}`
             const p = chess?.get(square as Square)
             return (
-              <Pressable
+              <TapSquare
                 key={square}
-                onPress={() => tap(square)}
-                accessibilityRole="button"
-                accessibilityLabel={p ? `${square}, ${PIECE_NAMES[p.type]} ${p.color === 'w' ? 'blanc' : 'noir'}` : square}
-                style={{ position: 'absolute', left: x * cell, top: y * cell, width: cell, height: cell }}
+                square={square}
+                label={p ? `${square}, ${PIECE_NAMES[p.type]} ${p.color === 'w' ? 'blanc' : 'noir'}` : square}
+                left={x * cell}
+                top={y * cell}
+                cell={cell}
+                onTap={onTap}
               />
             )
           })}

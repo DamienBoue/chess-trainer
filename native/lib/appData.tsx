@@ -1,7 +1,7 @@
 // The app's data, as on the website (src/App.tsx): the chess.com account,
 // its games and analyses (persisted per user), the exercise progress and
 // the shared Stockfish engine.
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { createContext, startTransition, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { AppState } from 'react-native'
 import type { ChessComGame, GameAnalysis } from '@shared/types'
 import { getRecentGames } from '@shared/api/chesscom'
@@ -114,6 +114,10 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const historyAbort = useRef<AbortController | null>(null)
   // Saving starts once the stored state is loaded, never over it.
   const loadedFor = useRef<string | null>(null)
+  // What the store already holds: never written back as is (tens of MB with
+  // a full history, the app would freeze at each launch).
+  const storedGames = useRef<ChessComGame[] | null>(null)
+  const storedAnalyses = useRef<Record<string, GameAnalysis> | null>(null)
 
   useEffect(() => {
     loadedFor.current = null
@@ -121,6 +125,8 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     let cancelled = false
     Promise.all([loadGames(username), loadAnalyses(username)]).then(([g, a]) => {
       if (cancelled) return
+      storedGames.current = g
+      storedAnalyses.current = a
       setGames(prev => {
         if (prev.length === 0) return g
         const seen = new Set(prev.map(x => x.url))
@@ -133,12 +139,23 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     return () => { cancelled = true }
   }, [username])
 
-  useEffect(() => { if (username && loadedFor.current === username) void saveAnalyses(username, analyses) }, [analyses, username])
-  useEffect(() => { if (username && loadedFor.current === username) void saveGames(username, games) }, [games, username])
+  useEffect(() => {
+    if (!username || loadedFor.current !== username || analyses === storedAnalyses.current) return
+    storedAnalyses.current = analyses
+    void saveAnalyses(username, analyses)
+  }, [analyses, username])
+  useEffect(() => {
+    if (!username || loadedFor.current !== username || games === storedGames.current) return
+    storedGames.current = games
+    void saveGames(username, games)
+  }, [games, username])
 
   // The latest analyses, for the automatic ones (never analyse a game twice).
   const analysesRef = useRef(analyses)
   useEffect(() => { analysesRef.current = analyses }, [analyses])
+  // The latest games, for the sync and the history download.
+  const gamesRef = useRef(games)
+  useEffect(() => { gamesRef.current = games }, [games])
 
   // One analysis at a time (taps and automatic ones share the engine).
   const chain = useRef<Promise<unknown>>(Promise.resolve())
@@ -171,11 +188,14 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     syncingRef.current = true
     setSyncing(true)
     try {
-      const { games: merged, added } = await syncNewGames(username)
-      setGames(prev => {
-        const known = new Set(merged.map(g => g.url))
-        return [...merged, ...prev.filter(g => !known.has(g.url))]
-      })
+      const { games: merged, added } = await syncNewGames(username, gamesRef.current)
+      // Nothing new: the same array, so nothing is saved or recomputed.
+      if (added.length > 0) {
+        setGames(prev => {
+          const known = new Set(merged.map(g => g.url))
+          return [...merged, ...prev.filter(g => !known.has(g.url))]
+        })
+      }
       setLastSync(lastSyncAt())
       const toAnalyse = added.filter(g => !analysesRef.current[g.url]).slice(0, AUTO_ANALYSE_MAX)
       for (const g of toAnalyse) void analyze(g).catch(() => undefined)
@@ -235,8 +255,6 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   }, [session, ready, exercises, progress, recency])
 
   // ---- The whole history (Parties → "Télécharger tout l'historique") -----
-  const gamesRef = useRef(games)
-  useEffect(() => { gamesRef.current = games }, [games])
   useEffect(() => { setHistory(h => ({ ...h, ...loadHistoryStatus(username) })) }, [username])
   const downloadHistory = useCallback(async () => {
     if (!username || historyAbort.current) return
@@ -366,7 +384,11 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     reloadGames: sync,
     analyze,
     recordAttempt(id, outcome) {
-      setProgress(prev => ({ ...prev, [id]: updateProgressAfterAttempt(prev[id], outcome) }))
+      // Once the move is on screen: the progress feeds the session, the plan
+      // and the badges, a re-render that must not hold the board back.
+      requestAnimationFrame(() => setTimeout(() => startTransition(() => {
+        setProgress(prev => ({ ...prev, [id]: updateProgressAfterAttempt(prev[id], outcome) }))
+      }), 0))
     },
     engine: getEngine,
   }), [username, hydrated, games, analyses, progress, analyzing, syncing, lastSync, exercises, daily, session, recency, sync, analyze, cloud, syncCloud, history, downloadHistory])

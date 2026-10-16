@@ -65,6 +65,31 @@ describe('detectMotifs', () => {
 })
 
 describe('MOTIF_LABELS', () => {
+  it('flags a pin: our bishop, their knight, their king behind it', () => {
+    const m = move({ fenBefore: '4k3/8/2n5/1B6/8/8/8/4K3 w - - 0 1', bestMoveSan: 'Kd2' })
+    expect(detectMotifs(m)).toContain('pin')
+  })
+
+  it('sees no pin when a second piece shields the one behind', () => {
+    const m = move({ fenBefore: '4k3/3p4/2n5/1B6/8/8/8/4K3 w - - 0 1', bestMoveSan: 'Kd2' })
+    expect(detectMotifs(m)).not.toContain('pin')
+  })
+
+  it('flags the capture of an undefended piece', () => {
+    const m = move({ fenBefore: '4k3/8/8/3n4/8/8/8/3QK3 w - - 0 1', bestMoveSan: 'Qxd5' })
+    expect(detectMotifs(m)).toContain('hanging-capture')
+  })
+
+  it('flags a sacrifice: the queen takes a defended pawn and the engine likes it', () => {
+    const m = move({ fenBefore: '4k3/8/4p3/3p4/8/8/8/3QK3 w - - 0 1', bestMoveSan: 'Qxd5', evalAfter: 300 })
+    expect(detectMotifs(m)).toEqual(['sacrifice'])
+  })
+
+  it('computes each move once', () => {
+    const m = move({ fenBefore: '4k3/8/2n5/1B6/8/8/8/4K3 w - - 0 1', bestMoveSan: 'Kd2' })
+    expect(detectMotifs(m)).toBe(detectMotifs(m))
+  })
+
   it('has a French label for every motif tag', () => {
     const tags: MotifTag[] = ['mate-found', 'mate-missed', 'fork', 'fork-royal', 'pin', 'hanging-capture', 'sacrifice', 'capture']
     for (const t of tags) {
