@@ -23,7 +23,7 @@ The former Vite web app was replaced by the app's web build (one app for iOS, An
 
 - **Builds**: EAS build + TestFlight / internal Android track (Expo Go today).
 - **Notifications**: new games are notified in the background on phones; a daily reminder when the exercise session isn't done yet is next.
-- **Sync across devices (Supabase)**: account by email code, analyses, exercise progress and settings shared between phone and PC.
+- **Sync across devices (Supabase)**: built (Google sign-in, analyses, progress, session, level); to switch on once the project is configured (docs/supabase.md). Next: books and PGN players, realtime updates.
 - **Bring back from the web app**: global colour / time-control filter, annotated PGN export, share links, sounds, data export/import, offline cache (service worker) for the web build.
 - **Board**: drag-to-move, promotion picker.
 

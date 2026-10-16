@@ -6,11 +6,20 @@ import NumberStepperRow from '@/components/NumberStepperRow'
 import OptionChipsRow from '@/components/OptionChipsRow'
 import { useAppData } from '@/lib/appData'
 import { backgroundSyncSupported, disableBackgroundSync, enableBackgroundSync, isBackgroundSyncEnabled } from '@/lib/backgroundSync'
+import { cloudEnabled, signInWithGoogle, signOut } from '@/lib/cloud'
 
 const DEPTHS = [{ value: 10, label: 'Rapide' }, { value: 14, label: 'Recommandé' }, { value: 18, label: 'Profond' }]
 
 export default function PreferencesScreen() {
-  const { username, logout } = useAppData()
+  const { username, logout, cloud, syncCloud } = useAppData()
+  const [signingIn, setSigningIn] = useState(false)
+  const [signInError, setSignInError] = useState<string | null>(null)
+
+  async function google() {
+    setSigningIn(true)
+    setSignInError(null)
+    try { await signInWithGoogle() } catch (e) { setSignInError(e instanceof Error ? e.message : String(e)) } finally { setSigningIn(false) }
+  }
   const [depth, setDepth] = useState(getEngineDepth())
   // Two taps: Alert has no multi-button on the web build.
   const [confirmLogout, setConfirmLogout] = useState(false)
@@ -39,7 +48,29 @@ export default function PreferencesScreen() {
   return (
     <Screen>
       <Stack.Screen options={{ title: 'Préférences' }} />
-      <T tone="muted">Réglages stockés sur le téléphone. Aucun envoi serveur.</T>
+      <T tone="muted">{cloud.user ? 'Tes données sont partagées entre tes appareils via ton compte.' : 'Tes données restent sur cet appareil, sauf si tu te connectes pour les partager.'}</T>
+
+      {cloudEnabled && (
+        <Card style={{ gap: 12 }}>
+          <SectionLabel>Synchronisation (téléphone ↔ PC)</SectionLabel>
+          {cloud.user ? (
+            <>
+              <T>Connecté avec <T tone="strong">{cloud.user.email}</T>.</T>
+              <T tone="muted">Analyses, progression des exercices et du répertoire, séance du jour et niveau sont partagés : retrouve-les sur ton téléphone comme sur ton PC.</T>
+              <T tone="faint">{cloud.syncing ? 'Synchronisation…' : cloud.syncedAt ? `Synchronisé à ${new Date(cloud.syncedAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}` : 'Pas encore synchronisé'}</T>
+              {cloud.error && <T tone="danger">Erreur : {cloud.error}</T>}
+              <Button label="Synchroniser maintenant" kind="secondary" busy={cloud.syncing} onPress={() => { void syncCloud() }} />
+              <Button label="Se déconnecter" kind="ghost" onPress={() => { void signOut() }} />
+            </>
+          ) : (
+            <>
+              <T>Connecte-toi avec Google pour retrouver tes analyses et ta progression sur tous tes appareils.</T>
+              <Button label="Se connecter avec Google" onPress={google} busy={signingIn} />
+              {signInError && <T tone="danger">{signInError}</T>}
+            </>
+          )}
+        </Card>
+      )}
 
       <Card style={{ gap: 12 }}>
         <SectionLabel>Moteur Stockfish</SectionLabel>

@@ -51,3 +51,7 @@ jobs:
         working-directory: native
       - run: npm run export:web
         working-directory: native
+        env:
+          # Sync between devices (Supabase): public values, set as repository variables.
+          EXPO_PUBLIC_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}

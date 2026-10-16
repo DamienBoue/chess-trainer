@@ -4,10 +4,14 @@ Living inventory of what the app does today. One React Native (Expo) app for iOS
 
 ## Design principles
 
-- **No backend**. Everything runs on the device: Stockfish included. The user's data never leaves it (web: IndexedDB + localStorage; phones: SQLite).
+- **No backend of its own**. Everything runs on the device, Stockfish included (web: IndexedDB + localStorage; phones: SQLite). Optional: sign in with Google to sync your data between devices (Supabase).
 - **No account**. Type your chess.com username, that's it.
 - **Adapts to your level**. Recommendations, drill difficulty and study priorities follow your Elo bracket.
 - **Phone-first**. Bottom tab bar with five parts, hub pages instead of menus, the board high on the screen, controls under the thumb, 44px touch targets.
+
+## Sync between devices (optional)
+
+Sign in with Google (Préférences) to share analyses, exercise and repertoire progress, the day's session, level and streak between your phone and your PC, through Supabase. Offline first: every device keeps working on its own storage; syncs run at launch, back in the foreground and a few seconds after each change. Progress merges exercise by exercise (the latest attempt wins), so a session done on the PC counts on the phone. Setup: [docs/supabase.md](docs/supabase.md).
 
 ## Data sources
 

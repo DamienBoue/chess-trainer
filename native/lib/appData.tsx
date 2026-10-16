@@ -20,10 +20,22 @@ import { loadDailySession, saveDailySession } from '@shared/storage/dailyQueue'
 import { todayString } from '@shared/storage/daily'
 import { isDue } from '@shared/storage/persist'
 import { lastSyncAt, syncNewGames } from './sync'
+import { syncOnce, type LocalStore } from '@shared/sync/engine'
+import { KEYS } from '@shared/storage/keys'
+import { supabase } from './supabase'
+import { loadSyncState, saveSyncState, supabaseRemote } from './cloud'
 
 type Outcome = Parameters<typeof updateProgressAfterAttempt>[1]
 
 export interface AnalyzeState { url: string; done: number; total: number }
+
+/** The account the data is shared with (phone ↔ PC), when signed in. */
+export interface CloudState {
+  user: { id: string; email: string } | null
+  syncing: boolean
+  syncedAt: number | null
+  error: string | null
+}
 
 /** Today's exercise session (see @shared/analysis/dailyQueue). */
 export interface DailyExercises {
@@ -54,6 +66,9 @@ interface AppData {
   lastSync: number
   exercises: Exercise[]
   daily: DailyExercises
+  cloud: CloudState
+  /** Pulls and pushes the shared data now. */
+  syncCloud(): Promise<void>
   /** "Encore": a few more exercises in today's session. */
   extendDaily(): void
   login(username: string): Promise<void>
@@ -88,6 +103,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const [analyzing, setAnalyzing] = useState<AnalyzeState | null>(null)
   const [syncing, setSyncing] = useState(false)
   const [lastSync, setLastSync] = useState(() => lastSyncAt())
+  const [cloud, setCloud] = useState<CloudState>({ user: null, syncing: false, syncedAt: null, error: null })
   // Saving starts once the stored state is loaded, never over it.
   const loadedFor = useRef<string | null>(null)
 
@@ -171,6 +187,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     })
     return () => sub.remove()
   }, [hydrated, username, sync])
+
   useEffect(() => { saveProgress(progress) }, [progress])
 
   // Today's session: frozen for the day, picked again once the games are
@@ -209,6 +226,74 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     return { ids: session.ids, remaining: sp.remaining, done: sp.done, total: sp.total, reserve, currentDue, archived }
   }, [session, ready, exercises, progress, recency])
 
+  // ---- Sharing with the account (Supabase): phone ↔ PC -------------------
+  useEffect(() => {
+    if (!supabase) return
+    const toUser = (u: { id: string; email?: string } | null | undefined) => (u ? { id: u.id, email: u.email ?? '' } : null)
+    void supabase.auth.getSession().then(({ data }) => setCloud(c => ({ ...c, user: toUser(data.session?.user) })))
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => setCloud(c => ({ ...c, user: toUser(session?.user) })))
+    return () => data.subscription.unsubscribe()
+  }, [])
+
+  // What the sync engine reads and writes on this device: the live state
+  // (saved by the effects above), and localStorage for the rest.
+  const progressRef = useRef(progress)
+  useEffect(() => { progressRef.current = progress }, [progress])
+  const sessionRef = useRef(storedSession)
+  useEffect(() => { sessionRef.current = storedSession }, [storedSession])
+  const localStore = useMemo<LocalStore>(() => ({
+    analyses: () => analysesRef.current,
+    addAnalyses: list => setAnalyses(prev => ({ ...prev, ...Object.fromEntries(list.map(a => [a.url, a])) })),
+    document: key => {
+      if (key === KEYS.exerciseProgress) return progressRef.current
+      if (key === KEYS.dailyExercises) return sessionRef.current ?? undefined
+      if (key === KEYS.username) return username || undefined
+      const raw = localStorage.getItem(key)
+      if (raw === null) return undefined
+      try { return JSON.parse(raw) } catch { return raw }
+    },
+    setDocument: (key, value) => {
+      if (key === KEYS.exerciseProgress) setProgress(value as Record<string, ExerciseProgress>)
+      else if (key === KEYS.dailyExercises) { saveDailySession(value as DailySession); setStoredSession(value as DailySession) }
+      else if (key === KEYS.username) {
+        // Another device's chess.com account: only adopted when none is set here.
+        if (!username && typeof value === 'string') { localStorage.setItem(USERNAME_KEY, value); setUsername(value) }
+      } else localStorage.setItem(key, typeof value === 'string' ? value : JSON.stringify(value))
+    },
+  }), [username])
+
+  const cloudBusy = useRef(false)
+  const syncCloud = useCallback(async () => {
+    const user = cloud.user
+    if (!supabase || !user || !hydrated || cloudBusy.current) return
+    cloudBusy.current = true
+    setCloud(c => ({ ...c, syncing: true, error: null }))
+    try {
+      const result = await syncOnce(supabaseRemote, localStore, loadSyncState(user.id))
+      saveSyncState(user.id, result.state)
+      setCloud(c => ({ ...c, syncing: false, syncedAt: Date.now() }))
+    } catch (e) {
+      setCloud(c => ({ ...c, syncing: false, error: e instanceof Error ? e.message : String(e) }))
+    } finally {
+      cloudBusy.current = false
+    }
+  }, [cloud.user, hydrated, localStore])
+
+  // When signed in: at launch, back in the foreground, and a little after
+  // each change of analyses or progress (an exercise solved, a game analysed).
+  useEffect(() => {
+    if (!cloud.user || !hydrated) return
+    void syncCloud()
+    const sub = AppState.addEventListener('change', state => { if (state === 'active') void syncCloud() })
+    return () => sub.remove()
+  // Keyed on the account only: syncCloud changes with the data it reads.
+  }, [cloud.user, hydrated])
+  useEffect(() => {
+    if (!cloud.user || !hydrated) return
+    const t = setTimeout(() => { void syncCloud() }, 8000)
+    return () => clearTimeout(t)
+  }, [analyses, progress])
+
   const value = useMemo<AppData>(() => ({
     username,
     hydrated: !username || hydrated,
@@ -220,6 +305,8 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     lastSync,
     exercises,
     daily,
+    cloud,
+    syncCloud,
     extendDaily() {
       if (!session) return
       const next = extendDailySession(session, exercises, progress, recency, Date.now())
@@ -248,7 +335,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       setProgress(prev => ({ ...prev, [id]: updateProgressAfterAttempt(prev[id], outcome) }))
     },
     engine: getEngine,
-  }), [username, hydrated, games, analyses, progress, analyzing, syncing, lastSync, exercises, daily, session, recency, sync, analyze])
+  }), [username, hydrated, games, analyses, progress, analyzing, syncing, lastSync, exercises, daily, session, recency, sync, analyze, cloud, syncCloud])
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }
