@@ -7,6 +7,7 @@ import OptionChipsRow from '@/components/OptionChipsRow'
 import { useAppData } from '@/lib/appData'
 import { backgroundSyncSupported, disableBackgroundSync, enableBackgroundSync, isBackgroundSyncEnabled } from '@/lib/backgroundSync'
 import { cloudEnabled, signInWithGoogle, signOut } from '@/lib/cloud'
+import AppVersionCard from '@/components/AppVersionCard'
 
 const DEPTHS = [{ value: 10, label: 'Rapide' }, { value: 14, label: 'Recommandé' }, { value: 18, label: 'Profond' }]
 
@@ -93,6 +94,8 @@ export default function PreferencesScreen() {
           <T tone="faint">Les notifications en arrière-plan demandent l'appli sur téléphone : la version web vérifie à l'ouverture et quand tu reviens sur l'onglet.</T>
         )}
       </Card>
+
+      <AppVersionCard />
 
       <Card style={{ gap: 12 }}>
         <SectionLabel>Compte chess.com</SectionLabel>

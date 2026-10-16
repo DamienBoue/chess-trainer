@@ -1,0 +1,51 @@
+name: Android update (EAS Update)
+
+# The Android app (APK installed by hand, see docs/android.md) picks up the
+# new JavaScript of master on its next launch, like the website. A change of
+# native code needs a new APK instead (bump "version" in native/app.json).
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-update
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      # Expo access token (expo.dev → Account settings → Access tokens), a repository secret.
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+    steps:
+      - name: Skip without an Expo token
+        if: env.EXPO_TOKEN == ''
+        run: echo "::notice::EXPO_TOKEN is not set, no Android update published."
+      - uses: actions/checkout@v4
+        if: env.EXPO_TOKEN != ''
+      - uses: actions/setup-node@v4
+        if: env.EXPO_TOKEN != ''
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: '**/package-lock.json'
+      - run: npm ci
+        if: env.EXPO_TOKEN != ''
+      - run: npm ci
+        if: env.EXPO_TOKEN != ''
+        working-directory: native
+      - name: Publish to the production channel
+        if: env.EXPO_TOKEN != ''
+        working-directory: native
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+        run: >
+          npx eas-cli@latest update --channel production --platform android
+          --environment production --non-interactive
+          --message "$(git log -1 --pretty=%s)"

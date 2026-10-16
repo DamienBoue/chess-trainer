@@ -17,7 +17,10 @@
         "foregroundImage": "./assets/images/android-icon-foreground.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.damienboue.chesstrainer"
+      "package": "com.damienboue.chesstrainer",
+      "runtimeVersion": {
+        "policy": "appVersion"
+      }
     },
     "web": {
       "bundler": "metro",
@@ -28,7 +31,9 @@
       [
         "expo-router",
         {
-          "asyncRoutes": { "web": false }
+          "asyncRoutes": {
+            "web": false
+          }
         }
       ],
       [
@@ -47,6 +52,18 @@
     "experiments": {
       "typedRoutes": false,
       "baseUrl": "/chess-trainer"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "e02b939f-c51d-457a-9663-3e12f4f658b3"
+      }
+    },
+    "owner": "damienboue",
+    "updates": {
+      "url": "https://u.expo.dev/e02b939f-c51d-457a-9663-3e12f4f658b3",
+      "requestHeaders": {
+        "expo-channel-name": "production"
+      }
     }
   }
 }

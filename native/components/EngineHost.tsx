@@ -10,7 +10,7 @@ import { Asset } from 'expo-asset'
 import { File } from 'expo-file-system'
 import { attachEngineHost, receiveFromEngineHost, type ToEnginePage } from '@shared/engine/transport'
 import { engineStatus } from '@/lib/engineStatus'
-import engineJs from '@/assets/engine/stockfish.sfjs'
+import engineJs from '@/assets/engine/stockfish-loader.sfjs'
 import engineWasm from '@/assets/engine/stockfish.wasm'
 
 // The class component's typings don't match React 19's JSX types.

@@ -4,6 +4,8 @@ App to analyse your [chess.com](https://chess.com) games with Stockfish, turn yo
 
 🌐 **Web version: https://damienboue.github.io/chess-trainer/** — type your chess.com username, that's it: no account, nothing leaves your device. On a phone, "Add to Home Screen" installs it like an app.
 
+🤖 **Android app**: an APK built on the Mac, installed by hand, then updated on its own (EAS Update) — see [docs/android.md](docs/android.md).
+
 💬 **Feature requests, idées, discussions** : [Discussions du repo](https://github.com/DamienBoue/chess-trainer/discussions)
 
 ## What it does
